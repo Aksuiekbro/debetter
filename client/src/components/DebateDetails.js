@@ -22,8 +22,9 @@ import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import GradeIcon from '@mui/icons-material/Grade';
 import GroupsIcon from '@mui/icons-material/Groups';
-import JudgePanel from './JudgePanel';
+import GavelIcon from '@mui/icons-material/Gavel';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import JudgePanel from './JudgePanel';
 import TournamentGrid from './TournamentGrid';
 
 const DebateDetails = () => {
@@ -33,6 +34,7 @@ const DebateDetails = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);  // Add this state
+  const [currentUser, setCurrentUser] = useState(null);
   const userId = localStorage.getItem('userId');
   const userRole = localStorage.getItem('userRole');
 
@@ -40,24 +42,15 @@ const DebateDetails = () => {
     const fetchDebateDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5001/api/debates/${id}`, {
-          headers: getAuthHeaders()
-        });
+        const response = await api.client.get(`/api/debates/${id}`);
+        const data = response.data;
+        console.log('Received debate data:', data);
         
-        if (response.status === 401) {
-          handleUnauthorized(navigate);
-          return;
-        }
-        const data = await response.json();
-        if (response.ok) {
-          // If the user is the judge that created the debate, automatically add them as participant
-          if (userRole === 'judge' && data.creator._id === userId && !data.participants.some(p => p._id === userId)) {
-            await handleJoinDebate();
-          } else {
-            setDebate(data);
-          }
+        if (userRole === 'judge' && data.creator._id === userId && 
+            !data.participants.some(p => p._id === userId)) {
+          await handleJoinDebate();
         } else {
-          console.error('Error:', data.message);
+          setDebate(data);
         }
       } catch (error) {
         console.error('Error fetching debate details:', error);
@@ -68,18 +61,34 @@ const DebateDetails = () => {
     fetchDebateDetails();
   }, [id, navigate, userId, userRole]);
 
-  const canJoinDebate = () => {
-    if (!debate) return false;
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const response = await api.client.get(api.endpoints.profile);
+        if (response.data) {
+          setCurrentUser(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
 
-    const currentParticipants = debate.participants.filter(p => p.role !== 'judge');
-    
-    if (debate.format === 'tournament') {
-      // For tournaments, limit to 32 participants (excluding judges)
-      return currentParticipants.length < 32;
+    if (localStorage.getItem('token')) {
+      getCurrentUser();
     }
+  }, []);
 
-    // For standard debates, use maxParticipants
-    return debate.participants.length < debate.maxParticipants;
+  const canJoinDebate = () => {
+    if (!debate || !currentUser) return false;
+
+    if (debate.format === 'tournament') {
+      if (currentUser.role === 'judge') {
+        return (debate.participants.filter(p => p.role === 'judge').length) < 8;
+      }
+      return (debate.participants.filter(p => p.role !== 'judge').length) < 32;
+    }
+    
+    return debate.participants.length < (debate.maxParticipants || 6);
   };
 
   const handleJoinDebate = async () => {
@@ -91,7 +100,7 @@ const DebateDetails = () => {
       }
 
       if (!canJoinDebate()) {
-        alert('This debate is full');
+        alert(currentUser?.role === 'judge' ? 'Maximum judges reached' : 'This debate is full');
         return;
       }
 
@@ -135,62 +144,119 @@ const DebateDetails = () => {
   };
 
   const getParticipantDisplay = () => {
-    if (debate.format === 'tournament') {
-      const currentCount = debate.participants.filter(p => p.role !== 'judge').length;
-      return `${currentCount}/32`;
-    }
-    return `${debate.participants.length}/${debate.maxParticipants}`;
-  };
+    if (!debate) return "";
 
-  const renderTournamentInfo = () => {
-    if (debate.format !== 'tournament') return null;
+    if (debate.format === 'tournament') {
+      const counts = {
+        debaters: debate.participants.filter(p => p.role !== 'judge').length,
+        judges: debate.participants.filter(p => p.role === 'judge').length
+      };
+
+      return (
+        <Stack direction="row" spacing={1}>
+          <Chip 
+            icon={<GroupsIcon />} 
+            label={`Debaters: ${counts.debaters}/32`}
+            color="primary"
+            variant="outlined"
+          />
+          <Chip 
+            icon={<GavelIcon />} 
+            label={`Judges: ${counts.judges}/8`}
+            color="secondary"
+            variant="outlined"
+          />
+        </Stack>
+      );
+    }
 
     return (
-      <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)', mb: 3 }}>
-        <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <EmojiEventsIcon />
-          Tournament Information
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <Typography variant="body1">
-              <strong>Format:</strong> {debate.mode === 'solo' ? 'Solo Tournament (32 participants)' : 'Duo Tournament (16 teams of 2)'}
-            </Typography>
-          </Grid>
-          <Grid item xs={12}>
-            <Typography variant="body1">
-              <strong>Current Participants:</strong> {debate.participants.filter(p => p.role !== 'judge').length}/32
-            </Typography>
-          </Grid>
-          <Grid item xs={12}>
-            <Typography variant="body1">
-              <strong>Judges:</strong> {debate.participants.filter(p => p.role === 'judge').length}/8
-            </Typography>
-          </Grid>
-          {debate.registrationDeadline && (
-            <Grid item xs={12}>
-              <Typography variant="body1">
-                <strong>Registration Deadline:</strong> {new Date(debate.registrationDeadline).toLocaleDateString()}
-              </Typography>
-            </Grid>
-          )}
-        </Grid>
-      </Paper>
+      <Box display="inline-block">
+        <Chip 
+          icon={<GroupsIcon />} 
+          label={`Participants: ${debate.participants.length}/${debate.maxParticipants}`}
+          color="primary"
+          variant="outlined"
+        />
+      </Box>
     );
   };
 
-  const renderTournamentBracket = () => {
-    if (debate.format !== 'tournament' || !debate.tournamentRounds) return null;
+  const renderParticipantInfo = () => {
+    if (!debate) return null;
+
+    const debaters = debate.participants.filter(p => p.role !== 'judge');
+    const judges = debate.participants.filter(p => p.role === 'judge');
 
     return (
-      <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)', mb: 3 }}>
-        <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <EmojiEventsIcon />
-          Tournament Bracket
+      <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
+        <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
+          {debate.format === 'tournament' ? 'Tournament Participants' : 'Participants'}
         </Typography>
-        <Box sx={{ overflow: 'auto' }}>
-          <TournamentGrid rounds={debate.tournamentRounds} />
+
+        <Box sx={{ mb: 2 }}>
+          {debate.format === 'tournament' ? (
+            <>
+              <Typography component="div" variant="body2" color="primary" gutterBottom>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <span>Debaters:</span>
+                  <strong>{debaters.length}/32</strong>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Judges:</span>
+                  <strong>{judges.length}/8</strong>
+                </Box>
+              </Typography>
+            </>
+          ) : (
+            <Typography component="div" variant="body2" color="primary" gutterBottom>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Total Participants:</span>
+                <strong>{debate.participants.length}/{debate.maxParticipants}</strong>
+              </Box>
+            </Typography>
+          )}
         </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        {debate.format === 'tournament' && (
+          <>
+            <Typography variant="subtitle2" color="primary" gutterBottom>
+              Judges
+            </Typography>
+            <List dense>
+              {judges.map((judge) => (
+                <ListItem key={judge._id}>
+                  <ListItemAvatar>
+                    <Avatar><GavelIcon /></Avatar>
+                  </ListItemAvatar>
+                  <ListItemText primary={judge.username} secondary="Judge" />
+                </ListItem>
+              ))}
+            </List>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" color="primary" gutterBottom>
+              Debaters
+            </Typography>
+          </>
+        )}
+
+        <List dense={debate.format === 'tournament'}>
+          {(debate.format === 'tournament' ? debaters : debate.participants).map((participant) => (
+            <ListItem key={participant._id}>
+              <ListItemAvatar>
+                <Avatar>
+                  {participant.role === 'judge' ? <GavelIcon /> : <PersonIcon />}
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText 
+                primary={participant.username}
+                secondary={debate.format !== 'tournament' && participant.role === 'judge' ? 'Judge' : 'Debater'}
+              />
+            </ListItem>
+          ))}
+        </List>
       </Paper>
     );
   };
@@ -224,16 +290,13 @@ const DebateDetails = () => {
       )}
 
       <Grid container spacing={3}>
-        {/* Main Content */}
         <Grid item xs={12} md={8}>
-          {debate.format === 'tournament' && renderTournamentInfo()}
-          {debate.format === 'tournament' && renderTournamentBracket()}
           <Paper elevation={3} sx={{ p: 4, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
             <Typography variant="h4" sx={{ color: 'primary.main', mb: 2 }}>
               {debate.title}
             </Typography>
             
-            <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
               <Chip 
                 icon={<AccessTimeIcon />} 
                 label={`Status: ${debate.status}`}
@@ -246,20 +309,7 @@ const DebateDetails = () => {
                 color="primary"
                 variant="outlined"
               />
-              <Chip 
-                icon={<GroupsIcon />} 
-                label={`Participants: ${getParticipantDisplay()}`}
-                color="primary"
-                variant="outlined"
-              />
-              {debate.format === 'tournament' && (
-                <Chip 
-                  icon={<GroupsIcon />} 
-                  label={`Format: ${debate.mode === 'solo' ? 'Solo Tournament' : 'Duo Tournament'}`}
-                  color="secondary"
-                  variant="outlined"
-                />
-              )}
+              {getParticipantDisplay()}
             </Box>
 
             <Typography variant="body1" sx={{ mb: 4 }}>
@@ -272,22 +322,44 @@ const DebateDetails = () => {
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2">
-                    <strong>Category:</strong> {debate.category}
-                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" component="span">
+                      <strong>Category:</strong>
+                    </Typography>
+                    <Typography variant="body2" component="span">
+                      {debate.category}
+                    </Typography>
+                  </Stack>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2">
-                    <strong>Start Date:</strong> {new Date(debate.startDate).toLocaleDateString()}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="body2">
-                    <strong>Created By:</strong> {debate.creator?.username || 'Unknown'}
-                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" component="span">
+                      <strong>Start Date:</strong>
+                    </Typography>
+                    <Typography variant="body2" component="span">
+                      {new Date(debate.startDate).toLocaleDateString()}
+                    </Typography>
+                  </Stack>
                 </Grid>
               </Grid>
             </Box>
+
+            {/* Tournament Bracket Display */}
+            {debate.format === 'tournament' && (
+              <Box sx={{ mt: 4, mb: 4 }}>
+                <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
+                  Tournament Bracket
+                </Typography>
+                {debate.tournamentRounds && debate.tournamentRounds.length > 0 ? (
+                  <TournamentGrid rounds={debate.tournamentRounds} />
+                ) : (
+                  <Typography variant="body2" color="textSecondary">
+                    Tournament bracket will be generated once all participants have joined.
+                  </Typography>
+                )}
+              </Box>
+            )}
+
             {debate && (
               <Box sx={{ mt: 3 }}>
                 {isParticipant() ? (
@@ -296,11 +368,11 @@ const DebateDetails = () => {
                     color="error"
                     onClick={handleLeaveDebate}
                     fullWidth
-                    disabled={actionLoading || (userRole === 'judge' && debate.creator._id === userId)}
+                    disabled={actionLoading || (debate.format === 'tournament' && currentUser?.role === 'judge' && debate.creator._id === currentUser._id)}
                   >
                     {actionLoading ? 'Processing...' : 
-                     (userRole === 'judge' && debate.creator._id === userId) ? 
-                     'Judges Cannot Leave Their Own Debates' : 'Leave This Debate'}
+                     (debate.format === 'tournament' && currentUser?.role === 'judge' && debate.creator._id === currentUser._id) ? 
+                     'Tournament Judges Cannot Leave Their Own Debates' : 'Leave This Debate'}
                   </Button>
                 ) : (
                   canJoinDebate() && (
@@ -311,52 +383,60 @@ const DebateDetails = () => {
                       fullWidth
                       disabled={actionLoading}
                     >
-                      {actionLoading ? 'Processing...' : 'Join This Debate'}
+                      {actionLoading ? 'Processing...' : 
+                       debate.format === 'tournament' ? 
+                       `Join as ${currentUser?.role === 'judge' ? 'Judge' : 'Debater'}` : 
+                       'Join This Debate'}
                     </Button>
                   )
+                )}
+                {debate.format === 'tournament' && !canJoinDebate() && (
+                  <Typography variant="body2" color="error" sx={{ mt: 1, textAlign: 'center' }}>
+                    {currentUser?.role === 'judge' ? 
+                      'Maximum number of judges reached' : 
+                      'Maximum number of debaters reached'}
+                  </Typography>
                 )}
               </Box>
             )}
           </Paper>
         </Grid>
 
-        {/* Sidebar */}
         <Grid item xs={12} md={4}>
           <Stack spacing={3}>
-            {/* Team Assignment Section */}
-            {debate.status === 'team-assignment' && (
+            {/* Tournament Status Section */}
+            {debate.format === 'tournament' && debate.status !== 'completed' && (
               <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
                 <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
-                  Team Assignment
+                  Tournament Status
                 </Typography>
-                {/* Team assignment content */}
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Required Participants
+                    </Typography>
+                    <Typography variant="body1">
+                      • Debaters: {debate.participants.filter(p => p.role !== 'judge').length}/32
+                    </Typography>
+                    <Typography variant="body1">
+                      • Judges: {debate.participants.filter(p => p.role === 'judge').length}/8
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Status: {debate.status.charAt(0).toUpperCase() + debate.status.slice(1)}
+                    </Typography>
+                    {debate.status === 'upcoming' && (
+                      <Typography variant="body2" color="textSecondary">
+                        Tournament will begin once all required participants have joined.
+                      </Typography>
+                    )}
+                  </Box>
+                </Stack>
               </Paper>
             )}
 
-            {/* Participants Section */}
-            <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
-              <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
-                Participants
-              </Typography>
-              <List>
-                {debate.participants.map((participant, index) => (
-                  <React.Fragment key={participant._id}>
-                    <ListItem>
-                      <ListItemAvatar>
-                        <Avatar>
-                          <PersonIcon />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={participant.username}
-                        secondary={participant.role === 'judge' ? 'Judge' : 'Debater'}
-                      />
-                    </ListItem>
-                    {index < debate.participants.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-              </List>
-            </Paper>
+            {renderParticipantInfo()}
           </Stack>
         </Grid>
       </Grid>

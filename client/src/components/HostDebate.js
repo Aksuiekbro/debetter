@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
 import {
@@ -28,6 +28,11 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import SportsIcon from '@mui/icons-material/Sports';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 
 const HostDebate = () => {
   const navigate = useNavigate();
@@ -47,6 +52,7 @@ const HostDebate = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
   const categories = [
     'politics',
@@ -56,16 +62,43 @@ const HostDebate = () => {
     'economics'
   ];
 
+  useEffect(() => {
+    // Update maxParticipants based on format
+    setFormData(prev => ({
+      ...prev,
+      maxParticipants: prev.format === 'tournament' ? 32 : 6
+    }));
+  }, [formData.format]);
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.title) newErrors.title = 'Title is required';
     if (!formData.description) newErrors.description = 'Description is required';
     if (!formData.category) newErrors.category = 'Category is required';
-    if (formData.maxParticipants < 2) newErrors.maxParticipants = 'Minimum 2 participants required';
-    if (formData.requiredJudges < 1) newErrors.requiredJudges = 'At least 1 judge is required';
     if (!formData.location) newErrors.location = 'Location is required';
     if (new Date(formData.startDate) < new Date()) newErrors.startDate = 'Start date must be in the future';
     if (formData.duration < 30) newErrors.duration = 'Duration must be at least 30 minutes';
+
+    if (formData.format === 'tournament') {
+      const startDateTime = new Date(formData.startDate);
+      const now = new Date();
+      const minHours = 48;
+      
+      if (startDateTime - now < minHours * 60 * 60 * 1000) {
+        newErrors.startDate = 'Tournament debates must be scheduled at least 48 hours in advance';
+      }
+
+      const registrationDeadline = new Date(formData.registrationDeadline);
+      if (registrationDeadline >= startDateTime) {
+        newErrors.registrationDeadline = 'Registration deadline must be before the tournament start date';
+      }
+      if (registrationDeadline < now) {
+        newErrors.registrationDeadline = 'Registration deadline must be in the future';
+      }
+      if (startDateTime - registrationDeadline < 24 * 60 * 60 * 1000) {
+        newErrors.registrationDeadline = 'Registration must close at least 24 hours before tournament start';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -75,6 +108,11 @@ const HostDebate = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    if (formData.format === 'tournament' && !openConfirmDialog) {
+      setOpenConfirmDialog(true);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -82,7 +120,13 @@ const HostDebate = () => {
         return;
       }
 
-      const response = await api.client.post(api.endpoints.debates, formData);
+      console.log('Submitting debate with format:', formData.format); // Debug log
+      const response = await api.client.post(api.endpoints.debates, {
+        ...formData,
+        maxParticipants: formData.format === 'tournament' ? 32 : 6,
+        maxJudges: formData.format === 'tournament' ? 8 : 3
+      });
+      console.log('Debate creation response:', response.data); // Debug log
       navigate(`/debates/${response.data._id}`);
     } catch (error) {
       console.error('Error creating debate:', error);
@@ -282,6 +326,30 @@ const HostDebate = () => {
                     helperText="8 judges required for tournament format"
                   />
                 </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DateTimePicker
+                      label="Registration Deadline"
+                      value={formData.registrationDeadline}
+                      onChange={(newValue) => {
+                        handleChange({
+                          target: { name: 'registrationDeadline', value: newValue }
+                        });
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          error={!!errors.registrationDeadline}
+                          helperText={errors.registrationDeadline || 'Must be at least 24 hours before start time'}
+                        />
+                      )}
+                      minDateTime={new Date()}
+                      maxDateTime={new Date(formData.startDate)}
+                    />
+                  </LocalizationProvider>
+                </Grid>
               </>
             )}
 
@@ -404,6 +472,14 @@ const HostDebate = () => {
               </Grid>
             )}
 
+            <Grid item xs={12}>
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+                {formData.format === 'tournament' ? 
+                  '* Tournament format requires 32 debaters and 8 judges. The tournament will begin once all positions are filled.' :
+                  '* Standard debates can have up to 6 participants including judges.'}
+              </Typography>
+            </Grid>
+
             {/* Submit Button */}
             <Grid item xs={12}>
               <Button
@@ -419,6 +495,37 @@ const HostDebate = () => {
           </Grid>
         </form>
       </Paper>
+      <Dialog
+        open={openConfirmDialog}
+        onClose={() => setOpenConfirmDialog(false)}
+      >
+        <DialogTitle>Confirm Tournament Creation</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You are about to create a tournament debate that requires:
+            <Box component="ul" sx={{ mt: 1 }}>
+              <li>32 debaters {formData.mode === 'duo' && '(16 teams of 2)'}</li>
+              <li>8 judges</li>
+              <li>Minimum 48 hours notice</li>
+              <li>All participants must be available for multiple rounds</li>
+            </Box>
+            Are you sure you want to proceed?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmDialog(false)}>Cancel</Button>
+          <Button 
+            onClick={() => {
+              setOpenConfirmDialog(false);
+              handleSubmit(new Event('submit'));
+            }} 
+            color="primary" 
+            variant="contained"
+          >
+            Create Tournament
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

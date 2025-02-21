@@ -12,7 +12,12 @@ const {
     startRoom,
     analyzeSpeech,
     saveTranscript,
-    analyzeFinalDebate
+    analyzeFinalDebate,
+    analyzeInterim,
+    updateTournamentBrackets,
+    validateTournamentOperation,
+    generateTournamentBracket,
+    updateTournamentMatch
 } = require('../controllers/debateController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -24,12 +29,18 @@ router.get('/my-debates', protect, getUserDebates);
 // Specific debate routes with :id parameter
 router.get('/:id', getDebate);
 router.put('/:id', protect, updateDebate);
-router.post('/:id/join', protect, joinDebate);
-router.post('/:id/leave', protect, leaveDebate);
+router.post('/:id/join', protect, validateTournamentOperation, joinDebate);
+router.post('/:id/leave', protect, validateTournamentOperation, leaveDebate);
 router.post('/:id/assign-teams', protect, assignTeams);
 router.post('/:id/start-room', protect, startRoom);
 router.post('/:id/analyze-speech', protect, analyzeSpeech);
 router.post('/:id/save-transcript', protect, saveTranscript);
+router.post('/:id/analyze-interim', protect, analyzeInterim);
 router.post('/:id/end', protect, analyzeFinalDebate);
+
+// Tournament-specific routes
+router.post('/:id/generate-bracket', protect, generateTournamentBracket);
+router.post('/:id/update-match', protect, updateTournamentMatch);
+router.post('/:id/update-brackets', protect, updateTournamentBrackets);
 
 module.exports = router;

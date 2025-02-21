@@ -44,6 +44,7 @@ const JudgePanel = ({ debate, onUpdateDebate }) => {
   const [fullTranscript, setFullTranscript] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [transcriptHistory, setTranscriptHistory] = useState([]);
+  const [immediateAnalysis, setImmediateAnalysis] = useState(null);
 
   const steps = ['Team Assignment', 'Room Setup', 'Debate in Progress'];
 
@@ -304,12 +305,36 @@ const JudgePanel = ({ debate, onUpdateDebate }) => {
     }
   };
 
-  const handleStopRecording = () => {
+  const handleStopRecording = async () => {
     if (window.recognition) {
       window.recognition.stop();
       delete window.recognition;
     }
     setRecording(false);
+
+    try {
+      // Get the active room's transcription
+      if (currentRoom?.transcription && currentRoom.transcription.length > 0) {
+        const response = await fetch(`http://localhost:5001/api/debates/${debate._id}/analyze-interim`, {
+          method: 'POST',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            roomId: currentRoom._id,
+            transcript: fullTranscript
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setImmediateAnalysis(result.analysis);
+        }
+      }
+    } catch (error) {
+      console.error('Error analyzing interim debate:', error);
+    }
   };
 
   const handleEndDebate = async () => {
@@ -497,6 +522,71 @@ const JudgePanel = ({ debate, onUpdateDebate }) => {
                 </Typography>
               )}
             </Paper>
+
+            {/* Interim Analysis Results */}
+            {!isDebateEnded && immediateAnalysis && (
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 2, 
+                  mb: 3, 
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  border: '1px solid #e0e0e0'
+                }}
+              >
+                <Typography variant="h6" color="primary" gutterBottom>
+                  Current Analysis
+                </Typography>
+
+                <Grid container spacing={3}>
+                  {/* Proposition Arguments */}
+                  <Grid item xs={12} md={6}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom color="primary">
+                          Proposition Key Arguments
+                        </Typography>
+                        {immediateAnalysis.propositionArguments.map((arg, index) => (
+                          <Box key={index} sx={{ mb: 2 }}>
+                            <Typography variant="body1">
+                              {arg.argument}
+                            </Typography>
+                            {arg.evidence && (
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                Evidence: {arg.evidence}
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  {/* Opposition Arguments */}
+                  <Grid item xs={12} md={6}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom color="error">
+                          Opposition Key Arguments
+                        </Typography>
+                        {immediateAnalysis.oppositionArguments.map((arg, index) => (
+                          <Box key={index} sx={{ mb: 2 }}>
+                            <Typography variant="body1">
+                              {arg.argument}
+                            </Typography>
+                            {arg.evidence && (
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                Evidence: {arg.evidence}
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+              </Paper>
+            )}
 
             {/* Final Analysis Results */}
             {isDebateEnded && analysisResults && (

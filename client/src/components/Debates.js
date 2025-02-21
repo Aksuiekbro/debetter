@@ -21,8 +21,156 @@ import {
   Divider,
   InputAdornment,
   Chip,
+  Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+
+const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
+  const canJoinDebate = () => {
+    if (!debate) return false;
+    if (debate.format === 'tournament') {
+      if (currentUser?.role === 'judge') {
+        return (debate.counts?.judges || 0) < (debate.counts?.maxJudges || 8);
+      }
+      return (debate.counts?.debaters || 0) < (debate.counts?.maxDebaters || 32);
+    }
+    return debate.participants.length < (debate.maxParticipants || 6);
+  };
+
+  return (
+    <Card sx={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
+      <CardContent>
+        <Typography variant="h5" component="div" sx={{ color: 'primary.main' }}>
+          {debate.title}
+          {debate.format === 'tournament' && (
+            <Chip 
+              size="small" 
+              label="Tournament"
+              color="secondary"
+              sx={{ ml: 1 }}
+            />
+          )}
+        </Typography>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {debate.description}
+        </Typography>
+
+        <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Chip 
+            size="small"
+            label={`Category: ${debate.category}`}
+            color="primary"
+            variant="outlined"
+          />
+          <Chip 
+            size="small"
+            label={`Difficulty: ${debate.difficulty}`}
+            color="primary"
+            variant="outlined"
+          />
+          <Chip 
+            size="small"
+            label={`Status: ${debate.status}`}
+            color="primary"
+            variant="outlined"
+          />
+          {debate.format === 'tournament' ? (
+            <>
+              <Chip 
+                size="small"
+                label={`Debaters: ${debate.counts?.debaters || 0}/32`}
+                color="primary"
+                variant="outlined"
+              />
+              <Chip 
+                size="small"
+                label={`Judges: ${debate.counts?.judges || 0}/8`}
+                color="primary"
+                variant="outlined"
+              />
+              <Chip 
+                size="small"
+                label={`Mode: ${debate.mode || 'Solo'}`}
+                color="primary"
+                variant="outlined"
+              />
+            </>
+          ) : (
+            <Chip 
+              size="small"
+              label={`Participants: ${debate.participants.length}/${debate.maxParticipants}`}
+              color="primary"
+              variant="outlined"
+            />
+          )}
+        </Stack>
+
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Start Date: {new Date(debate.startDate).toLocaleString()}
+          {debate.format === 'tournament' && debate.registrationDeadline && (
+            <>
+              <br />
+              Registration Deadline: {new Date(debate.registrationDeadline).toLocaleString()}
+            </>
+          )}
+        </Typography>
+      </CardContent>
+
+      <CardActions>
+        <Button 
+          size="small" 
+          color="primary"
+          onClick={() => navigate(`/debates/${debate._id}`)}
+        >
+          View Details
+        </Button>
+        {currentUser && (
+          <>
+            {debate.creator?._id === currentUser._id ? (
+              <Button 
+                size="small" 
+                color="primary" 
+                variant="contained"
+                onClick={() => navigate(`/debates/${debate._id}/manage`)}
+              >
+                Manage Debate
+              </Button>
+            ) : debate.participants.some(p => p._id === currentUser._id) ? (
+              <Button 
+                size="small" 
+                color="secondary" 
+                variant="contained"
+                onClick={() => onLeave(debate._id)}
+                disabled={debate.format === 'tournament' && currentUser.role === 'judge' && debate.creator._id === currentUser._id}
+              >
+                {debate.format === 'tournament' && currentUser.role === 'judge' && debate.creator._id === currentUser._id 
+                  ? 'Cannot Leave Own Tournament' 
+                  : 'Leave Debate'}
+              </Button>
+            ) : (
+              <Button 
+                size="small" 
+                color="primary" 
+                variant="contained"
+                onClick={() => onJoin(debate._id)}
+                disabled={!canJoinDebate()}
+              >
+                {!canJoinDebate() 
+                  ? (debate.format === 'tournament' 
+                      ? (currentUser.role === 'judge' ? 'Judges Full' : 'Debaters Full') 
+                      : 'Full') 
+                  : debate.format === 'tournament'
+                    ? `Join as ${currentUser.role === 'judge' ? 'Judge' : 'Debater'}`
+                    : 'Join Debate'}
+              </Button>
+            )}
+          </>
+        )}
+      </CardActions>
+    </Card>
+  );
+};
 
 const Debates = () => {
   const navigate = useNavigate();
@@ -78,7 +226,7 @@ const Debates = () => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const response = await fetch('http://localhost:5001/api/users/me', {
+        const response = await fetch('http://localhost:5001/api/users/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -283,84 +431,21 @@ const Debates = () => {
           <Grid container spacing={3}>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 4 }}>
-                <Typography>Loading debates...</Typography>
+                <Typography component="div">Loading debates...</Typography>
               </Box>
             ) : debates.length === 0 ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 4 }}>
-                <Typography>No debates found matching your criteria</Typography>
+                <Typography component="div">No debates found matching your criteria</Typography>
               </Box>
             ) : (
               debates.map((debate) => (
                 <Grid item xs={12} key={debate._id}>
-                  <Card sx={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
-                    <CardContent>
-                      <Typography variant="h5" component="div" sx={{ color: 'primary.main' }}>
-                        {debate.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        {debate.description}
-                      </Typography>
-                      <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                        <Typography variant="body2" color="primary">
-                          Category: {debate.category}
-                        </Typography>
-                        <Typography variant="body2" color="primary">
-                          Status: {debate.status}
-                        </Typography>
-                        <Typography variant="body2" color="primary">
-                          Difficulty: {debate.difficulty}
-                        </Typography>
-                        <Typography variant="body2" color="primary">
-                          Participants: {debate.participants.length}/{debate.maxParticipants}
-                        </Typography>
-                        <Typography variant="body2" color="primary">
-                          Start Date: {new Date(debate.startDate).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                    <CardActions>
-                      <Button 
-                        size="small" 
-                        color="primary"
-                        onClick={() => navigate(`/debates/${debate._id}`)}
-                      >
-                        View Details
-                      </Button>
-                      {currentUser && (
-                        <>
-                          {debate.host === currentUser._id ? (
-                            <Button 
-                              size="small" 
-                              color="primary" 
-                              variant="contained"
-                              onClick={() => navigate(`/debates/${debate._id}/manage`)}
-                            >
-                              Manage Debate
-                            </Button>
-                          ) : debate.participants.includes(currentUser._id) ? (
-                            <Button 
-                              size="small" 
-                              color="secondary" 
-                              variant="contained"
-                              onClick={() => handleLeaveDebate(debate._id)}
-                            >
-                              Leave Debate
-                            </Button>
-                          ) : (
-                            <Button 
-                              size="small" 
-                              color="primary" 
-                              variant="contained"
-                              onClick={() => handleJoinDebate(debate._id)}
-                              disabled={debate.participants.length >= debate.maxParticipants}
-                            >
-                              {debate.participants.length >= debate.maxParticipants ? 'Full' : 'Join Debate'}
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </CardActions>
-                  </Card>
+                  <DebateCard 
+                    debate={debate}
+                    currentUser={currentUser}
+                    onJoin={handleJoinDebate}
+                    onLeave={handleLeaveDebate}
+                  />
                 </Grid>
               ))
             )}

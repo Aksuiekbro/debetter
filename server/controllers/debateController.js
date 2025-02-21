@@ -1,5 +1,5 @@
 const Debate = require('../models/Debate');
-const { analyzeDebateSpeech, analyzeDebateSummary } = require('../services/aiService');
+const { analyzeDebateSpeech, analyzeDebateSummary, analyzeInterimTranscript } = require('../services/aiService');
 
 // Get all debates with filtering and sorting
 exports.getDebates = async (req, res) => {
@@ -24,7 +24,7 @@ exports.getDebates = async (req, res) => {
       const difficulties = req.query.difficulty.split(',');
       filter.difficulty = { $in: difficulties };
     }
-
+    
     // Add search filter if search query exists
     if (search) {
       filter.$or = [
@@ -32,7 +32,7 @@ exports.getDebates = async (req, res) => {
         { description: { $regex: search, $options: 'i' } }
       ];
     }
-
+    
     // Build sort object
     let sort = {};
     switch (sortBy) {
@@ -40,163 +40,203 @@ exports.getDebates = async (req, res) => {
         sort = { createdAt: -1 };
         break;
       case 'popular':
-        sort = { 'participants': -1 }; // Sort by number of participants
+        sort = { 'participants': -1 };
         break;
       case 'upcoming':
         sort = { startDate: 1 };
         break;
       case 'difficulty':
-        sort = { 
-          difficulty: 1,
-          startDate: 1
-        };
+        sort = { difficulty: 1, startDate: 1 };
         break;
       default:
         sort = { createdAt: -1 };
     }
-
-    console.log('Filter:', filter); // Debug log
-    console.log('Sort:', sort); // Debug log
-
+    
     const debates = await Debate.find(filter)
       .sort(sort)
       .populate('creator', 'username')
-      .populate('participants', 'username role')
-      .lean();
+      .populate('participants', 'username role');
 
-    console.log(`Found ${debates.length} debates`); // Debug log
-    res.json(debates);
+    // Transform the debates to include the correct counts
+    const transformedDebates = debates.map(debate => {
+      const debateObj = debate.toObject();
+      if (debate.format === 'tournament') {
+        // For tournament format, separate counts for debaters and judges
+        const [debaters, judges] = [
+          debate.participants.filter(p => p.role !== 'judge'),
+          debate.participants.filter(p => p.role === 'judge')
+        ];
+        debateObj.counts = {
+          debaters: debaters.length,
+          judges: judges.length,
+          maxDebaters: 32,
+          maxJudges: 8
+        };
+      } else {
+        // For standard format, just total participants
+        debateObj.counts = {
+          total: debate.participants.length,
+          max: debate.maxParticipants
+        };
+      }
+      return debateObj;
+    });
+
+    res.json(transformedDebates);
   } catch (error) {
     console.error('Error in getDebates:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
+const initializeTournamentRounds = (participants) => {
+  const rounds = [];
+  // For a 32-participant tournament, we need 5 rounds (Round of 32, 16, 8, 4, and Finals)
+  const totalRounds = 5;
+  
+  for (let i = 0; i < totalRounds; i++) {
+    rounds.push({
+      round: i + 1,
+      matches: []
+    });
+  }
+  
+  // Initialize first round matches with empty slots
+  const firstRound = rounds[0];
+  for (let i = 0; i < 16; i++) { // 16 matches for 32 participants
+    firstRound.matches.push({
+      participant1: null,
+      participant2: null,
+      winner: null,
+      judges: [],
+      status: 'pending'
+    });
+  }
+  
+  return rounds;
+};
+
 // Create new debate
 exports.createDebate = async (req, res) => {
   try {
+    const {
+      title,
+      description,
+      category,
+      difficulty,
+      startDate,
+      format,
+      mode,
+      registrationDeadline,
+      location,
+      duration
+    } = req.body;
+
     // Validate tournament-specific requirements
-    if (req.body.format === 'tournament') {
-      // Force participant count to 32 for tournaments
-      req.body.maxParticipants = 32;
-      // Force judge count to 8 for tournaments
-      req.body.requiredJudges = 8;
-      
-      if (!['solo', 'duo'].includes(req.body.mode)) {
-        return res.status(400).json({ 
-          message: 'Tournament format must specify either solo or duo mode' 
-        });
+    if (format === 'tournament') {
+      const now = new Date();
+      const tournamentStart = new Date(startDate);
+      const regDeadline = new Date(registrationDeadline);
+
+      // Ensure 48 hours notice for tournaments
+      if (tournamentStart - now < 48 * 60 * 60 * 1000) {
+        return res.status(400).json({ message: 'Tournaments must be scheduled at least 48 hours in advance' });
       }
 
-      // Initialize tournament rounds (5 rounds for 32 participants)
-      // Round 1: 16 matches
-      // Round 2: 8 matches
-      // Round 3: 4 matches (quarter-finals)
-      // Round 4: 2 matches (semi-finals)
-      // Round 5: 1 match (finals)
-      const tournamentRounds = [
-        { roundNumber: 1, matches: Array(16).fill(null).map((_, i) => ({ matchNumber: i + 1 })) },
-        { roundNumber: 2, matches: Array(8).fill(null).map((_, i) => ({ matchNumber: i + 1 })) },
-        { roundNumber: 3, matches: Array(4).fill(null).map((_, i) => ({ matchNumber: i + 1 })) },
-        { roundNumber: 4, matches: Array(2).fill(null).map((_, i) => ({ matchNumber: i + 1 })) },
-        { roundNumber: 5, matches: [{ matchNumber: 1 }] }
-      ];
+      // Validate registration deadline
+      if (regDeadline >= tournamentStart) {
+        return res.status(400).json({ message: 'Registration deadline must be before tournament start' });
+      }
 
-      req.body.tournamentRounds = tournamentRounds;
+      if (tournamentStart - regDeadline < 24 * 60 * 60 * 1000) {
+        return res.status(400).json({ message: 'Registration must close at least 24 hours before tournament start' });
+      }
     }
 
-    const debate = new Debate({
-      ...req.body,
+    const debateData = {
+      title,
+      description,
+      category,
+      difficulty,
+      startDate,
+      format,
+      mode: format === 'tournament' ? mode : undefined,
+      registrationDeadline: format === 'tournament' ? registrationDeadline : undefined,
+      location,
+      duration,
       creator: req.user._id,
-      participants: [req.user._id] // Automatically add the creator as a participant
-    });
+      status: 'upcoming',
+      participants: [{
+        _id: req.user._id,
+        username: req.user.username,
+        role: req.user.role
+      }]
+    };
 
-    await debate.save();
-    
-    // Fetch the newly created debate with populated fields
-    const populatedDebate = await Debate.findById(debate._id)
-      .populate('creator', 'username')
-      .populate('participants', 'username role');
-      
-    res.status(201).json(populatedDebate);
+    // Initialize tournament structure if format is tournament
+    if (format === 'tournament') {
+      debateData.tournamentRounds = initializeTournamentRounds();
+      debateData.maxParticipants = 32;
+      debateData.maxJudges = 8;
+      // Set tournament-specific settings
+      debateData.tournamentSettings = {
+        maxDebaters: 32,
+        maxJudges: 8,
+        currentDebaters: req.user.role === 'judge' ? 0 : 1,
+        currentJudges: req.user.role === 'judge' ? 1 : 0
+      };
+    }
+
+    const debate = await Debate.create(debateData);
+    res.status(201).json(debate);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Create debate error:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Join debate
 exports.joinDebate = async (req, res) => {
   try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('creator', 'username')
-      .populate('participants', 'username role')
-      .populate('teamRegistrations.members', 'username');
-      
+    const debate = await Debate.findById(req.params.id);
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
 
-    // Check if user already joined
+    // Check if user is already a participant
     if (debate.participants.some(p => p._id.toString() === req.user._id.toString())) {
-      return res.status(400).json({ message: 'Already joined this debate' });
+      return res.status(400).json({ message: 'Already a participant' });
     }
 
-    // For tournament format
+    const counts = debate.getParticipantCounts();
+    
+    // Validate based on format and role
     if (debate.format === 'tournament') {
-      const currentParticipants = debate.participants.filter(p => p.role !== 'judge').length;
-      
-      if (currentParticipants >= 32) {
-        return res.status(400).json({ message: 'Tournament is full' });
+      if (req.user.role === 'judge' && counts.judges >= counts.maxJudges) {
+        return res.status(400).json({ message: 'Maximum judges reached for this tournament' });
       }
-
-      // For duo mode, handle team registration
-      if (debate.mode === 'duo') {
-        const teamMateId = req.body.teamMateId;
-        
-        // Validate teammate for duo mode
-        if (!teamMateId) {
-          return res.status(400).json({ 
-            message: 'Duo tournament requires a teammate. Please provide teamMateId.' 
-          });
-        }
-
-        // Check if teammate exists and is not already in a team
-        const isTeamMateRegistered = debate.teamRegistrations.some(team => 
-          team.members.some(member => member._id.toString() === teamMateId)
-        );
-
-        if (isTeamMateRegistered) {
-          return res.status(400).json({ 
-            message: 'Selected teammate is already registered with another team' 
-          });
-        }
-
-        // Create new team registration
-        debate.teamRegistrations.push({
-          members: [req.user._id, teamMateId],
-          registered: new Date(),
-          confirmed: false
-        });
+      if (req.user.role !== 'judge' && counts.debaters >= counts.maxDebaters) {
+        return res.status(400).json({ message: 'Maximum debaters reached for this tournament' });
       }
-    } else {
-      // Standard format - check against maxParticipants
-      if (debate.participants.length >= debate.maxParticipants) {
-        return res.status(400).json({ message: 'Debate is full' });
-      }
+    } else if (debate.isFull()) {
+      return res.status(400).json({ message: 'Debate is full' });
     }
 
-    // Add user to participants
-    debate.participants.push(req.user._id);
-    await debate.save();
+    // Add participant
+    debate.participants.push({
+      _id: req.user._id,
+      username: req.user.username,
+      role: req.user.role
+    });
 
-    // Fetch the updated debate with populated fields
-    const updatedDebate = await Debate.findById(debate._id)
-      .populate('creator', 'username')
-      .populate('participants', 'username role')
-      .populate('teamRegistrations.members', 'username');
+    // Check if tournament is ready to start
+    if (debate.format === 'tournament' && debate.validateTournamentStart()) {
+      debate.initializeTournamentBracket();
+    }
 
+    const updatedDebate = await debate.save();
     res.json(updatedDebate);
   } catch (error) {
+    console.error('Join debate error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -212,11 +252,6 @@ exports.leaveDebate = async (req, res) => {
       return res.status(404).json({ message: 'Debate not found' });
     }
 
-    // Prevent judges from leaving their own debates
-    if (debate.creator.toString() === req.user._id.toString() && req.user.role === 'judge') {
-      return res.status(403).json({ message: 'Judges cannot leave their own debates' });
-    }
-
     // Check if user is actually in the debate
     if (!debate.participants.some(p => p._id.toString() === req.user._id.toString())) {
       return res.status(400).json({ message: 'You are not a participant in this debate' });
@@ -226,15 +261,17 @@ exports.leaveDebate = async (req, res) => {
     debate.participants = debate.participants.filter(
       p => p._id.toString() !== req.user._id.toString()
     );
+    
     await debate.save();
 
-    // Fetch updated debate with populated fields
     const updatedDebate = await Debate.findById(debate._id)
-      .populate('creator', 'username')
-      .populate('participants', 'username role');
+      .populate('participants', 'username role')
+      .populate('creator', 'username role')
+      .lean();
 
     res.json(updatedDebate);
   } catch (error) {
+    console.error('Error leaving debate:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -243,15 +280,29 @@ exports.leaveDebate = async (req, res) => {
 exports.getDebate = async (req, res) => {
   try {
     const debate = await Debate.findById(req.params.id)
-      .populate('creator', 'username')
-      .populate('participants', 'username');
-    
+      .populate('creator', 'username role')
+      .populate('participants', 'username role')
+      .lean()
+      .exec();
+
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
-    
+
+    // Add participant counts for tournament format
+    if (debate.format === 'tournament') {
+      const counts = {
+        debaters: debate.participants.filter(p => p.role !== 'judge').length,
+        judges: debate.participants.filter(p => p.role === 'judge').length,
+        maxDebaters: 32,
+        maxJudges: 8
+      };
+      debate.counts = counts;
+    }
+
     res.json(debate);
   } catch (error) {
+    console.error('Get debate error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -260,23 +311,26 @@ exports.getDebate = async (req, res) => {
 exports.getUserDebates = async (req, res) => {
   try {
     const createdDebates = await Debate.find({ creator: req.user._id })
-      .populate('creator', 'username')
-      .populate('participants', 'username')
-      .sort({ createdAt: -1 });
+      .populate('creator', 'username role')
+      .populate('participants', 'username role')
+      .sort({ createdAt: -1 })
+      .lean();
 
     const participatedDebates = await Debate.find({
       participants: req.user._id,
       creator: { $ne: req.user._id }
     })
-      .populate('creator', 'username')
-      .populate('participants', 'username')
-      .sort({ createdAt: -1 });
+      .populate('creator', 'username role')
+      .populate('participants', 'username role')
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       created: createdDebates,
       participated: participatedDebates
     });
   } catch (error) {
+    console.error('Error fetching user debates:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -315,40 +369,6 @@ exports.updateDebate = async (req, res) => {
   }
 };
 
-// Assign teams to debate
-exports.assignTeams = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('participants', 'username role');
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Verify that the user is a judge in this debate
-    const isJudge = debate.participants.some(
-      p => p._id.toString() === req.user._id.toString() && p.role === 'judge'
-    );
-
-    if (!isJudge) {
-      return res.status(403).json({ message: 'Only judges can assign teams' });
-    }
-
-    debate.teams = req.body.teams;
-    debate.status = 'team-assignment';
-    await debate.save();
-
-    // Populate the updated debate
-    const updatedDebate = await Debate.findById(debate._id)
-      .populate('participants', 'username role')
-      .populate('teams.members', 'username role');
-
-    res.json(updatedDebate);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // Start a debate room
 exports.startRoom = async (req, res) => {
   try {
@@ -359,15 +379,6 @@ exports.startRoom = async (req, res) => {
       return res.status(404).json({ message: 'Debate not found' });
     }
 
-    // Verify that the user is a judge
-    const isJudge = debate.participants.some(
-      p => p._id.toString() === req.user._id.toString() && p.role === 'judge'
-    );
-
-    if (!isJudge) {
-      return res.status(403).json({ message: 'Only judges can start rooms' });
-    }
-
     // Deactivate any existing active rooms
     debate.rooms.forEach(room => {
       if (room.isActive) {
@@ -375,9 +386,8 @@ exports.startRoom = async (req, res) => {
       }
     });
 
-    // Create a new room for this judge
+    // Create a new room
     const room = {
-      judge: req.user._id,
       teams: debate.teams,
       isActive: true,
       transcription: []
@@ -389,15 +399,8 @@ exports.startRoom = async (req, res) => {
 
     // Get the created room with populated fields
     const updatedDebate = await Debate.findById(debate._id)
-      .populate('rooms.judge', 'username')
       .populate('rooms.transcription.speaker', 'username');
     const createdRoom = updatedDebate.rooms[updatedDebate.rooms.length - 1];
-
-    console.log('Room created:', {
-      roomId: createdRoom._id,
-      isActive: createdRoom.isActive,
-      judgeId: createdRoom.judge
-    });
 
     res.json({ room: createdRoom });
   } catch (error) {
@@ -406,153 +409,13 @@ exports.startRoom = async (req, res) => {
   }
 };
 
-// Analyze speech using AI
-exports.analyzeSpeech = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id);
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    const room = debate.rooms.id(req.body.roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
-    }
-
-    // Use Gemini AI to analyze the speech
-    const analysis = await analyzeDebateSpeech(req.body.transcript);
-
-    // Add to room transcription
-    room.transcription.push({
-      text: req.body.transcript,
-      timestamp: new Date(),
-      aiHighlights: analysis,
-      speaker: req.user._id
-    });
-
-    await debate.save();
-    res.json({ analysis });
-  } catch (error) {
-    console.error('Error in analyzeSpeech:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// End debate and perform final analysis
-exports.analyzeFinalDebate = async (req, res) => {
-  try {
-    console.log('Analyzing debate:', req.params.id);
-    const debate = await Debate.findById(req.params.id)
-      .populate('participants', 'username role')
-      .populate('teams.members', 'username')
-      .populate('rooms.transcription.speaker', 'username');
-
-    if (!debate) {
-      console.log('Debate not found:', req.params.id);
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Verify that the user is a judge in this debate
-    const isJudge = debate.participants.some(
-      p => p._id.toString() === req.user._id.toString() && p.role === 'judge'
-    );
-
-    if (!isJudge) {
-      console.log('User is not a judge:', req.user._id);
-      return res.status(403).json({ message: 'Only judges can end debates' });
-    }
-
-    // Get team information first
-    const propositionTeam = debate.teams.find(t => t.side === 'proposition');
-    const oppositionTeam = debate.teams.find(t => t.side === 'opposition');
-
-    console.log('Teams found:', {
-      proposition: propositionTeam?.members?.length || 0,
-      opposition: oppositionTeam?.members?.length || 0
-    });
-
-    const teams = {
-      propositionTeam: propositionTeam?.members.map(m => m.username) || [],
-      oppositionTeam: oppositionTeam?.members.map(m => m.username) || []
-    };
-
-    // Find the active room and get its transcriptions
-    const activeRoom = debate.rooms.find(r => r.isActive);
-    console.log('Active room found:', activeRoom?._id);
-    console.log('Room transcriptions:', activeRoom?.transcription?.length || 0);
-
-    if (!activeRoom || !activeRoom.transcription || activeRoom.transcription.length === 0) {
-      console.log('No transcriptions found in the active room');
-      return res.status(400).json({ message: 'No debate transcript available for analysis' });
-    }
-
-    // Format transcriptions
-    const allTranscriptions = activeRoom.transcription.map(t => ({
-      team: propositionTeam?.members.some(m => m._id.toString() === t.speaker._id.toString())
-        ? 'Proposition'
-        : oppositionTeam?.members.some(m => m._id.toString() === t.speaker._id.toString())
-          ? 'Opposition'
-          : 'Unknown',
-      speaker: t.speaker.username,
-      text: t.text,
-      timestamp: t.timestamp
-    }));
-
-    // Sort by timestamp
-    allTranscriptions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    // Format the transcript with team and speaker information
-    const formattedTranscript = allTranscriptions
-      .map(t => `[${t.team}] ${t.speaker}: ${t.text}`)
-      .join('\n\n');
-
-    console.log('Formatted transcript length:', formattedTranscript.length);
-    console.log('Sample of transcript:', formattedTranscript.substring(0, 200));
-
-    if (!formattedTranscript.trim()) {
-      return res.status(400).json({ message: 'No debate transcript available for analysis' });
-    }
-
-    // Analyze the complete debate
-    console.log('Starting Gemini analysis...');
-    const analysis = await analyzeDebateSummary(formattedTranscript, teams);
-    console.log('Analysis completed:', Object.keys(analysis));
-
-    // Update debate status and save analysis
-    debate.status = 'completed';
-    debate.analysis = analysis;
-    debate.endedAt = new Date();
-    
-    // Mark room as inactive
-    if (activeRoom) {
-      activeRoom.isActive = false;
-    }
-    
-    await debate.save();
-    console.log('Debate saved with analysis');
-
-    res.json({ analysis });
-  } catch (error) {
-    console.error('Error analyzing debate:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // Save debate transcript segment
 exports.saveTranscript = async (req, res) => {
   try {
-    console.log('Saving transcript:', {
-      debateId: req.params.id,
-      roomId: req.body.roomId,
-      text: req.body.text,
-      speakerId: req.body.speaker
-    });
-
     const debate = await Debate.findById(req.params.id)
       .populate('rooms.transcription.speaker', 'username');
 
     if (!debate) {
-      console.log('Debate not found:', req.params.id);
       return res.status(404).json({ message: 'Debate not found' });
     }
 
@@ -565,7 +428,6 @@ exports.saveTranscript = async (req, res) => {
     }
 
     if (!room) {
-      console.log('No active room found');
       return res.status(404).json({ message: 'Active room not found' });
     }
 
@@ -573,27 +435,17 @@ exports.saveTranscript = async (req, res) => {
     const transcriptEntry = {
       text: req.body.text,
       timestamp: req.body.timestamp || new Date(),
-      speaker: req.body.speaker,
-      aiHighlights: {
-        keyArguments: [],
-        statisticalClaims: [],
-        logicalConnections: []
-      }
+      speaker: req.body.speaker
     };
 
     room.transcription.push(transcriptEntry);
-    console.log('Added transcript entry:', transcriptEntry);
-    console.log('Current room transcription count:', room.transcription.length);
-
     await debate.save();
-    console.log('Debate saved successfully');
 
     // Populate the new transcript entry
     const updatedDebate = await Debate.findById(debate._id)
       .populate('rooms.transcription.speaker', 'username');
     const updatedRoom = updatedDebate.rooms.id(room._id);
 
-    // Return the updated room's transcription
     res.json({ 
       message: 'Transcript saved successfully',
       transcription: updatedRoom.transcription
@@ -604,24 +456,235 @@ exports.saveTranscript = async (req, res) => {
   }
 };
 
-// Helper functions for text analysis (placeholder implementation)
-function extractKeyArguments(text) {
-  // TODO: Replace with Gemini API
-  const sentences = text.split('.');
-  return sentences
-    .filter(s => s.length > 30)
-    .slice(0, 3)
-    .map(s => s.trim());
-}
+// End debate and perform final analysis
+exports.analyzeFinalDebate = async (req, res) => {
+  try {
+    const debate = await Debate.findById(req.params.id)
+      .populate('participants', 'username role')
+      .populate('teams.members', 'username')
+      .populate('rooms.transcription.speaker', 'username');
 
-function extractStatisticalClaims(text) {
-  // TODO: Replace with Gemini API
-  const numbers = text.match(/\d+%|\d+ percent|\d+ people|\d+ individuals/g) || [];
-  return numbers.slice(0, 3);
-}
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
 
-function extractLogicalConnections(text) {
-  // TODO: Replace with Gemini API
-  const connections = text.match(/therefore|because|as a result|consequently/g) || [];
-  return [...new Set(connections)];
-}
+    // Find the active room and get its transcriptions
+    const activeRoom = debate.rooms.find(r => r.isActive);
+
+    if (!activeRoom || !activeRoom.transcription || activeRoom.transcription.length === 0) {
+      return res.status(400).json({ message: 'No debate transcript available for analysis' });
+    }
+
+    // Format transcriptions
+    const allTranscriptions = activeRoom.transcription.map(t => ({
+      speaker: t.speaker.username,
+      text: t.text,
+      timestamp: t.timestamp
+    }));
+
+    // Sort by timestamp
+    allTranscriptions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    // Format the transcript
+    const formattedTranscript = allTranscriptions
+      .map(t => `${t.speaker}: ${t.text}`)
+      .join('\n\n');
+
+    // Analyze the complete debate
+    const analysis = await analyzeDebateSummary(formattedTranscript);
+
+    // Update debate status and save analysis
+    debate.status = 'completed';
+    debate.analysis = analysis;
+    debate.endedAt = new Date();
+    
+    // Mark room as inactive
+    if (activeRoom) {
+      activeRoom.isActive = false;
+    }
+    
+    await debate.save();
+
+    res.json({ analysis });
+  } catch (error) {
+    console.error('Error analyzing debate:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.analyzeInterim = async (req, res) => {
+  try {
+    const debate = await Debate.findById(req.params.id)
+      .populate('rooms.transcription.speaker', 'username')
+      .populate('participants', 'username role');
+    
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+
+    const room = debate.rooms.id(req.body.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    // Format transcriptions
+    const allTranscriptions = room.transcription.map(t => ({
+      speaker: t.speaker.username,
+      text: t.text,
+      timestamp: t.timestamp
+    }));
+
+    // Sort by timestamp
+    allTranscriptions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const formattedTranscript = allTranscriptions
+      .map(t => `${t.speaker}: ${t.text}`)
+      .join('\n\n');
+
+    // Use the interim analysis function
+    const analysis = await analyzeInterimTranscript(formattedTranscript);
+
+    // Save the analysis to the room's current state
+    room.currentAnalysis = analysis;
+    await debate.save();
+
+    res.json({ analysis });
+  } catch (error) {
+    console.error('Error in interim analysis:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Generate tournament bracket
+exports.generateTournamentBracket = async (req, res) => {
+  try {
+    const debate = await Debate.findById(req.params.id)
+      .populate('participants', 'username role');
+
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+
+    if (debate.format !== 'tournament') {
+      return res.status(400).json({ message: 'This is not a tournament debate' });
+    }
+
+    // Get all debaters (non-judge participants)
+    const debaters = debate.participants.filter(p => p.role !== 'judge');
+    
+    if (debaters.length < 2) {
+      return res.status(400).json({ message: 'Not enough debaters to start tournament' });
+    }
+
+    // Shuffle debaters randomly
+    const shuffledDebaters = [...debaters].sort(() => Math.random() - 0.5);
+
+    // Calculate number of rounds needed
+    const numRounds = Math.ceil(Math.log2(shuffledDebaters.length));
+    const totalSlots = Math.pow(2, numRounds);
+    
+    // Create first round matches
+    const firstRound = [];
+    for (let i = 0; i < totalSlots; i += 2) {
+      firstRound.push({
+        round: 1,
+        matchNumber: Math.floor(i/2) + 1,
+        team1: shuffledDebaters[i] || null,
+        team2: shuffledDebaters[i + 1] || null,
+        completed: false
+      });
+    }
+
+    // Create subsequent empty rounds
+    const tournamentRounds = [{
+      roundNumber: 1,
+      matches: firstRound
+    }];
+
+    for (let round = 2; round <= numRounds; round++) {
+      const numMatches = Math.pow(2, numRounds - round);
+      const matches = [];
+      
+      for (let match = 1; match <= numMatches; match++) {
+        matches.push({
+          round: round,
+          matchNumber: match,
+          team1: null,
+          team2: null,
+          completed: false
+        });
+      }
+      
+      tournamentRounds.push({
+        roundNumber: round,
+        matches: matches
+      });
+    }
+
+    // Update debate with tournament bracket
+    debate.tournamentRounds = tournamentRounds;
+    debate.status = 'in-progress';
+    await debate.save();
+
+    res.json({ tournamentRounds });
+  } catch (error) {
+    console.error('Error generating tournament bracket:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update tournament match result
+exports.updateTournamentMatch = async (req, res) => {
+  try {
+    const { matchId, winnerId } = req.body;
+    const debate = await Debate.findById(req.params.id);
+
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+
+    // Find and update the match
+    let matchFound = false;
+    for (const round of debate.tournamentRounds) {
+      const match = round.matches.id(matchId);
+      if (match) {
+        match.winner = winnerId;
+        match.completed = true;
+        matchFound = true;
+
+        // If not the final round, update next round's match
+        if (round.roundNumber < debate.tournamentRounds.length) {
+          const nextRound = debate.tournamentRounds.find(r => r.roundNumber === round.roundNumber + 1);
+          const nextMatchNumber = Math.ceil(match.matchNumber / 2);
+          const nextMatch = nextRound.matches.find(m => m.matchNumber === nextMatchNumber);
+          
+          if (nextMatch) {
+            // Place winner in appropriate slot of next match
+            if (match.matchNumber % 2 === 1) {
+              nextMatch.team1 = winnerId;
+            } else {
+              nextMatch.team2 = winnerId;
+            }
+          }
+        }
+        break;
+      }
+    }
+
+    if (!matchFound) {
+      return res.status(404).json({ message: 'Match not found' });
+    }
+
+    // Check if tournament is complete (final match has a winner)
+    const finalRound = debate.tournamentRounds[debate.tournamentRounds.length - 1];
+    if (finalRound.matches[0].completed) {
+      debate.status = 'completed';
+      debate.winner = finalRound.matches[0].winner;
+    }
+
+    await debate.save();
+    res.json(debate);
+  } catch (error) {
+    console.error('Error updating tournament match:', error);
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -98,6 +98,49 @@ exports.analyzeDebateSummary = async (fullTranscript, teams) => {
   }
 };
 
+exports.analyzeInterimTranscript = async (transcript, teams) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const prompt = `You are a real-time debate analyst. Analyze this ongoing debate transcript and provide immediate insights.
+    
+    Teams:
+    - Proposition: ${teams.propositionTeam.join(', ')}
+    - Opposition: ${teams.oppositionTeam.join(', ')}
+
+    Current Transcript:
+    ${transcript}
+
+    Please provide:
+    1. Key arguments from the Proposition team (list the 3 strongest with evidence)
+    2. Key arguments from the Opposition team (list the 3 strongest with evidence)
+    3. Point-by-point rebuttal status (which arguments have been addressed)
+    4. Suggestions for areas that need more focus
+
+    Format your analysis to be clear and concise, focusing on the most recent developments.`;
+
+    const result = await model.generateContent(prompt);
+    const analysisText = await result.response.text();
+
+    // Parse the interim analysis into a structured format
+    const analysis = {
+      propositionArguments: extractArgumentsFromSection(findSection(analysisText, "Key arguments from the Proposition")),
+      oppositionArguments: extractArgumentsFromSection(findSection(analysisText, "Key arguments from the Opposition")),
+      rebuttalStatus: extractRebuttalStatus(findSection(analysisText, "Point-by-point rebuttal status")),
+      suggestedFocus: findSection(analysisText, "Suggestions").split('\n').filter(line => line.trim())
+    };
+
+    return analysis;
+  } catch (error) {
+    console.error('Error in interim analysis:', error);
+    return {
+      propositionArguments: [],
+      oppositionArguments: [],
+      rebuttalStatus: [],
+      suggestedFocus: []
+    };
+  }
+};
+
 // Helper function to parse AI response for speech analysis
 function parseAIResponse(aiText) {
   // Simple parsing logic - can be made more sophisticated
@@ -248,6 +291,16 @@ function extractUnaddressedArguments(section) {
         speaker: 'Unknown',
         argument: line.trim()
       };
+    });
+}
+
+function extractRebuttalStatus(section) {
+  return section.split('\n')
+    .filter(line => line.trim())
+    .map(line => {
+      const trimmed = line.trim().replace(/^-|\d+\.\s*/, '');
+      const [argument, status] = trimmed.split(':').map(s => s.trim());
+      return { argument, status };
     });
 }
 

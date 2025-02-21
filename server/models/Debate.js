@@ -1,201 +1,154 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const speakerAnalysisSchema = new mongoose.Schema({
-  username: String,
-  totalSpeakingTime: String,
-  keyArguments: [{
-    text: String,
-    wasCountered: Boolean
-  }],
-  themes: [String]
-});
-
-const unaddressedArgumentSchema = new mongoose.Schema({
-  speaker: String,
-  argument: String
-});
-
-const factCheckSchema = new mongoose.Schema({
-  statement: String,
-  verification: String
-});
-
-const teamSchema = new mongoose.Schema({
-  members: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  side: {
-    type: String,
-    enum: ['proposition', 'opposition'],
-    required: true
+const baseSchemas = {
+  team: { members: [{ type: Schema.Types.ObjectId, ref: 'User' }], side: { type: String, enum: ['proposition', 'opposition'], required: true } },
+  transcription: {
+    speaker: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    text: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    aiHighlights: { keyArguments: [String], statisticalClaims: [String], logicalConnections: [String] }
   }
+};
+
+const roomSchema = new Schema({
+  judge: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  teams: [baseSchemas.team],
+  transcription: [baseSchemas.transcription],
+  isActive: Boolean
 });
 
-const transcriptionSchema = new mongoose.Schema({
-  speaker: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  text: {
-    type: String,
-    required: true
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-    required: true
-  },
-  aiHighlights: {
-    keyArguments: [String],
-    statisticalClaims: [String],
-    logicalConnections: [String]
-  }
+const matchSchema = new Schema({
+  round: Number, matchNumber: Number,
+  team1: { type: Schema.Types.ObjectId, ref: 'User' },
+  team2: { type: Schema.Types.ObjectId, ref: 'User' },
+  winner: { type: Schema.Types.ObjectId, ref: 'User' },
+  completed: Boolean,
+  room: roomSchema
 });
 
-const roomSchema = new mongoose.Schema({
-  judge: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  teams: [teamSchema],
-  transcription: [transcriptionSchema],
-  isActive: {
-    type: Boolean,
-    default: false
-  }
-});
-
-const matchSchema = new mongoose.Schema({
-  round: Number,
-  matchNumber: Number,
-  team1: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  team2: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  winner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  room: roomSchema,
-  completed: {
-    type: Boolean,
-    default: false
-  }
-});
-
-const debateSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  category: {
-    type: String,
-    required: true,
-    lowercase: true,
-    enum: ['politics', 'technology', 'science', 'society', 'economics']
-  },
-  status: {
-    type: String,
-    required: true,
-    lowercase: true,
-    enum: ['upcoming', 'team-assignment', 'in-progress', 'completed'],
-    default: 'upcoming'
-  },
-  difficulty: {
-    type: String,
-    required: true,
-    lowercase: true,
-    enum: ['beginner', 'intermediate', 'advanced']
-  },
-  startDate: {
-    type: Date,
-    required: true
-  },
-  participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  creator: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  maxParticipants: {
-    type: Number,
-    required: true,
-    default: 6,
-    min: 2
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
+const debateSchema = new Schema({
+  title: { type: String, required: true, trim: true },
+  description: { type: String, required: true },
+  category: { type: String, required: true, lowercase: true, enum: ['politics', 'technology', 'science', 'society', 'economics'] },
+  status: { type: String, required: true, enum: ['upcoming', 'team-assignment', 'in-progress', 'completed'], default: 'upcoming' },
+  difficulty: { type: String, required: true, enum: ['beginner', 'intermediate', 'advanced'] },
+  startDate: { type: Date, required: true },
+  participants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  maxParticipants: { type: Number, default: function() { return this.format === 'tournament' ? 32 : 6; } },
+  createdAt: { type: Date, default: Date.now },
   rooms: [roomSchema],
-  teams: [teamSchema],
+  teams: [baseSchemas.team],
   startedAt: Date,
   endedAt: Date,
-  analysis: {
-    speakerAnalysis: {
-      type: Map,
-      of: speakerAnalysisSchema
-    },
-    unaddressedArguments: [unaddressedArgumentSchema],
-    factCheck: [factCheckSchema],
-    overallCoherence: String
+  format: { type: String, enum: ['standard', 'tournament'], default: 'standard' },
+  tournamentSettings: {
+    maxDebaters: { type: Number, default: 32 },
+    maxJudges: { type: Number, default: 8 },
+    currentDebaters: { type: Number, default: 0 },
+    currentJudges: { type: Number, default: 0 }
   },
-  format: {
-    type: String,
-    required: true,
-    enum: ['standard', 'tournament'],
-    default: 'standard'
-  },
-  mode: {
-    type: String,
-    required: true,
-    enum: ['solo', 'duo'],
-    default: 'solo'
-  },
-  tournamentRounds: [{
-    roundNumber: Number,
-    matches: [matchSchema]
-  }],
-  registrationDeadline: {
-    type: Date
-  },
+  mode: { type: String, enum: ['solo', 'duo'] },
+  tournamentRounds: [{ roundNumber: Number, matches: [matchSchema] }],
+  registrationDeadline: Date,
   teamRegistrations: [{
-    members: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }],
-    registered: {
-      type: Date,
-      default: Date.now
-    },
-    confirmed: {
-      type: Boolean,
-      default: false
-    }
-  }]
+    members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    registered: { type: Date, default: Date.now },
+    confirmed: Boolean
+  }],
+  requiredJudges: { type: Number, default: function() { return this.format === 'tournament' ? 8 : 3 } },
+  maxJudges: { type: Number, default: function() { return this.format === 'tournament' ? 8 : 3; } }
+}, {
+  timestamps: true
 });
 
-// Add index for better search performance
-debateSchema.index({ title: 'text', description: 'text' });
-// Add index for frequently filtered fields
-debateSchema.index({ category: 1, status: 1, difficulty: 1 });
-// Add index for sorting
-debateSchema.index({ createdAt: -1 });
+// Add indexes for efficient querying
+debateSchema.index({ format: 1, status: 1 });
+debateSchema.index({ 'participants._id': 1 });
+debateSchema.index({ 'creator': 1 });
 debateSchema.index({ startDate: 1 });
+
+debateSchema.pre('save', async function(next) {
+  if (this.format === 'tournament') {
+    const parts = await this.populate('participants');
+    const [debaters, judges] = [parts.participants.filter(p => p.role !== 'judge'), parts.participants.filter(p => p.role === 'judge')];
+    Object.assign(this.tournamentSettings, { currentDebaters: debaters.length, currentJudges: judges.length });
+    if (debaters.length > 32 || judges.length > 8) throw new Error('Tournament limits exceeded');
+  }
+  next();
+});
+
+debateSchema.methods = {
+  canAcceptParticipant(userRole) {
+    return this.format === 'tournament' 
+      ? (userRole === 'judge' ? this.tournamentSettings.currentJudges < 8 : this.tournamentSettings.currentDebaters < 32)
+      : this.participants.length < this.maxParticipants;
+  },
+  validateParticipantCount() {
+    return this.format === 'tournament'
+      ? { isValid: this.tournamentSettings.currentDebaters <= 32 && this.tournamentSettings.currentJudges <= 8,
+          currentCounts: { debaters: this.tournamentSettings.currentDebaters, judges: this.tournamentSettings.currentJudges },
+          maxCounts: { debaters: 32, judges: 8 } }
+      : { isValid: this.participants.length <= this.maxParticipants,
+          currentCount: this.participants.length, maxCount: this.maxParticipants };
+  },
+  isFull() {
+    if (this.format === 'tournament') {
+      const debaterCount = this.participants.filter(p => p.role !== 'judge').length;
+      const judgeCount = this.participants.filter(p => p.role === 'judge').length;
+      return debaterCount >= 32 || judgeCount >= 8;
+    }
+    return this.participants.length >= this.maxParticipants;
+  },
+  getParticipantCounts() {
+    const debaters = this.participants.filter(p => p.role !== 'judge');
+    const judges = this.participants.filter(p => p.role === 'judge');
+    return {
+      debaters: debaters.length,
+      judges: judges.length,
+      maxDebaters: this.format === 'tournament' ? 32 : this.maxParticipants,
+      maxJudges: this.format === 'tournament' ? 8 : 3
+    };
+  },
+  initializeTournamentBracket() {
+    if (this.format !== 'tournament') return;
+    
+    // Get all debaters (non-judge participants)
+    const debaters = this.participants.filter(p => p.role !== 'judge');
+    
+    // Shuffle debaters randomly
+    const shuffledDebaters = [...debaters].sort(() => Math.random() - 0.5);
+    
+    // Initialize rounds (5 rounds for 32 participants: Round of 32, 16, 8, 4, and Finals)
+    this.tournamentRounds = Array.from({ length: 5 }, (_, i) => ({
+      roundNumber: i + 1,
+      matches: []
+    }));
+    
+    // Create initial matches for Round of 32
+    for (let i = 0; i < shuffledDebaters.length; i += 2) {
+      this.tournamentRounds[0].matches.push({
+        round: 1,
+        matchNumber: Math.floor(i/2) + 1,
+        team1: shuffledDebaters[i]?._id || null,
+        team2: shuffledDebaters[i + 1]?._id || null,
+        completed: false
+      });
+    }
+    
+    // Set status to team-assignment once bracket is initialized
+    this.status = 'team-assignment';
+  },
+  
+  validateTournamentStart() {
+    if (this.format !== 'tournament') return true;
+    
+    const counts = this.getParticipantCounts();
+    return counts.debaters === 32 && counts.judges >= 3;
+  }
+};
+
+debateSchema.index({ title: 'text', description: 'text', category: 1, status: 1, difficulty: 1, createdAt: -1, startDate: 1 });
 
 module.exports = mongoose.model('Debate', debateSchema);
