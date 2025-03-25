@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, isAdmin } = require('../middleware/authMiddleware');
 const { 
     register,
     login,
     getProfile, 
     updateProfile, 
-    sendFriendRequest 
+    sendFriendRequest,
+    promoteToOrganizer
 } = require('../controllers/authController');
 
 // Auth routes
@@ -19,5 +20,8 @@ router.put('/profile', protect, updateProfile);
 
 // Friend request routes
 router.post('/:id/friend', protect, sendFriendRequest);
+
+// Admin routes
+router.post('/promote-organizer', protect, isAdmin, promoteToOrganizer);
 
 module.exports = router;

@@ -180,13 +180,13 @@ function findSection(text, sectionTitle) {
 
 function extractArgumentsFromSection(section) {
   const lines = section.split('\n');
-  const arguments = [];
+  const debateArguments = [];
   let currentArg = null;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
     if (trimmedLine.startsWith('-') || trimmedLine.match(/^\d+\./)) {
-      if (currentArg) arguments.push(currentArg);
+      if (currentArg) debateArguments.push(currentArg);
       currentArg = {
         argument: trimmedLine.replace(/^-|\d+\.\s*/, '').trim(),
         evidence: '',
@@ -200,9 +200,8 @@ function extractArgumentsFromSection(section) {
       }
     }
   }
-  if (currentArg) arguments.push(currentArg);
-
-  return arguments;
+  if (currentArg) debateArguments.push(currentArg);
+  return debateArguments;
 }
 
 function extractFactCheckFromSection(section) {
@@ -231,20 +230,19 @@ function extractUnaddressedFromSection(section) {
     });
 }
 
-function findSection(sections, sectionTitle) {
+function findSectionByTitle(sections, sectionTitle) {
   const section = sections.find(s => s.toLowerCase().includes(sectionTitle.toLowerCase()));
   return section || '';
 }
 
 function extractArguments(section) {
   const lines = section.split('\n');
-  const arguments = [];
+  const debateArguments = [];
   let currentArg = null;
-
   for (const line of lines) {
     if (line.match(/^\d+\.|^-/)) {
       // New argument
-      if (currentArg) arguments.push(currentArg);
+      if (currentArg) debateArguments.push(currentArg);
       currentArg = {
         argument: line.replace(/^\d+\.|-\s*/, '').trim(),
         evidence: '',
@@ -259,9 +257,8 @@ function extractArguments(section) {
       }
     }
   }
-  if (currentArg) arguments.push(currentArg);
-
-  return arguments;
+  if (currentArg) debateArguments.push(currentArg);
+  return debateArguments;
 }
 
 function extractFactCheck(section) {
@@ -333,7 +330,8 @@ function extractThemes(text) {
     .filter(line => line.length > 0);
 }
 
-function extractUnaddressedArguments(text) {
+// Rename this function to avoid duplicate declaration
+function parseUnaddressedPoints(text) {
   return text.split('\n')
     .filter(line => line.includes(':'))
     .map(line => {
@@ -345,7 +343,7 @@ function extractUnaddressedArguments(text) {
     });
 }
 
-function extractFactCheck(text) {
+function parseFactChecks(text) {
   return text.split('\n')
     .filter(line => line.includes(':'))
     .map(line => {

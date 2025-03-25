@@ -8,6 +8,7 @@ import {
   Box
 } from '@mui/material';
 import { useNavigate, Link } from 'react-router-dom';
+import { api } from '../../config/api';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const Login = () => {
     email: '',
     password: ''
   });
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setFormData({
@@ -22,39 +24,40 @@ const Login = () => {
       [e.target.name]: e.target.value
     });
   };
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    
     try {
-      const response = await fetch('http://localhost:5001/api/users/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('userRole', data.role);
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('userId', data._id); // Add this line
-        window.dispatchEvent(new Event('auth-change'));
-        navigate('/');
-      } else {
-        alert(data.message);
-      }
+      // Use the API client instead of fetch for consistency
+      const response = await api.client.post('/api/users/login', formData);
+      const data = response.data;
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userRole', data.role);
+      localStorage.setItem('username', data.username);
+      localStorage.setItem('userId', data._id);
+      window.dispatchEvent(new Event('auth-change'));
+      navigate('/');
     } catch (error) {
       console.error('Login error:', error);
+      const errorMessage = error.response?.data?.message || 'Login failed. Please check your connection and try again.';
+      setError(errorMessage);
     }
   };
-
+  
   return (
     <Container maxWidth="sm">
       <Paper elevation={3} sx={{ p: 4, mt: 8, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
         <Typography variant="h4" align="center" gutterBottom sx={{ color: 'primary.main' }}>
           Login to DeBetter
         </Typography>
+        {error && (
+          <Typography color="error" align="center" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
@@ -65,6 +68,9 @@ const Login = () => {
             onChange={handleChange}
             margin="normal"
             required
+            inputProps={{
+              'aria-label': 'email'
+            }}
           />
           <TextField
             fullWidth
@@ -75,12 +81,16 @@ const Login = () => {
             onChange={handleChange}
             margin="normal"
             required
+            inputProps={{
+              'aria-label': 'password'
+            }}
           />
           <Button 
             type="submit" 
             fullWidth 
             variant="contained" 
             sx={{ mt: 3, mb: 2 }}
+            data-testid="login-submit"
           >
             Login
           </Button>

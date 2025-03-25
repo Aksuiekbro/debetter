@@ -1,5 +1,16 @@
 import axios from 'axios';
 
+/**
+ * API CONFIGURATION
+ * 
+ * This file defines the API endpoints used throughout the application.
+ * Changes here must be synchronized with the server-side route definitions.
+ * 
+ * Server routes are configured in server.js and mounted as follows:
+ * - User routes: '/api/users' -> registration at '/api/users/register'
+ * - Debate routes: Defined directly in server.js
+ */
+
 // API configuration for the application
 const API_BASE_URL = 'http://localhost:5001';
 
@@ -33,7 +44,9 @@ const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  // Add withCredentials for cross-browser compatibility
+  withCredentials: false
 });
 
 // Add request interceptor to add auth token
@@ -46,14 +59,31 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor to handle auth errors
+// Add response interceptor to handle auth errors with enhanced logging
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Enhanced error logging for debugging
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('API Response Error Status:', error.response.status);
+      console.error('API Response Error Data:', error.response.data);
+      console.error('API Response Error Headers:', error.response.headers);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('API No Response Error:', error.request);
+      console.error('Browser:', window.navigator.userAgent);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('API Config Error:', error.message);
+    }
+
     if (error.response && error.response.status === 401) {
       // Clear auth data on unauthorized
       localStorage.removeItem('token');
@@ -67,6 +97,16 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+/**
+ * API ENDPOINTS
+ * 
+ * IMPORTANT: These endpoints must match the server's route configuration.
+ * See server.js and server/routes/ files for the route definitions.
+ * 
+ * Authentication Endpoints (not listed below but used in components):
+ * - Register: '/api/users/register'
+ * - Login: '/api/users/login'
+ */
 export const api = {
   baseUrl: API_BASE_URL,
   client: axiosInstance,

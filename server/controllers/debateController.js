@@ -688,3 +688,151 @@ exports.updateTournamentMatch = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Add the missing validation middleware for tournament operations
+exports.validateTournamentOperation = async (req, res, next) => {
+  try {
+    const debate = await Debate.findById(req.params.id);
+    
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+    
+    // For tournaments, check if registration is still open
+    if (debate.format === 'tournament' && debate.status !== 'upcoming') {
+      return res.status(400).json({ 
+        message: 'Cannot join or leave a tournament that has already started or ended' 
+      });
+    }
+    
+    // For tournaments, check if registration deadline has passed
+    if (debate.format === 'tournament' && debate.registrationDeadline) {
+      const now = new Date();
+      const deadline = new Date(debate.registrationDeadline);
+      
+      if (now > deadline) {
+        return res.status(400).json({ 
+          message: 'Registration deadline has passed for this tournament' 
+        });
+      }
+    }
+    
+    // All checks passed, proceed to the next middleware
+    next();
+  } catch (error) {
+    console.error('Tournament validation error:', error);
+    res.status(500).json({ message: 'Error validating tournament operation' });
+  }
+};
+
+// Add the missing assignTeams function for debate team assignment
+exports.assignTeams = async (req, res) => {
+  try {
+    const { propositionTeam, oppositionTeam } = req.body;
+    const debate = await Debate.findById(req.params.id);
+    
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+    
+    // Verify user is creator or has permission to assign teams
+    if (debate.creator.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Only the debate creator can assign teams' });
+    }
+    
+    // Validate team members are participants
+    const allTeamMembers = [...propositionTeam, ...oppositionTeam];
+    const allParticipantIds = debate.participants.map(p => p._id.toString());
+    
+    const invalidMembers = allTeamMembers.filter(id => !allParticipantIds.includes(id.toString()));
+    if (invalidMembers.length > 0) {
+      return res.status(400).json({ 
+        message: 'Some team members are not participants in this debate' 
+      });
+    }
+    
+    // Assign teams
+    debate.teams = {
+      propositionTeam,
+      oppositionTeam
+    };
+    
+    const updatedDebate = await debate.save();
+    res.json(updatedDebate);
+    
+  } catch (error) {
+    console.error('Error assigning teams:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Add the missing analyzeSpeech function referenced in routes
+exports.analyzeSpeech = async (req, res) => {
+  try {
+    const { speechText, speakerId } = req.body;
+    const debate = await Debate.findById(req.params.id)
+      .populate('participants', 'username role');
+    
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+    
+    // Validate that the speaker is a participant in the debate
+    const isSpeakerParticipant = debate.participants.some(
+      p => p._id.toString() === speakerId
+    );
+    
+    if (!isSpeakerParticipant) {
+      return res.status(400).json({ message: 'Speaker is not a participant in this debate' });
+    }
+    
+    // Use the AI service to analyze the speech
+    const analysisResult = await analyzeDebateSpeech(speechText);
+    
+    res.json({ 
+      analysis: analysisResult,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error analyzing speech:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Add the missing updateTournamentBrackets function referenced in routes
+exports.updateTournamentBrackets = async (req, res) => {
+  try {
+    const { brackets } = req.body;
+    const debate = await Debate.findById(req.params.id);
+    
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+    
+    if (debate.format !== 'tournament') {
+      return res.status(400).json({ message: 'This is not a tournament debate' });
+    }
+    
+    // Verify user is creator or organizer
+    if (debate.creator.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Only the tournament creator can update brackets' });
+    }
+    
+    // Update tournament brackets
+    debate.tournamentRounds = brackets;
+    
+    // Check if tournament is complete (final match has a winner)
+    const finalRound = brackets[brackets.length - 1];
+    if (finalRound && finalRound.matches && 
+        finalRound.matches[0] && finalRound.matches[0].completed) {
+      debate.status = 'completed';
+      debate.winner = finalRound.matches[0].winner;
+    }
+    
+    await debate.save();
+    res.json(debate);
+  } catch (error) {
+    console.error('Error updating tournament brackets:', error);
+    res.status(500).json({ message: error.message });
+  }
+};

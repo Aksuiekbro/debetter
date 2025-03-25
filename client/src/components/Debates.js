@@ -26,6 +26,8 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 
 const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
+
+  const navigate = useNavigate();
   const canJoinDebate = () => {
     if (!debate) return false;
     if (debate.format === 'tournament') {

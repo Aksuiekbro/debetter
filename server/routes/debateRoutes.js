@@ -19,10 +19,10 @@ const {
     generateTournamentBracket,
     updateTournamentMatch
 } = require('../controllers/debateController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, isOrganizer } = require('../middleware/authMiddleware');
 
 // General debate routes
-router.post('/', protect, createDebate);
+router.post('/', protect, isOrganizer, createDebate); // Only organizers can create debates
 router.get('/', getDebates);
 router.get('/my-debates', protect, getUserDebates);
 
@@ -41,6 +41,6 @@ router.post('/:id/end', protect, analyzeFinalDebate);
 // Tournament-specific routes
 router.post('/:id/generate-bracket', protect, generateTournamentBracket);
 router.post('/:id/update-match', protect, updateTournamentMatch);
-router.post('/:id/update-brackets', protect, updateTournamentBrackets);
+router.post('/:id/update-brackets', protect, isOrganizer, updateTournamentBrackets); // Only organizers can update tournament brackets
 
 module.exports = router;

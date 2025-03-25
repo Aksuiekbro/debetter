@@ -12,6 +12,7 @@ import {
   Box
 } from '@mui/material';
 import { useNavigate, Link } from 'react-router-dom';
+import { api } from '../../config/api';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const Register = () => {
     password: '',
     role: 'user'
   });
+  const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
     setFormData({
@@ -29,30 +31,32 @@ const Register = () => {
     });
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.username) newErrors.username = 'Username is required';
+    if (!formData.email) newErrors.email = 'Email is required';
+    if (!formData.password) newErrors.password = 'Password is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     try {
-      const response = await fetch('http://localhost:5001/api/users/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        // Store user data immediately after successful registration
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('userRole', data.role);
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('userId', data._id); // Add this line
-        window.dispatchEvent(new Event('auth-change'));
-        navigate('/'); // Navigate to home page instead of login
-      } else {
-        alert(data.message);
-      }
+      const response = await api.client.post('/api/users/register', formData);
+      const data = response.data;
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userRole', data.role);
+      localStorage.setItem('username', data.username);
+      localStorage.setItem('userId', data._id);
+      window.dispatchEvent(new Event('auth-change'));
+      navigate('/');
     } catch (error) {
       console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.message || 'Registration failed. Please check your connection and try again.';
+      alert(errorMessage);
     }
   };
 
@@ -71,6 +75,11 @@ const Register = () => {
             onChange={handleChange}
             margin="normal"
             required
+            error={!!errors.username}
+            helperText={errors.username}
+            inputProps={{
+              'aria-label': 'username'
+            }}
           />
           <TextField
             fullWidth
@@ -81,6 +90,11 @@ const Register = () => {
             onChange={handleChange}
             margin="normal"
             required
+            error={!!errors.email}
+            helperText={errors.email}
+            inputProps={{
+              'aria-label': 'email'
+            }}
           />
           <TextField
             fullWidth
@@ -91,17 +105,33 @@ const Register = () => {
             onChange={handleChange}
             margin="normal"
             required
+            error={!!errors.password}
+            helperText={errors.password}
+            inputProps={{
+              'aria-label': 'password'
+            }}
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel>Role</InputLabel>
+            <InputLabel id="role-label">Role</InputLabel>
             <Select
+              labelId="role-label"
+              id="role-select"
               name="role"
               value={formData.role}
               onChange={handleChange}
               required
+              inputProps={{
+                'aria-label': 'role'
+              }}
+              MenuProps={{
+                "aria-labelledby": "role-label",
+                PaperProps: {
+                  'aria-label': 'role-menu'
+                }
+              }}
             >
-              <MenuItem value="user">Debater</MenuItem>
-              <MenuItem value="judge">Judge</MenuItem>
+              <MenuItem value="user" data-testid="role-debater">Debater</MenuItem>
+              <MenuItem value="judge" data-testid="role-judge">Judge</MenuItem>
             </Select>
           </FormControl>
           <Button 
@@ -109,6 +139,10 @@ const Register = () => {
             fullWidth 
             variant="contained" 
             sx={{ mt: 3, mb: 2 }}
+            role="button"
+            aria-label="register"
+            name="register"
+            data-testid="register-submit"
           >
             Register
           </Button>

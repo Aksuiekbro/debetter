@@ -9,19 +9,32 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
   try {
+    console.log('Registration request received:', req.body);
+    
     const { username, email, password, role } = req.body;
     
+    if (!username || !email || !password) {
+      console.log('Missing required fields');
+      return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
     const userExists = await User.findOne({ email });
     if (userExists) {
+      console.log('User already exists with email:', email);
       return res.status(400).json({ message: 'User already exists' });
     }
+
+    // Only allow 'user' or 'judge' roles during registration
+    const validRole = role === 'judge' ? 'judge' : 'user';
 
     const user = await User.create({
       username,
       email,
       password,
-      role: role || 'user' // Set default role if not provided
+      role: validRole
     });
+
+    console.log('User created successfully:', user.username);
 
     res.status(201).json({
       _id: user._id,
@@ -31,7 +44,11 @@ exports.register = async (req, res) => {
       token: generateToken(user._id)
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Registration error:', error);
+    res.status(500).json({ 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -144,6 +161,40 @@ exports.sendFriendRequest = async (req, res) => {
     res.status(200).json({ message: 'Friend request sent successfully' });
   } catch (error) {
     console.error('Friend request error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Admin function to promote a user to organizer
+exports.promoteToOrganizer = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+    
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Promote user to organizer
+    user.role = 'organizer';
+    await user.save();
+    
+    res.status(200).json({
+      message: `${user.username} has been promoted to organizer`,
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Promotion error:', error);
     res.status(500).json({ message: error.message });
   }
 };

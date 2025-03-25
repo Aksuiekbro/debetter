@@ -6,8 +6,13 @@ const { protect } = require('./server/middleware/authMiddleware');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Middleware - Configure CORS with more permissive settings
+app.use(cors({
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow all methods
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(express.json());
 
 // MongoDB Connection with better error handling
@@ -33,8 +38,20 @@ mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected');
 });
 
-// Import controllers
-const { register, login } = require('./server/controllers/authController');
+/**
+ * IMPORTANT: API ROUTE CONFIGURATION
+ * 
+ * User routes are mounted at /api/users
+ * - Registration endpoint: /api/users/register
+ * - Login endpoint: /api/users/login
+ *
+ * The client-side code in src/components/auth/Register.js and Login.js
+ * must use these exact endpoints.
+ * 
+ * DO NOT change these paths without updating the corresponding client code.
+ */
+// Import routes
+const userRoutes = require('./server/routes/userRoutes');
 const { 
   getDebates, 
   createDebate, 
@@ -42,10 +59,14 @@ const {
   getDebate 
 } = require('./server/controllers/debateController');
 
-// Auth routes
-app.post('/api/auth/register', register);
-app.post('/api/auth/login', login);
+// Mount routes - DO NOT CHANGE THIS PATH without updating client code
+app.use('/api/users', userRoutes);
 
+/**
+ * Debate routes are defined directly in this file
+ * If moving them to a separate router, make sure to update
+ * any client code that references these endpoints.
+ */
 // Public debate routes
 app.get('/api/debates', getDebates);
 app.get('/api/debates/:id', getDebate);
@@ -59,8 +80,8 @@ app.get('/', (req, res) => {
   res.send('Debate Platform API');
 });
 
-// Port configuration
-const port = process.env.PORT || 5000;
+// Port configuration - Changed to match client API_BASE_URL
+const port = process.env.PORT || 5001;
 app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Server is running on port ${port}`);
 });

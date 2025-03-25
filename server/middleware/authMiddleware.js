@@ -32,3 +32,35 @@ exports.protect = async (req, res, next) => {
         res.status(500).json({ message: 'Server error in auth middleware' });
     }
 };
+
+// Middleware to check if user is an organizer
+exports.isOrganizer = (req, res, next) => {
+    if (req.user && req.user.role === 'organizer') {
+        next();
+    } else {
+        res.status(403).json({ 
+            message: 'Access denied: Only organizers can perform this action' 
+        });
+    }
+};
+
+// Middleware to check if user is an admin
+// For the purpose of this implementation, we'll consider the first organizer user as admin
+// In a production environment, you would have a separate admin role
+exports.isAdmin = async (req, res, next) => {
+    try {
+        // Find the first created organizer user
+        const adminUser = await User.findOne({ role: 'organizer' }).sort('createdAt');
+        
+        if (req.user && adminUser && req.user._id.toString() === adminUser._id.toString()) {
+            next();
+        } else {
+            res.status(403).json({ 
+                message: 'Access denied: Only administrators can perform this action' 
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        res.status(500).json({ message: 'Server error checking admin status' });
+    }
+};
