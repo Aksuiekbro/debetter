@@ -5,11 +5,11 @@ import {
   TextField, 
   Button, 
   Typography, 
+  Box,
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
-  Box
+  MenuItem
 } from '@mui/material';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../config/api';
@@ -20,7 +20,7 @@ const Register = () => {
     username: '',
     email: '',
     password: '',
-    role: 'user'
+    role: 'user' // Default role
   });
   const [errors, setErrors] = useState({});
 
@@ -43,14 +43,26 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
+    // Debug log to check what role is being sent
+    console.log('Submitting registration with role:', formData.role);
+    
     try {
       const response = await api.client.post('/api/users/register', formData);
       const data = response.data;
       
+      // Debug log to check what role is being received back
+      console.log('Registration response received:', data);
+      console.log('Role from server:', data.role);
+      
       localStorage.setItem('token', data.token);
-      localStorage.setItem('userRole', data.role);
+      localStorage.setItem('userRole', data.role); // Store the role
       localStorage.setItem('username', data.username);
       localStorage.setItem('userId', data._id);
+      
+      // Debug log to check what role is stored in localStorage
+      console.log('Role stored in localStorage:', localStorage.getItem('userRole'));
+      
       window.dispatchEvent(new Event('auth-change'));
       navigate('/');
     } catch (error) {
@@ -111,6 +123,8 @@ const Register = () => {
               'aria-label': 'password'
             }}
           />
+          
+          {/* Re-add role selection dropdown */}
           <FormControl fullWidth margin="normal">
             <InputLabel id="role-label">Role</InputLabel>
             <Select
@@ -132,8 +146,10 @@ const Register = () => {
             >
               <MenuItem value="user" data-testid="role-debater">Debater</MenuItem>
               <MenuItem value="judge" data-testid="role-judge">Judge</MenuItem>
+              <MenuItem value="organizer" data-testid="role-organizer">Organizer</MenuItem>
             </Select>
           </FormControl>
+          
           <Button 
             type="submit" 
             fullWidth 

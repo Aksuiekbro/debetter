@@ -354,3 +354,32 @@ function parseFactChecks(text) {
       };
     });
 }
+
+// Generate realistic test users for tournament testing
+exports.generateTestUsers = async (count = 10) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    
+    const prompt = `Generate ${count} realistic test user profiles for a debate tournament platform with:
+    - Full names (first and last names)
+    - Email addresses (matching the names)
+    - Brief bios (1 sentence)
+    - Debate experience levels (beginner, intermediate, advanced)
+    
+    Format as JSON array with fields: name, email, bio, experience`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    // Extract JSON from the response
+    const jsonStart = text.indexOf('[');
+    const jsonEnd = text.lastIndexOf(']') + 1;
+    const jsonStr = text.slice(jsonStart, jsonEnd);
+    
+    return JSON.parse(jsonStr);
+  } catch (error) {
+    console.error('Error generating test users:', error);
+    return [];
+  }
+};

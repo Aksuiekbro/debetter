@@ -124,7 +124,8 @@ const HostDebate = () => {
       const response = await api.client.post(api.endpoints.debates, {
         ...formData,
         maxParticipants: formData.format === 'tournament' ? 32 : 6,
-        maxJudges: formData.format === 'tournament' ? 8 : 3
+        maxJudges: formData.format === 'tournament' ? 8 : 3,
+        type: formData.format === 'tournament' ? 'tournament' : 'standard'
       });
       console.log('Debate creation response:', response.data); // Debug log
       navigate(`/debates/${response.data._id}`);

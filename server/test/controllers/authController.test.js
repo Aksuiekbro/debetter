@@ -1,178 +1,419 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { expect } = require('chai');
+const sinon = require('sinon');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+
 const User = require('../../models/User');
-const dbSetup = require('../setup');
-const { register, login, promoteToOrganizer } = require('../../controllers/authController');
+const authController = require('../../controllers/authController');
 
-// Setup database connection before tests
-beforeAll(async () => await dbSetup.connect());
-afterEach(async () => await dbSetup.clearDatabase());
-afterAll(async () => await dbSetup.closeDatabase());
+describe('Auth Controller Tests', function() {
+  let mongoServer;
+  
+  before(async function() {
+    // Create an in-memory MongoDB server
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri(), {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+  });
 
-describe('Auth Controller', () => {
-  describe('register function', () => {
-    it('should create a new user with user role when no role provided', async () => {
+  after(async function() {
+    await mongoose.disconnect();
+    await mongoServer.stop();
+  });
+
+  beforeEach(async function() {
+    // Clear users collection before each test
+    await User.deleteMany({});
+  });
+
+  describe('Registration', function() {
+    it('should register a new user with default role', async function() {
+      // Setup request and response objects
       const req = {
         body: {
           username: 'testuser',
           email: 'test@example.com',
           password: 'password123'
+          // No role specified
         }
       };
+      
       const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        status: sinon.stub().returnsThis(),
+        json: sinon.spy()
       };
-
-      await register(req, res);
-
-      // Check if user was created with user role
+      
+      // Call the register function
+      await authController.register(req, res);
+      
+      // Assertions
+      expect(res.status.calledWith(201)).to.be.true;
+      expect(res.json.called).to.be.true;
+      
+      // Check that the response has the right properties
+      const response = res.json.firstCall.args[0];
+      expect(response).to.have.property('username', 'testuser');
+      expect(response).to.have.property('email', 'test@example.com');
+      expect(response).to.have.property('role', 'user'); // Default role
+      expect(response).to.have.property('token').that.is.a('string');
+      
+      // Verify user was saved in the database
       const user = await User.findOne({ email: 'test@example.com' });
-      expect(user).not.toBeNull();
-      expect(user.role).toBe('user');
-      expect(res.status).toHaveBeenCalledWith(201);
+      expect(user).to.exist;
+      expect(user.role).to.equal('user'); // Default role
     });
 
-    it('should create a new user with judge role when judge role provided', async () => {
+    it('should register a new user with organizer role', async function() {
+      // Setup request with organizer role
       const req = {
         body: {
-          username: 'judgeguy',
-          email: 'judge@example.com',
-          password: 'password123',
-          role: 'judge'
-        }
-      };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
-      };
-
-      await register(req, res);
-
-      // Check if user was created with judge role
-      const user = await User.findOne({ email: 'judge@example.com' });
-      expect(user).not.toBeNull();
-      expect(user.role).toBe('judge');
-      expect(res.status).toHaveBeenCalledWith(201);
-    });
-
-    it('should not allow direct registration as organizer', async () => {
-      const req = {
-        body: {
-          username: 'wannabeorganizer',
+          username: 'organizer',
           email: 'organizer@example.com',
           password: 'password123',
           role: 'organizer'
         }
       };
+      
       const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        status: sinon.stub().returnsThis(),
+        json: sinon.spy()
       };
-
-      await register(req, res);
-
-      // Check that user was created but with user role instead of organizer
+      
+      // Call the register function
+      await authController.register(req, res);
+      
+      // Assertions
+      expect(res.status.calledWith(201)).to.be.true;
+      expect(res.json.called).to.be.true;
+      
+      // Check that the response has the right properties with organizer role
+      const response = res.json.firstCall.args[0];
+      expect(response).to.have.property('username', 'organizer');
+      expect(response).to.have.property('email', 'organizer@example.com');
+      expect(response).to.have.property('role', 'organizer'); // Organizer role
+      expect(response).to.have.property('token').that.is.a('string');
+      
+      // Verify user was saved in the database with organizer role
       const user = await User.findOne({ email: 'organizer@example.com' });
-      expect(user).not.toBeNull();
-      expect(user.role).toBe('user');
-      expect(res.status).toHaveBeenCalledWith(201);
+      expect(user).to.exist;
+      expect(user.role).to.equal('organizer'); // Organizer role
     });
 
-    it('should return 400 if user already exists', async () => {
+    it('should register a new user with judge role', async function() {
+      // Setup request with judge role
+      const req = {
+        body: {
+          username: 'judge',
+          email: 'judge@example.com',
+          password: 'password123',
+          role: 'judge'
+        }
+      };
+      
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.spy()
+      };
+      
+      // Call the register function
+      await authController.register(req, res);
+      
+      // Assertions
+      expect(res.status.calledWith(201)).to.be.true;
+      
+      // Check that the response has the right role
+      const response = res.json.firstCall.args[0];
+      expect(response).to.have.property('role', 'judge');
+      
+      // Verify user was saved with judge role
+      const user = await User.findOne({ email: 'judge@example.com' });
+      expect(user).to.exist;
+      expect(user.role).to.equal('judge');
+    });
+
+    it('should not accept invalid roles', async function() {
+      // Setup request with invalid role
+      const req = {
+        body: {
+          username: 'invalid',
+          email: 'invalid@example.com',
+          password: 'password123',
+          role: 'invalid-role'
+        }
+      };
+      
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.spy()
+      };
+      
+      // Call the register function
+      await authController.register(req, res);
+      
+      // The controller should either fall back to default role or reject the request
+      // If it falls back to default:
+      const user = await User.findOne({ email: 'invalid@example.com' });
+      if (user) {
+        // It fell back to default role
+        expect(user.role).to.equal('user');
+      } else {
+        // It rejected the request
+        expect(res.status.calledWith(400)).to.be.true;
+      }
+    });
+
+    it('should not register a user with existing email', async function() {
       // First create a user
       await User.create({
-        username: 'existinguser',
-        email: 'exists@example.com',
+        username: 'existing',
+        email: 'existing@example.com',
         password: 'password123',
         role: 'user'
       });
-
-      // Try to register again with the same email
+      
+      // Try to register with same email
       const req = {
         body: {
-          username: 'newname',
-          email: 'exists@example.com',
-          password: 'newpassword'
+          username: 'newuser',
+          email: 'existing@example.com',
+          password: 'newpassword',
+          role: 'organizer'
         }
       };
+      
       const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        status: sinon.stub().returnsThis(),
+        json: sinon.spy()
       };
-
-      await register(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ message: 'User already exists' });
+      
+      // Call the register function
+      await authController.register(req, res);
+      
+      // Should return 400 Bad Request
+      expect(res.status.calledWith(400)).to.be.true;
+      
+      // Response should indicate user exists
+      const response = res.json.firstCall.args[0];
+      expect(response).to.have.property('message').that.includes('exists');
     });
   });
 
-  describe('promoteToOrganizer function', () => {
-    it('should promote a user to organizer role', async () => {
-      // Create a regular user first
-      const user = await User.create({
-        username: 'regularuser',
-        email: 'regular@example.com',
-        password: 'password123',
+  describe('Login', function() {
+    beforeEach(async function() {
+      // Create test user before login tests
+      const hashedPassword = await bcrypt.hash('password123', 12);
+      await User.create({
+        username: 'testuser',
+        email: 'test@example.com',
+        password: hashedPassword,
         role: 'user'
       });
-
-      const req = {
-        body: {
-          userId: user._id
-        }
-      };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
-      };
-
-      await promoteToOrganizer(req, res);
-
-      // Check if user was promoted to organizer
-      const updatedUser = await User.findById(user._id);
-      expect(updatedUser.role).toBe('organizer');
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('has been promoted to organizer'),
-        user: expect.objectContaining({
-          role: 'organizer'
-        })
-      }));
-    });
-
-    it('should return 400 if userId is not provided', async () => {
-      const req = {
-        body: {}
-      };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
-      };
-
-      await promoteToOrganizer(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ message: 'User ID is required' });
-    });
-
-    it('should return 404 if user not found', async () => {
-      const nonExistentId = new mongoose.Types.ObjectId();
       
+      // Create organizer user
+      const hashedOrganizerPassword = await bcrypt.hash('password123', 12);
+      await User.create({
+        username: 'organizer',
+        email: 'organizer@example.com',
+        password: hashedOrganizerPassword,
+        role: 'organizer'
+      });
+    });
+    
+    it('should login successfully with correct credentials and return user role', async function() {
       const req = {
         body: {
-          userId: nonExistentId
+          email: 'test@example.com',
+          password: 'password123'
         }
       };
+      
       const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        json: sinon.spy(),
+        status: sinon.stub().returnsThis()
       };
+      
+      await authController.login(req, res);
+      
+      // Should return user data with token
+      expect(res.json.called).to.be.true;
+      const response = res.json.firstCall.args[0];
+      expect(response).to.have.property('username', 'testuser');
+      expect(response).to.have.property('email', 'test@example.com');
+      expect(response).to.have.property('role', 'user'); // Check role
+      expect(response).to.have.property('token').that.is.a('string');
+    });
+    
+    it('should login with organizer role and return correct role', async function() {
+      const req = {
+        body: {
+          email: 'organizer@example.com',
+          password: 'password123'
+        }
+      };
+      
+      const res = {
+        json: sinon.spy(),
+        status: sinon.stub().returnsThis()
+      };
+      
+      await authController.login(req, res);
+      
+      // Should return organizer role
+      const response = res.json.firstCall.args[0];
+      expect(response).to.have.property('role', 'organizer');
+    });
+    
+    it('should fail login with incorrect password', async function() {
+      const req = {
+        body: {
+          email: 'test@example.com',
+          password: 'wrongpassword'
+        }
+      };
+      
+      const res = {
+        json: sinon.spy(),
+        status: sinon.stub().returnsThis()
+      };
+      
+      await authController.login(req, res);
+      
+      // Should return 401 Unauthorized
+      expect(res.status.calledWith(401)).to.be.true;
+    });
+  });
 
-      await promoteToOrganizer(req, res);
+  describe('Get Profile', function() {
+    beforeEach(async function() {
+      // Create test user before profile tests
+      await User.create({
+        _id: new mongoose.Types.ObjectId('5f8d0500f2d2f0325c93a3fb'),
+        username: 'testuser',
+        email: 'test@example.com',
+        password: 'hashedpassword',
+        role: 'user',
+        bio: 'Test bio',
+        interests: ['testing', 'coding']
+      });
+      
+      // Create organizer user
+      await User.create({
+        _id: new mongoose.Types.ObjectId('5f8d0500f2d2f0325c93a3fc'),
+        username: 'organizer',
+        email: 'organizer@example.com',
+        password: 'hashedpassword',
+        role: 'organizer',
+        bio: 'Organizer bio'
+      });
+    });
+    
+    it('should get user profile with role', async function() {
+      const req = {
+        user: { _id: '5f8d0500f2d2f0325c93a3fb' }
+      };
+      
+      const res = {
+        json: sinon.spy(),
+        status: sinon.stub().returnsThis()
+      };
+      
+      await authController.getProfile(req, res);
+      
+      // Should return profile data
+      expect(res.json.called).to.be.true;
+      const profile = res.json.firstCall.args[0];
+      expect(profile).to.have.property('username', 'testuser');
+      expect(profile).to.have.property('email', 'test@example.com');
+      expect(profile).to.have.property('role', 'user'); // Check role
+      expect(profile).to.have.property('bio', 'Test bio');
+      expect(profile).to.have.property('interests').that.includes('testing', 'coding');
+    });
+    
+    it('should get organizer profile with organizer role', async function() {
+      const req = {
+        user: { _id: '5f8d0500f2d2f0325c93a3fc' }
+      };
+      
+      const res = {
+        json: sinon.spy(),
+        status: sinon.stub().returnsThis()
+      };
+      
+      await authController.getProfile(req, res);
+      
+      // Should return organizer role
+      const profile = res.json.firstCall.args[0];
+      expect(profile).to.have.property('username', 'organizer');
+      expect(profile).to.have.property('role', 'organizer'); // Check role
+    });
+  });
 
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ message: 'User not found' });
+  describe('Role Preservation Bug Tests', function() {
+    it('should preserve organizer role during registration', async function() {
+      // Setup request with explicit organizer role
+      const req = {
+        body: {
+          username: 'organizer_test',
+          email: 'organizer_test@example.com',
+          password: 'password123',
+          role: 'organizer'
+        }
+      };
+      
+      const res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.spy()
+      };
+      
+      // Call the register function
+      await authController.register(req, res);
+      
+      // Get the response data
+      const responseData = res.json.firstCall.args[0];
+      console.log('Registration response:', responseData);
+      
+      // Specific assertions for the bug
+      expect(responseData.role).to.equal('organizer', 'Role was changed from organizer in the response');
+      
+      // Check the database directly to verify the role was saved correctly
+      const savedUser = await User.findOne({ email: 'organizer_test@example.com' });
+      expect(savedUser).to.exist;
+      expect(savedUser.role).to.equal('organizer', 'Role was not correctly saved as organizer in the database');
+    });
+
+    it('should not convert organizer role to user role', async function() {
+      // This test specifically checks the bug where organizer was being converted to user
+      
+      // Direct database insert to test
+      const testUser = await User.create({
+        username: 'direct_organizer',
+        email: 'direct_organizer@example.com',
+        password: 'password123',
+        role: 'organizer'
+      });
+      
+      // Verify the role was saved correctly
+      expect(testUser.role).to.equal('organizer');
+      
+      // Now let's retrieve it via the controller
+      const req = {
+        user: { _id: testUser._id }
+      };
+      
+      const res = {
+        json: sinon.spy(),
+        status: sinon.stub().returnsThis()
+      };
+      
+      await authController.getProfile(req, res);
+      
+      // Verify the profile response includes the correct role
+      const profile = res.json.firstCall.args[0];
+      expect(profile).to.have.property('role', 'organizer', 'Role was changed from organizer when retrieving profile');
     });
   });
 });

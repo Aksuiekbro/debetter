@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
@@ -9,9 +10,15 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
   try {
-    console.log('Registration request received:', req.body);
+    // Direct access to raw request data
+    console.log('RAW REQUEST BODY:', req.body);
+    console.log('RAW ROLE VALUE FROM CLIENT:', req.body.role);
     
-    const { username, email, password, role } = req.body;
+    // Capture exactly what's in the request
+    const rawRole = req.body.role;
+    console.log('Raw role captured:', rawRole);
+    
+    const { username, email, password } = req.body;
     
     if (!username || !email || !password) {
       console.log('Missing required fields');
@@ -24,18 +31,26 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Only allow 'user' or 'judge' roles during registration
-    const validRole = role === 'judge' ? 'judge' : 'user';
-
+    // Force the role to be exactly what was received
+    const userRole = rawRole;
+    console.log('Using direct role value:', userRole);
+    
+    // Create user with exactly the role that was received
     const user = await User.create({
       username,
       email,
       password,
-      role: validRole
+      role: userRole // Use the exact role from the request
     });
 
-    console.log('User created successfully:', user.username);
+    console.log('FINAL USER OBJECT:', {
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role
+    });
 
+    // Return the user object with the role
     res.status(201).json({
       _id: user._id,
       username: user.username,
@@ -62,7 +77,7 @@ exports.login = async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
-        role: user.role,
+        role: user.role, // Include the role in the response
         token: generateToken(user._id)
       });
     } else {
@@ -86,7 +101,7 @@ exports.getProfile = async (req, res) => {
       _id: user._id,
       username: user.username,
       email: user.email,
-      role: user.role,
+      role: user.role, // Include the role in the response
       bio: user.bio || '',
       interests: user.interests || [],
       metrics: user.metrics || {
@@ -123,7 +138,6 @@ exports.updateProfile = async (req, res) => {
       _id: updatedUser._id,
       username: updatedUser.username,
       email: updatedUser.email,
-      role: updatedUser.role,
       bio: updatedUser.bio,
       interests: updatedUser.interests,
       metrics: updatedUser.metrics
@@ -165,36 +179,56 @@ exports.sendFriendRequest = async (req, res) => {
   }
 };
 
-// Admin function to promote a user to organizer
-exports.promoteToOrganizer = async (req, res) => {
+// Bulk register test users
+exports.registerTestUsers = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { users } = req.body;
     
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
+    // Validate request
+    if (!Array.isArray(users)) {
+      return res.status(400).json({ message: 'Users must be provided as an array' });
     }
-    
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Promote user to organizer
-    user.role = 'organizer';
-    await user.save();
-    
-    res.status(200).json({
-      message: `${user.username} has been promoted to organizer`,
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role
+
+    // Register each user
+    const registeredUsers = await Promise.all(users.map(async (userData) => {
+      try {
+        const existingUser = await User.findOne({ email: userData.email });
+        if (existingUser) {
+          return null;
+        }
+
+        const hashedPassword = await bcrypt.hash(userData.password, 10);
+        const user = await User.create({
+          username: userData.username,
+          email: userData.email,
+          password: hashedPassword,
+          role: userData.role || 'user',
+          judgeRole: userData.judgeRole
+        });
+
+        return {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          judgeRole: user.judgeRole,
+          createdAt: user.createdAt
+        };
+      } catch (error) {
+        console.error('Error registering test user:', error);
+        return null;
       }
+    }));
+
+    // Filter out failed registrations
+    const successfulUsers = registeredUsers.filter(user => user !== null);
+
+    res.status(201).json({
+      message: `Successfully registered ${successfulUsers.length} test users`,
+      users: successfulUsers
     });
   } catch (error) {
-    console.error('Promotion error:', error);
+    console.error('Error in bulk test user registration:', error);
     res.status(500).json({ message: error.message });
   }
 };

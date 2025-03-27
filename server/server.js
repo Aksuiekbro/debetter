@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
 const debateRoutes = require('./routes/debateRoutes');
+const apfRoutes = require('./routes/apfRoutes');
+
 const app = express();
 
 // Middleware
@@ -19,6 +21,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/debates', debateRoutes);
+app.use('/api/apf', apfRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

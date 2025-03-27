@@ -34,13 +34,15 @@ exports.protect = async (req, res, next) => {
 };
 
 // Middleware to check if user is an organizer
-exports.isOrganizer = (req, res, next) => {
-    if (req.user && req.user.role === 'organizer') {
+exports.isOrganizer = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'organizer' && !req.user.isAdmin()) {
+            return res.status(403).json({ message: 'Not authorized as organizer' });
+        }
         next();
-    } else {
-        res.status(403).json({ 
-            message: 'Access denied: Only organizers can perform this action' 
-        });
+    } catch (error) {
+        console.error('Organizer check error:', error);
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -62,5 +64,18 @@ exports.isAdmin = async (req, res, next) => {
     } catch (error) {
         console.error('Admin check error:', error);
         res.status(500).json({ message: 'Server error checking admin status' });
+    }
+};
+
+// For test data generation, require organizer or admin role
+exports.canGenerateTestData = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'organizer' && !req.user.isAdmin()) {
+            return res.status(403).json({ message: 'Only organizers can generate test data' });
+        }
+        next();
+    } catch (error) {
+        console.error('Test data generation auth error:', error);
+        res.status(500).json({ message: error.message });
     }
 };

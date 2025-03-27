@@ -11,6 +11,37 @@ const baseSchemas = {
   }
 };
 
+const teamSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  members: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['leader', 'speaker'],
+      required: true
+    }
+  }],
+  wins: {
+    type: Number,
+    default: 0
+  },
+  losses: {
+    type: Number,
+    default: 0
+  },
+  points: {
+    type: Number,
+    default: 0
+  }
+});
+
 const roomSchema = new Schema({
   judge: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   teams: [baseSchemas.team],
@@ -39,7 +70,7 @@ const debateSchema = new Schema({
   maxParticipants: { type: Number, default: function() { return this.format === 'tournament' ? 32 : 6; } },
   createdAt: { type: Date, default: Date.now },
   rooms: [roomSchema],
-  teams: [baseSchemas.team],
+  teams: [teamSchema],
   startedAt: Date,
   endedAt: Date,
   format: { type: String, enum: ['standard', 'tournament'], default: 'standard' },
@@ -70,10 +101,12 @@ debateSchema.index({ 'creator': 1 });
 debateSchema.index({ startDate: 1 });
 
 debateSchema.pre('save', async function(next) {
+console.log('Debate pre-save hook triggered. Format:', this.format);
   if (this.format === 'tournament') {
     const parts = await this.populate('participants');
     const [debaters, judges] = [parts.participants.filter(p => p.role !== 'judge'), parts.participants.filter(p => p.role === 'judge')];
     Object.assign(this.tournamentSettings, { currentDebaters: debaters.length, currentJudges: judges.length });
+console.log('Debaters:', debaters.length, 'Judges:', judges.length);
     if (debaters.length > 32 || judges.length > 8) throw new Error('Tournament limits exceeded');
   }
   next();
