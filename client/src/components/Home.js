@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Typography,
@@ -8,13 +8,35 @@ import {
   Button,
   Card,
   CardContent,
-  CardActions
+  CardActions,
+  Avatar,
+  Chip
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
   const navigate = useNavigate();
-  const userRole = localStorage.getItem('userRole');
+  const [username, setUsername] = useState(localStorage.getItem('username') || '');
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
+  
+  // Add debug log to check stored role value
+  console.log('Home component - userRole from localStorage:', localStorage.getItem('userRole'));
+  
+  useEffect(() => {
+    // This will update when localStorage changes
+    const handleStorageChange = () => {
+      setUsername(localStorage.getItem('username') || '');
+      setUserRole(localStorage.getItem('userRole') || 'user');
+      // Add debug log inside event handler
+      console.log('Auth change event - userRole updated to:', localStorage.getItem('userRole'));
+    };
+    
+    window.addEventListener('auth-change', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('auth-change', handleStorageChange);
+    };
+  }, []);
 
   const handleJoinDebate = () => {
     navigate('/debates');
@@ -22,6 +44,17 @@ const Home = () => {
 
   const handleCreateDebate = () => {
     navigate('/host-debate');
+  };
+
+  // Add debug log to check role display mapping
+  const getRoleDisplay = (role) => {
+    console.log('Mapping role to display name:', role);
+    switch(role) {
+      case 'judge': return 'Judge';
+      case 'organizer': return 'Organizer';
+      case 'user':
+      default: return 'Debater';
+    }
   };
 
   return (
@@ -34,9 +67,55 @@ const Home = () => {
           Engage in meaningful discussions and structured debates
         </Typography>
       </Box>
+      
+      {localStorage.getItem('token') && (
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 3, 
+            mb: 4, 
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            borderLeft: '5px solid',
+            borderColor: 'primary.main'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar 
+                sx={{ 
+                  bgcolor: 'primary.main',
+                  width: 50,
+                  height: 50,
+                  mr: 2
+                }}
+              >
+                {username ? username[0]?.toUpperCase() : ''}
+              </Avatar>
+              <Box>
+                <Typography variant="h5">
+                  Welcome, {username}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                  <Chip 
+                    label={getRoleDisplay(userRole)} 
+                    color="primary" 
+                    size="small"
+                    sx={{ fontWeight: 'medium' }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+            <Button 
+              variant="contained" 
+              onClick={() => navigate('/profile')}
+            >
+              View Profile
+            </Button>
+          </Box>
+        </Paper>
+      )}
 
       <Grid container spacing={4}>
-        {/* Featured Debates Section */}
         <Grid item xs={12} md={8}>
           <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
             <Typography variant="h4" sx={{ color: 'primary.main', mb: 3 }}>
@@ -70,7 +149,6 @@ const Home = () => {
           </Paper>
         </Grid>
 
-        {/* Action Panel */}
         <Grid item xs={12} md={4}>
           <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
             <Typography variant="h4" sx={{ color: 'primary.main', mb: 3 }}>
@@ -114,19 +192,6 @@ const Home = () => {
               </Box>
             )}
           </Paper>
-
-          {/* User Stats/Info Section */}
-          {localStorage.getItem('token') && (
-            <Paper elevation={3} sx={{ p: 3, mt: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
-              <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
-                Your Profile
-              </Typography>
-              <Typography variant="body1">
-                Role: {userRole === 'judge' ? 'Judge' : 'Debater'}
-              </Typography>
-              {/* More stats will be added here */}
-            </Paper>
-          )}
         </Grid>
       </Grid>
     </Container>

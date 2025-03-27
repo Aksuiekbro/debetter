@@ -35,7 +35,7 @@ const Login = () => {
       const data = response.data;
       
       localStorage.setItem('token', data.token);
-      localStorage.setItem('userRole', data.role);
+      localStorage.setItem('userRole', data.role); // Store the role
       localStorage.setItem('username', data.username);
       localStorage.setItem('userId', data._id);
       window.dispatchEvent(new Event('auth-change'));

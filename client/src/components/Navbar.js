@@ -132,12 +132,20 @@ const Navbar = () => {
             Join a Debate
           </Button>
           {isAuthenticated && (
-            <Button 
-              color="inherit"
-              onClick={() => navigate('/my-debates')}
-            >
-              My Debates
-            </Button>
+            <>
+              <Button
+                color="inherit"
+                onClick={() => navigate('/my-debates')}
+              >
+                My Debates
+              </Button>
+              <Button
+                color="inherit"
+                onClick={() => navigate('/tournaments')}
+              >
+                Tournaments
+              </Button>
+            </>
           )}
         </Box>
 

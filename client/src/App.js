@@ -9,7 +9,12 @@ import Debates from './components/Debates';
 import DebateDetails from './components/DebateDetails';
 import HostDebate from './components/HostDebate';
 import Profile from './components/Profile';
-import MyDebates from './components/MyDebates';  // Add this import
+import MyDebates from './components/MyDebates';
+import TournamentManagement from './components/TournamentManagement';
+import Tournaments from './components/Tournaments';
+import JudgePanel from './components/JudgePanel';
+import ApfTabulation from './components/ApfTabulation';
+import ApfJudgeEvaluation from './components/ApfJudgeEvaluation';
 
 const theme = createTheme({
   palette: {
@@ -48,7 +53,12 @@ function App() {
             <Route path="/debates/:id" element={<DebateDetails />} />
             <Route path="/host-debate" element={<HostDebate />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/my-debates" element={<MyDebates />} />  {/* Add this route */}
+            <Route path="/my-debates" element={<MyDebates />} />
+            <Route path="/tournaments" element={<Tournaments />} />
+            <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
+            <Route path="/judge-panel" element={<JudgePanel />} />
+            <Route path="/tabulation" element={<ApfTabulation />} />
+            <Route path="/debates/:id/evaluate" element={<ApfJudgeEvaluation />} />
           </Routes>
         </div>
       </Router>

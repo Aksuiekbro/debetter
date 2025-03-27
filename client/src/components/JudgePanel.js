@@ -1,782 +1,211 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getAuthHeaders, handleUnauthorized } from '../utils/auth';
 import {
   Container,
   Paper,
   Typography,
-  Button,
-  Grid,
   Box,
-  Stepper,
-  Step,
-  StepLabel,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  IconButton,
-  Card,
-  CardContent,
-  Chip
+  Grid,
+  Tabs,
+  Tab,
+  CircularProgress
 } from '@mui/material';
-import MicIcon from '@mui/icons-material/Mic';
-import StopIcon from '@mui/icons-material/Stop';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { useNavigate } from 'react-router-dom';
+import JudgeGameCard from './JudgeGameCard';
+import ApfJudgeEvaluation from './ApfJudgeEvaluation';
+import { getAuthHeaders } from '../utils/auth';
 
-const JudgePanel = ({ debate, onUpdateDebate }) => {
+const JudgePanel = () => {
   const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(0);
-  const [teamAssignmentOpen, setTeamAssignmentOpen] = useState(false);
-  const [teams, setTeams] = useState({ proposition: [], opposition: [] });
-  const [recording, setRecording] = useState(false);
-  const [expandedTranscripts, setExpandedTranscripts] = useState({});
-  const [currentRoom, setCurrentRoom] = useState(null);
-  const [interimText, setInterimText] = useState('');
-  const [finalText, setFinalText] = useState('');
-  const [analysisResults, setAnalysisResults] = useState(null);
-  const [isDebateEnded, setIsDebateEnded] = useState(false);
-  const [fullTranscript, setFullTranscript] = useState('');
-  const [currentUser, setCurrentUser] = useState(null);
-  const [transcriptHistory, setTranscriptHistory] = useState([]);
-  const [immediateAnalysis, setImmediateAnalysis] = useState(null);
-
-  const steps = ['Team Assignment', 'Room Setup', 'Debate in Progress'];
+  const [loading, setLoading] = useState(true);
+  const [assignedGames, setAssignedGames] = useState([]);
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [showEvaluation, setShowEvaluation] = useState(false);
+  const [tabValue, setTabValue] = useState(0);
 
   useEffect(() => {
-    if (debate.teams && debate.teams.length > 0) {
-      const propositionTeam = debate.teams.find(t => t.side === 'proposition');
-      const oppositionTeam = debate.teams.find(t => t.side === 'opposition');
-      setTeams({
-        proposition: propositionTeam?.members || [],
-        opposition: oppositionTeam?.members || []
-      });
-    }
-  }, [debate]);
-
-  const getCurrentUser = async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const response = await fetch('http://localhost:5001/api/users/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (response.ok) {
-          const userData = await response.json();
-          setCurrentUser(userData);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    }
-  };
-
-  useEffect(() => {
-    getCurrentUser();
+    fetchAssignedGames();
   }, []);
 
-  useEffect(() => {
-    if (currentRoom) {
-      console.log('Current Room Data:', currentRoom);
-      if (currentRoom.transcription) {
-        const formattedTranscripts = currentRoom.transcription
-          .map(t => {
-            const time = new Date(t.timestamp).toLocaleTimeString();
-            const speaker = t.speaker?.username || 'Unknown';
-            return `[${time}] ${speaker}: ${t.text}`;
-          })
-          .join('\n\n');
-        console.log('Formatted Transcripts:', formattedTranscripts);
-        setFullTranscript(formattedTranscripts);
-        setTranscriptHistory(currentRoom.transcription);
-      }
-    }
-  }, [currentRoom]);
-
-  // Add effect to load active room when component mounts
-  useEffect(() => {
-    const loadActiveRoom = async () => {
-      try {
-        if (!debate || !debate.rooms) return;
-        
-        // Find the active room
-        const activeRoom = debate.rooms.find(r => r.isActive);
-        if (activeRoom) {
-          console.log('Found active room:', activeRoom._id);
-          // Load room with populated data
-          const response = await fetch(`http://localhost:5001/api/debates/${debate._id}/room/${activeRoom._id}`, {
-            headers: getAuthHeaders()
-          });
-          
-          if (response.ok) {
-            const { room } = await response.json();
-            console.log('Loaded room data:', room);
-            setCurrentRoom(room);
-            if (room.transcription && room.transcription.length > 0) {
-              const formattedTranscripts = room.transcription
-                .map(t => {
-                  const time = new Date(t.timestamp).toLocaleTimeString();
-                  const speaker = t.speaker?.username || 'Unknown';
-                  return `[${time}] ${speaker}: ${t.text}`;
-                })
-                .join('\n\n');
-              setFullTranscript(formattedTranscripts);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading active room:', error);
-      }
-    };
-
-    loadActiveRoom();
-  }, [debate]);
-
-  const handleStartTeamAssignment = () => {
-    setTeamAssignmentOpen(true);
-  };
-
-  const handleRandomizeTeams = () => {
-    const participants = [...debate.participants];
-    // Filter out judges
-    const debaters = participants.filter(p => p.role !== 'judge');
-    // Shuffle array
-    const shuffled = debaters.sort(() => 0.5 - Math.random());
-    // Split into two teams
-    const halfLength = Math.floor(shuffled.length / 2);
-    
-    setTeams({
-      proposition: shuffled.slice(0, halfLength),
-      opposition: shuffled.slice(halfLength)
-    });
-  };
-
-  const handleConfirmTeams = async () => {
+  const fetchAssignedGames = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/debates/${debate._id}/assign-teams`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          teams: [
-            { side: 'proposition', members: teams.proposition.map(p => p._id) },
-            { side: 'opposition', members: teams.opposition.map(p => p._id) }
-          ]
-        })
-      });
-
-      if (response.status === 401) {
-        handleUnauthorized(navigate);
-        return;
-      }
-
-      if (response.ok) {
-        const updatedDebate = await response.json();
-        onUpdateDebate(updatedDebate);
-        setTeamAssignmentOpen(false);
-        setActiveStep(1);
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Failed to assign teams');
-      }
-    } catch (error) {
-      console.error('Error assigning teams:', error);
-      alert('Failed to assign teams. Please try again.');
-    }
-  };
-
-  const handleStartRoom = async () => {
-    try {
-      const response = await fetch(`http://localhost:5001/api/debates/${debate._id}/start-room`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
-
-      if (response.status === 401) {
-        handleUnauthorized(navigate);
-        return;
-      }
-
-      if (response.ok) {
-        const { room } = await response.json();
-        console.log('Room started:', room);
-        setCurrentRoom(room);
-        setActiveStep(2);
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Failed to start debate room');
-      }
-    } catch (error) {
-      console.error('Error starting room:', error);
-      alert('Failed to start debate room. Please try again.');
-    }
-  };
-
-  const handleStartRecording = () => {
-    if (!('webkitSpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser. Please use Chrome.');
-      return;
-    }
-
-    if (!currentRoom || !currentRoom._id) {
-      alert('No active debate room found. Please start a room first.');
-      return;
-    }
-
-    const recognition = new window.webkitSpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = async (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
-          
-          try {
-            const saveResponse = await fetch(`http://localhost:5001/api/debates/${debate._id}/save-transcript`, {
-              method: 'POST',
-              headers: {
-                ...getAuthHeaders(),
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                roomId: currentRoom._id,
-                text: finalTranscript.trim(),
-                timestamp: new Date(),
-                speaker: currentUser._id
-              })
-            });
-
-            const saveResult = await saveResponse.json();
-            if (saveResponse.ok) {
-              // Update the local transcript display
-              setFullTranscript(prev => 
-                prev + (prev ? '\n\n' : '') + 
-                `[${new Date().toLocaleTimeString()}] ${currentUser?.username || 'Unknown'}: ${finalTranscript.trim()}`
-              );
-              // Update room transcription
-              setCurrentRoom(prevRoom => ({
-                ...prevRoom,
-                transcription: saveResult.transcription
-              }));
-            } else {
-              console.error('Failed to save transcript:', saveResult.message);
-            }
-          } catch (error) {
-            console.error('Error saving transcript:', error);
-          }
-        } else {
-          interimTranscript += transcript;
-          setInterimText(interimTranscript);
-        }
-      }
-    };
-
-    recognition.onend = () => {
-      if (recording) {
-        recognition.start(); // Restart if we're still supposed to be recording
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed') {
-        alert('Please allow microphone access to use speech recognition.');
-      }
-    };
-
-    try {
-      recognition.start();
-      setRecording(true);
-      window.recognition = recognition; // Store for stopping later
-    } catch (error) {
-      console.error('Error starting recognition:', error);
-    }
-  };
-
-  const handleStopRecording = async () => {
-    if (window.recognition) {
-      window.recognition.stop();
-      delete window.recognition;
-    }
-    setRecording(false);
-
-    try {
-      // Get the active room's transcription
-      if (currentRoom?.transcription && currentRoom.transcription.length > 0) {
-        const response = await fetch(`http://localhost:5001/api/debates/${debate._id}/analyze-interim`, {
-          method: 'POST',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            roomId: currentRoom._id,
-            transcript: fullTranscript
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setImmediateAnalysis(result.analysis);
-        }
-      }
-    } catch (error) {
-      console.error('Error analyzing interim debate:', error);
-    }
-  };
-
-  const handleEndDebate = async () => {
-    try {
-      if (recording) {
-        handleStopRecording();
-      }
-
-      // Get the active room's transcription
-      if (!currentRoom || !currentRoom.transcription || currentRoom.transcription.length === 0) {
-        alert('No debate transcript available for analysis. Please record some discussion first.');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:5001/api/debates/${debate._id}/end`, {
-        method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
+      setLoading(true);
+      
+      // In a real implementation, this would fetch from your API
+      // For now, using mock data
+      const mockGames = [
+        {
+          id: 'game1',
+          format: 'APF',
+          startTime: new Date().setHours(12, 0, 0),
+          duration: 60,
+          location: '203 кабинет',
+          team1: { id: 'team1', name: 'team 1' },
+          team2: { id: 'team2', name: 'team 2' },
+          theme: 'Health care has to be free',
+          status: 'pending'
         },
-        body: JSON.stringify({
-          roomId: currentRoom._id
-        })
-      });
-
-      if (response.status === 401) {
-        handleUnauthorized(navigate);
-        return;
-      }
-
-      const result = await response.json();
-      console.log('End debate response:', result);
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to end debate');
-      }
-
-      setAnalysisResults(result.analysis);
-      setIsDebateEnded(true);
-      onUpdateDebate({ ...debate, status: 'completed' });
-
+        {
+          id: 'game2',
+          format: 'APF',
+          startTime: new Date().setHours(14, 0, 0),
+          duration: 60,
+          location: '204 кабинет',
+          team1: { id: 'team3', name: 'team 3' },
+          team2: { id: 'team4', name: 'team 4' },
+          theme: 'Technology addiction is a serious problem',
+          status: 'pending'
+        },
+      ];
+      
+      // Simulate API call delay
+      setTimeout(() => {
+        setAssignedGames(mockGames);
+        setLoading(false);
+      }, 500);
+      
+      // For actual implementation:
+      // const response = await fetch('http://localhost:5001/api/debates/assigned', {
+      //   headers: getAuthHeaders()
+      // });
+      // if (response.ok) {
+      //   const games = await response.json();
+      //   setAssignedGames(games);
+      // }
     } catch (error) {
-      console.error('Error ending debate:', error);
-      alert(error.message || 'Failed to end debate. Please try again.');
+      console.error('Error fetching assigned games:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const toggleTranscript = (transcriptId) => {
-    setExpandedTranscripts(prev => ({
-      ...prev,
-      [transcriptId]: !prev[transcriptId]
-    }));
+  const handleGameSelect = (game) => {
+    setSelectedGame(game);
+    setShowEvaluation(true);
   };
+
+  const handleCloseEvaluation = () => {
+    setShowEvaluation(false);
+    setSelectedGame(null);
+  };
+
+  const handleSubmitEvaluation = async (evaluationData) => {
+    try {
+      console.log('Submitting evaluation:', evaluationData);
+      
+      // Update local state to reflect the evaluated status
+      setAssignedGames(prevGames => 
+        prevGames.map(game => 
+          game.id === evaluationData.gameId 
+            ? { ...game, status: 'evaluated' } 
+            : game
+        )
+      );
+      
+      // In a real implementation, you would submit to API:
+      // await fetch(`http://localhost:5001/api/debates/${evaluationData.gameId}/evaluate`, {
+      //   method: 'POST',
+      //   headers: {
+      //     ...getAuthHeaders(),
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify(evaluationData)
+      // });
+      
+    } catch (error) {
+      console.error('Error submitting evaluation:', error);
+      alert('Failed to submit evaluation. Please try again.');
+    }
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const pendingGames = assignedGames.filter(game => game.status === 'pending');
+  const completedGames = assignedGames.filter(game => game.status === 'evaluated');
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        {activeStep === 0 && (
-          <Box>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleStartTeamAssignment}
-              sx={{ mt: 2 }}
-            >
-              Start Team Assignment
-            </Button>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {showEvaluation && selectedGame ? (
+        <ApfJudgeEvaluation 
+          game={selectedGame} 
+          onClose={handleCloseEvaluation} 
+          onSubmitEvaluation={handleSubmitEvaluation}
+        />
+      ) : (
+        <Paper elevation={3} sx={{ p: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            Judge Panel
+          </Typography>
+          
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Tabs value={tabValue} onChange={handleTabChange}>
+              <Tab label={`Pending (${pendingGames.length})`} />
+              <Tab label={`Completed (${completedGames.length})`} />
+            </Tabs>
           </Box>
-        )}
-
-        {activeStep === 1 && (
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Teams Assigned
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleStartRoom}
-              sx={{ mt: 2 }}
-            >
-              Start Debate Room
-            </Button>
-          </Box>
-        )}
-
-        {activeStep === 2 && currentRoom && (
-          <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h6">
-                Debate Room
-              </Typography>
-              {!isDebateEnded && (
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleEndDebate}
-                >
-                  End Debate
-                </Button>
-              )}
+          
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
             </Box>
-            
-            {/* Recording controls - only show if debate hasn't ended */}
-            {!isDebateEnded && (
-              <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-                <Button
-                  variant="contained"
-                  color={recording ? 'error' : 'primary'}
-                  startIcon={recording ? <StopIcon /> : <MicIcon />}
-                  onClick={recording ? handleStopRecording : handleStartRecording}
-                >
-                  {recording ? 'Stop Recording' : 'Start Recording'}
-                </Button>
-                
-                {recording && (
-                  <Chip 
-                    color="error" 
-                    label="Recording in progress..." 
-                    sx={{ animation: 'pulse 1.5s infinite' }} 
-                  />
-                )}
-              </Box>
-            )}
-
-            {/* Live transcription display */}
-            {recording && (
-              <Paper 
-                elevation={2} 
-                sx={{ 
-                  p: 2, 
-                  mb: 3, 
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                  minHeight: '100px',
-                  border: '1px solid #e0e0e0'
-                }}
-              >
-                <Typography variant="h6" color="primary" gutterBottom>
-                  Live Transcription
-                </Typography>
-                <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-                  {interimText}
-                </Typography>
-              </Paper>
-            )}
-
-            {/* Full Transcript Display */}
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 2, 
-                mb: 3, 
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                maxHeight: '400px',
-                overflow: 'auto',
-                border: '1px solid #e0e0e0'
-              }}
-            >
-              <Typography variant="h6" color="primary" gutterBottom>
-                Debate Transcript
-              </Typography>
-              {fullTranscript ? (
-                <Typography 
-                  variant="body1" 
-                  component="pre" 
-                  sx={{ 
-                    whiteSpace: 'pre-wrap',
-                    wordWrap: 'break-word',
-                    fontFamily: 'inherit'
-                  }}
-                >
-                  {fullTranscript}
-                </Typography>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  No transcript available yet. Start recording to begin capturing the debate.
-                </Typography>
-              )}
-            </Paper>
-
-            {/* Interim Analysis Results */}
-            {!isDebateEnded && immediateAnalysis && (
-              <Paper 
-                elevation={2} 
-                sx={{ 
-                  p: 2, 
-                  mb: 3, 
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                  border: '1px solid #e0e0e0'
-                }}
-              >
-                <Typography variant="h6" color="primary" gutterBottom>
-                  Current Analysis
-                </Typography>
-
-                <Grid container spacing={3}>
-                  {/* Proposition Arguments */}
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom color="primary">
-                          Proposition Key Arguments
-                        </Typography>
-                        {immediateAnalysis.propositionArguments.map((arg, index) => (
-                          <Box key={index} sx={{ mb: 2 }}>
-                            <Typography variant="body1">
-                              {arg.argument}
-                            </Typography>
-                            {arg.evidence && (
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                Evidence: {arg.evidence}
-                              </Typography>
-                            )}
-                          </Box>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Opposition Arguments */}
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom color="error">
-                          Opposition Key Arguments
-                        </Typography>
-                        {immediateAnalysis.oppositionArguments.map((arg, index) => (
-                          <Box key={index} sx={{ mb: 2 }}>
-                            <Typography variant="body1">
-                              {arg.argument}
-                            </Typography>
-                            {arg.evidence && (
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                Evidence: {arg.evidence}
-                              </Typography>
-                            )}
-                          </Box>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-              </Paper>
-            )}
-
-            {/* Final Analysis Results */}
-            {isDebateEnded && analysisResults && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" gutterBottom color="primary">
-                  Debate Analysis
-                </Typography>
-                
-                {/* Proposition Arguments */}
-                <Card sx={{ mb: 3 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Proposition Team Arguments
-                    </Typography>
-                    {analysisResults.propositionArguments.map((arg, index) => (
-                      <Card key={index} sx={{ mb: 1 }}>
-                        <CardContent>
-                          <Typography variant="body1">
-                            {arg.argument}
-                          </Typography>
-                          {arg.evidence && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                              Evidence: {arg.evidence}
-                            </Typography>
-                          )}
-                          {arg.counterArgument && (
-                            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                              Counter: {arg.counterArgument}
-                            </Typography>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                {/* Opposition Arguments */}
-                <Card sx={{ mb: 3 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Opposition Team Arguments
-                    </Typography>
-                    {analysisResults.oppositionArguments.map((arg, index) => (
-                      <Card key={index} sx={{ mb: 1 }}>
-                        <CardContent>
-                          <Typography variant="body1">
-                            {arg.argument}
-                          </Typography>
-                          {arg.evidence && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                              Evidence: {arg.evidence}
-                            </Typography>
-                          )}
-                          {arg.counterArgument && (
-                            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                              Counter: {arg.counterArgument}
-                            </Typography>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                {/* Statistical Claims Verification */}
-                <Box sx={{ mb: 3 }}>
+          ) : (
+            <>
+              {tabValue === 0 && (
+                <>
                   <Typography variant="subtitle1" gutterBottom>
-                    Statistical Claims Verification
+                    Your assigned debates requiring evaluation
                   </Typography>
-                  {analysisResults.factCheck.map((claim, index) => (
-                    <Card key={index} sx={{ mb: 1 }}>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2">
-                            {claim.statement}
-                          </Typography>
-                          <Chip 
-                            label={claim.verification} 
-                            color={claim.verification === 'Verified' ? 'success' : 'warning'}
+                  <Grid container spacing={3}>
+                    {pendingGames.length > 0 ? (
+                      pendingGames.map((game) => (
+                        <Grid item xs={12} md={6} key={game.id}>
+                          <JudgeGameCard 
+                            game={game} 
+                            onClick={handleGameSelect} 
                           />
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Transcripts & Analysis
-              </Typography>
-              {currentRoom.transcription.map((entry, index) => (
-                <Card key={index} sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="subtitle1" gutterBottom>
-                        {new Date(entry.timestamp).toLocaleTimeString()}
-                      </Typography>
-                      <IconButton onClick={() => toggleTranscript(index)}>
-                        {expandedTranscripts[index] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                      </IconButton>
-                    </Box>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        Key Arguments:
-                      </Typography>
-                      {entry.aiHighlights.keyArguments.map((arg, i) => (
-                        <Chip key={i} label={arg} sx={{ m: 0.5 }} />
-                      ))}
-                    </Box>
-
-                    {expandedTranscripts[index] && (
-                      <>
-                        <Typography variant="body1">
-                          {entry.text}
+                        </Grid>
+                      ))
+                    ) : (
+                      <Grid item xs={12}>
+                        <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
+                          You have no pending debates to evaluate
                         </Typography>
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Statistical Claims:
-                          </Typography>
-                          {entry.aiHighlights.statisticalClaims.map((claim, i) => (
-                            <Chip key={i} label={claim} color="info" sx={{ m: 0.5 }} />
-                          ))}
-                        </Box>
-                        <Box sx={{ mt: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Logical Connections:
-                          </Typography>
-                          {entry.aiHighlights.logicalConnections.map((connection, i) => (
-                            <Chip key={i} label={connection} color="secondary" sx={{ m: 0.5 }} />
-                          ))}
-                        </Box>
-                      </>
+                      </Grid>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        <Dialog open={teamAssignmentOpen} onClose={() => setTeamAssignmentOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle>Assign Teams</DialogTitle>
-          <DialogContent>
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleRandomizeTeams}
-              sx={{ mb: 3 }}
-            >
-              Randomize Teams
-            </Button>
-            
-            <Grid container spacing={3}>
-              <Grid item xs={6}>
-                <Typography variant="h6" gutterBottom>
-                  Proposition Team
-                </Typography>
-                <List>
-                  {teams.proposition.map((member) => (
-                    <ListItem key={member._id}>
-                      <ListItemText primary={member.username} />
-                    </ListItem>
-                  ))}
-                </List>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h6" gutterBottom>
-                  Opposition Team
-                </Typography>
-                <List>
-                  {teams.opposition.map((member) => (
-                    <ListItem key={member._id}>
-                      <ListItemText primary={member.username} />
-                    </ListItem>
-                  ))}
-                </List>
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setTeamAssignmentOpen(false)}>Cancel</Button>
-            <Button onClick={handleConfirmTeams} variant="contained" color="primary">
-              Confirm Teams
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Paper>
+                  </Grid>
+                </>
+              )}
+              
+              {tabValue === 1 && (
+                <>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Your completed evaluations
+                  </Typography>
+                  <Grid container spacing={3}>
+                    {completedGames.length > 0 ? (
+                      completedGames.map((game) => (
+                        <Grid item xs={12} md={6} key={game.id}>
+                          <JudgeGameCard 
+                            game={game} 
+                            onClick={() => alert('This evaluation has already been submitted')} 
+                          />
+                        </Grid>
+                      ))
+                    ) : (
+                      <Grid item xs={12}>
+                        <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
+                          You have no completed evaluations
+                        </Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+                </>
+              )}
+            </>
+          )}
+        </Paper>
+      )}
     </Container>
   );
 };

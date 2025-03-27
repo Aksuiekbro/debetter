@@ -24,6 +24,17 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
 
+// Add the function to get display name for role
+const getRoleDisplayName = (role) => {
+  const roleMap = {
+    'user': 'Debater',
+    'debater': 'Debater',
+    'judge': 'Judge',
+    'organizer': 'Organizer'
+  };
+  return roleMap[role] || role;
+};
+
 const Profile = () => {
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState(0);
@@ -217,9 +228,18 @@ const Profile = () => {
           </Grid>
 
           <Grid item xs={12} md={9}>
-            <Typography variant="h4" sx={{ mb: 2 }}>
-              {profileData.username}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 2 }}>
+              <Typography variant="h4" sx={{ mr: 2 }}>
+                {profileData.username}
+              </Typography>
+              {/* Add back the role chip */}
+              <Chip 
+                label={getRoleDisplayName(profileData.role)} 
+                color="primary" 
+                variant="outlined"
+                sx={{ fontSize: '0.9rem', fontWeight: 'medium' }}
+              />
+            </Box>
             
             <Box sx={{ mb: 3 }}>
               {profileData.interests.map((interest, index) => (
