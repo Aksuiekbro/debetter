@@ -15,6 +15,8 @@ import Tournaments from './components/Tournaments';
 import JudgePanel from './components/JudgePanel';
 import ApfTabulation from './components/ApfTabulation';
 import ApfJudgeEvaluation from './components/ApfJudgeEvaluation';
+import TeamRegistrationForm from './components/TeamRegistrationForm';
+import PostingDetails from './components/PostingDetails';
 
 const theme = createTheme({
   palette: {
@@ -59,6 +61,9 @@ function App() {
             <Route path="/judge-panel" element={<JudgePanel />} />
             <Route path="/tabulation" element={<ApfTabulation />} />
             <Route path="/debates/:id/evaluate" element={<ApfJudgeEvaluation />} />
+            {/* New Routes */}
+            <Route path="/debates/:id/register-team" element={<TeamRegistrationForm />} />
+            <Route path="/debates/:id/postings/:postingId" element={<PostingDetails />} />
           </Routes>
         </div>
       </Router>

@@ -30,7 +30,7 @@ import {
   Snackbar,
   CircularProgress
 } from '@mui/material';
-import { Delete as DeleteIcon, Edit as EditIcon, Add as AddIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Edit as EditIcon, Add as AddIcon, Shuffle as ShuffleIcon } from '@mui/icons-material';
 import { api } from '../config/api';
 import { getAuthHeaders } from '../utils/auth';
 import ApfPostingCard from './ApfPostingCard';
@@ -133,9 +133,16 @@ const TournamentManagement = () => {
         
         // If there are teams in the tournament data
         if (data.teams && data.teams.length > 0) {
-          setTeams(data.teams);
+          setTeams(data.teams.map(team => ({
+            id: team._id,
+            name: team.name,
+            leader: team.members.find(m => m.role === 'leader')?.userId?.username || 'Unknown',
+            speaker: team.members.find(m => m.role === 'speaker')?.userId?.username || 'Unknown',
+            leaderId: team.members.find(m => m.role === 'leader')?.userId?._id,
+            speakerId: team.members.find(m => m.role === 'speaker')?.userId?._id
+          })));
         } else {
-          // Build mock team data for now
+          // Build teams from participants
           const mockTeams = [];
           for (let i = 0; i < Math.floor(tournamentEntrants.length / 2); i++) {
             if (i*2+1 < tournamentEntrants.length) {
@@ -473,33 +480,44 @@ const TournamentManagement = () => {
     setLoading(true); // Indicate loading state
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.client.post(`/api/tournaments/${id}/postings/apf`, {
-      //   team1Id: team1.id,
-      //   team2Id: team2.id,
-      //   location,
-      //   judgeIds: judges.map(j => j.id),
-      //   theme: typeof theme === 'string' ? theme : theme.label // Handle freeSolo or object
-      // }, { headers: getAuthHeaders() });
+      // Make actual API call to save the game posting
+      const response = await fetch(`${api.baseUrl}/api/debates/${id}/postings`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          team1Id: team1.id,
+          team2Id: team2.id,
+          location,
+          judgeIds: judges.map(j => j.id),
+          theme: typeof theme === 'string' ? theme : theme.label, // Handle freeSolo or object
+          tournamentId: id
+        })
+      });
 
-      // Mock success for now
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to post game: ${errorText}`);
+      }
+
+      const postedGame = await response.json();
+      console.log('API Success:', postedGame);
+
+      // Update apfPostings state with the response from the server
       const newPostedGame = {
-        id: `apf-${Date.now()}`,
-        ...currentApfGameData,
-        // Ensure data structure matches what the display expects (using safe access)
-        team1Name: team1?.name ?? 'N/A',
-        team2Name: team2?.name ?? 'N/A',
-        judgeNames: judges?.map(j => j?.name ?? 'Unknown').join(', ') ?? 'N/A',
-        themeLabel: typeof theme === 'string' ? theme : (theme?.label ?? 'N/A')
+        id: postedGame._id || `apf-${Date.now()}`,
+        team1Name: team1.name,
+        team2Name: team2.name,
+        location: location,
+        judgeNames: judges.map(j => j.name).join(', '),
+        themeLabel: typeof theme === 'string' ? theme : theme.label
       };
 
-      console.log('Mock API Success:', newPostedGame);
-
-      // Update apfPostings state
       setApfPostings(prev => [...prev, newPostedGame]);
 
-      // Reset the form (currentApfGameData)
+      // Reset the form
       setCurrentApfGameData({
         team1: null,
         team2: null,
@@ -518,8 +536,7 @@ const TournamentManagement = () => {
       console.error('Error posting APF game:', error);
       setNotification({
         open: true,
-        // message: `Failed to post game: ${error.response?.data?.message || error.message}`, // Use for real API errors
-        message: 'Failed to post game (Simulated Error)',
+        message: `Failed to post game: ${error.message}`,
         severity: 'error'
       });
     } finally {
@@ -570,18 +587,22 @@ const TournamentManagement = () => {
     setNotification({ ...notification, open: false });
   };
 
+    console.log('[generateTestData] Starting...');
 const generateTestData = async () => {
   try {
     setLoading(true);
     console.log('Starting test data generation...');
     
+    console.log('[generateTestData] Setting notification: Generating test data...');
     setNotification({
       open: true,
       message: 'Generating test data...',
       severity: 'info'
     });
 
+ console.log('[generateTestData] Fetching potential judges...');
     // First, fetch all test users from database
+    console.log('[generateTestData] Fetching potential judges and debaters...');
     const testJudgesResponse = await fetch(`${api.baseUrl}/api/users/test/judges`, {
       headers: getAuthHeaders()
     });
@@ -598,7 +619,7 @@ const generateTestData = async () => {
     
     const testJudgesData = await testJudgesResponse.json();
     const testDebatersData = await testDebatersResponse.json();
-    
+
     const testJudges = testJudgesData.users;
     const testDebaters = testDebatersData.users;
     
@@ -609,6 +630,7 @@ const generateTestData = async () => {
     }
     
     // Register these users to the tournament
+    console.log('[generateTestData] Registering participants...');
     const updateResponse = await fetch(`${api.baseUrl}/api/debates/${id}/register-participants`, {
       method: 'POST',
       headers: {
@@ -652,6 +674,7 @@ const generateTestData = async () => {
     // Create teams from the debaters
     const newTeams = [];
     for (let i = 0; i < Math.floor(testDebaters.length / 2); i++) {
+    console.log('[generateTestData] Creating teams...');
       if (i*2+1 < testDebaters.length) {
         const teamResponse = await fetch(`${api.baseUrl}/api/debates/teams`, {
           method: 'POST',
@@ -692,15 +715,107 @@ const generateTestData = async () => {
     
   } catch (error) {
     console.error('API error during test data generation:', error);
+    console.log('[generateTestData] Error occurred:', error);
     setNotification({
       open: true,
       message: 'Failed to generate test data: ' + error.message,
-      severity: 'error'
+
     });
   } finally {
+ console.log('[generateTestData] Finished.');
     setLoading(false);
   }
 };
+
+  // Function to randomize team selection
+  const randomizeTeams = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if we have enough entrants
+      if (entrants.length < 2) {
+        setNotification({
+          open: true,
+          message: 'Need at least 2 entrants to form teams',
+          severity: 'warning'
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Create a copy of the entrants array and shuffle it
+      const shuffledEntrants = [...entrants].sort(() => Math.random() - 0.5);
+      
+      // Clear existing teams
+      const newTeams = [];
+      
+      // Create new teams with randomly paired entrants
+      for (let i = 0; i < Math.floor(shuffledEntrants.length / 2); i++) {
+        const entrant1 = shuffledEntrants[i*2];
+        const entrant2 = shuffledEntrants[i*2+1];
+        
+        // Create new team with randomized pairs
+        const newTeam = {
+          id: `team-${Date.now()}-${i}`,
+          name: `Team ${i+1}`,
+          leader: entrant1.name,
+          speaker: entrant2.name,
+          leaderId: entrant1.id,
+          speakerId: entrant2.id
+        };
+        
+        // Add to new teams array
+        newTeams.push(newTeam);
+        
+        // Optional: Create actual team in the database
+        try {
+          await fetch(`${api.baseUrl}/api/debates/teams`, {
+            method: 'POST',
+            headers: {
+              ...getAuthHeaders(),
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: newTeam.name,
+              leader: newTeam.leaderId,
+              speaker: newTeam.speakerId,
+              tournamentId: id
+            })
+          });
+        } catch (error) {
+          console.error('Failed to save team to database:', error);
+          // Continue with next team even if there's an error
+        }
+      }
+      
+      // Update teams state
+      setTeams(newTeams);
+      
+      // Handle odd number of entrants if there are any
+      if (shuffledEntrants.length % 2 !== 0) {
+        setNotification({
+          open: true,
+          message: `Teams randomized successfully! Note: One entrant (${shuffledEntrants[shuffledEntrants.length-1].name}) was left without a team due to odd number of participants.`,
+          severity: 'info'
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: 'Teams randomized successfully!',
+          severity: 'success'
+        });
+      }
+    } catch (error) {
+      console.error('Error randomizing teams:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to randomize teams: ' + error.message,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   if (loading) {
     return (
@@ -839,6 +954,14 @@ const generateTestData = async () => {
                 })));
               }}
             />
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<ShuffleIcon />}
+              onClick={randomizeTeams}
+            >
+              Randomize Teams
+            </Button>
             <Button
               variant="contained"
               color="primary"

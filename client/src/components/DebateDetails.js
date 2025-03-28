@@ -24,6 +24,7 @@ import GradeIcon from '@mui/icons-material/Grade';
 import GroupsIcon from '@mui/icons-material/Groups';
 import GavelIcon from '@mui/icons-material/Gavel';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import JudgePanel from './JudgePanel';
 import TournamentGrid from './TournamentGrid';
 
@@ -33,7 +34,7 @@ const DebateDetails = () => {
   const [debate, setDebate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);  // Add this state
+  const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const userId = localStorage.getItem('userId');
   const userRole = localStorage.getItem('userRole');
@@ -141,6 +142,26 @@ const DebateDetails = () => {
   // Add function to update debate state
   const handleDebateUpdate = (updatedDebate) => {
     setDebate(updatedDebate);
+  };
+
+  // Helper functions to check tournament state
+  const isTournamentOpenForRegistration = () => {
+    if (!debate || debate.format !== 'tournament' || debate.status !== 'upcoming') {
+      return false;
+    }
+
+    // Check registration deadline
+    if (debate.registrationDeadline) {
+      const now = new Date();
+      const deadline = new Date(debate.registrationDeadline);
+      return now < deadline;
+    }
+
+    return true;
+  };
+
+  const handleRegisterTeam = () => {
+    navigate(`/debates/${id}/register-team`);
   };
 
   const getParticipantDisplay = () => {
@@ -362,6 +383,20 @@ const DebateDetails = () => {
 
             {debate && (
               <Box sx={{ mt: 3 }}>
+                {/* Team Registration Button for Tournaments */}
+                {debate.format === 'tournament' && isTournamentOpenForRegistration() && (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<GroupAddIcon />}
+                    onClick={handleRegisterTeam}
+                    fullWidth
+                    sx={{ mb: 2 }}
+                  >
+                    Register Your Team
+                  </Button>
+                )}
+                
                 {isParticipant() ? (
                   <Button
                     variant="contained"
@@ -390,6 +425,7 @@ const DebateDetails = () => {
                     </Button>
                   )
                 )}
+                
                 {debate.format === 'tournament' && !canJoinDebate() && (
                   <Typography variant="body2" color="error" sx={{ mt: 1, textAlign: 'center' }}>
                     {currentUser?.role === 'judge' ? 
@@ -432,10 +468,32 @@ const DebateDetails = () => {
                       </Typography>
                     )}
                   </Box>
+                  
+                  {/* Add Registration Info */}
+                  {isTournamentOpenForRegistration() && (
+                    <Box>
+                      <Typography variant="subtitle2" color="primary">
+                        Registration Open
+                      </Typography>
+                      <Typography variant="body2">
+                        Deadline: {new Date(debate.registrationDeadline).toLocaleString()}
+                      </Typography>
+                      <Button 
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        startIcon={<GroupAddIcon />}
+                        onClick={handleRegisterTeam}
+                        sx={{ mt: 1 }}
+                      >
+                        Register Team
+                      </Button>
+                    </Box>
+                  )}
                 </Stack>
               </Paper>
             )}
-
+            
             {renderParticipantInfo()}
           </Stack>
         </Grid>
