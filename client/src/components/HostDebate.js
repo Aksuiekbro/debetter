@@ -87,7 +87,6 @@ const HostDebate = () => {
       if (startDateTime - now < minHours * 60 * 60 * 1000) {
         newErrors.startDate = 'Tournament debates must be scheduled at least 48 hours in advance';
       }
-
       const registrationDeadline = new Date(formData.registrationDeadline);
       if (registrationDeadline >= startDateTime) {
         newErrors.registrationDeadline = 'Registration deadline must be before the tournament start date';
@@ -221,7 +220,6 @@ const HostDebate = () => {
                 {errors.category && <FormHelperText>{errors.category}</FormHelperText>}
               </FormControl>
             </Grid>
-
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Difficulty</InputLabel>
@@ -346,8 +344,7 @@ const HostDebate = () => {
                           helperText={errors.registrationDeadline || 'Must be at least 24 hours before start time'}
                         />
                       )}
-                      minDateTime={new Date()}
-                      maxDateTime={new Date(formData.startDate)}
+                      disablePast={true}
                     />
                   </LocalizationProvider>
                 </Grid>
@@ -439,7 +436,7 @@ const HostDebate = () => {
                       helperText={errors.startDate}
                     />
                   )}
-                  minDateTime={new Date()}
+                  disablePast={true}
                 />
               </LocalizationProvider>
             </Grid>

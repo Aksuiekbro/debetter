@@ -303,6 +303,7 @@ exports.getDebate = async (req, res) => {
     const debate = await Debate.findById(req.params.id)
       .populate('creator', 'username role')
       .populate('participants', 'username role')
+      .populate('teams.members.userId', 'username role email') // Properly populate team member user data
       .lean()
       .exec();
 
@@ -1159,6 +1160,10 @@ exports.createApfPosting = async (req, res) => {
     const { team1Id, team2Id, location, judgeIds, theme, tournamentId } = req.body;
     const debateId = req.params.id || tournamentId;
     
+    console.log('Creating APF posting with:', { 
+      team1Id, team2Id, location, judgeIds, theme, debateId 
+    });
+    
     // Validate required fields
     if (!team1Id || !team2Id || !location || !judgeIds || !theme) {
       return res.status(400).json({ message: 'Missing required fields for APF posting' });
@@ -1169,27 +1174,47 @@ exports.createApfPosting = async (req, res) => {
       return res.status(400).json({ message: 'Teams cannot be the same' });
     }
 
-    const debate = await Debate.findById(debateId);
+    // Fetch debate and populate participants
+    const debate = await Debate.findById(debateId).populate('participants');
     if (!debate) {
       return res.status(404).json({ message: 'Tournament not found' });
     }
 
+    console.log('Tournament participants structure:', debate.participants.map(p => ({
+      id: p._id?.toString(),
+      username: p.username,
+      role: p.role
+    })));
+
     // Ensure the teams exist in the tournament
-    const team1Exists = debate.teams && debate.teams.some(team => team._id.toString() === team1Id || team.id === team1Id);
-    const team2Exists = debate.teams && debate.teams.some(team => team._id.toString() === team2Id || team.id === team2Id);
+    const team1Exists = debate.teams && debate.teams.some(team => 
+      team._id.toString() === team1Id.toString() || team.id === team1Id.toString()
+    );
+    const team2Exists = debate.teams && debate.teams.some(team => 
+      team._id.toString() === team2Id.toString() || team.id === team2Id.toString()
+    );
     
     if (!team1Exists || !team2Exists) {
       return res.status(400).json({ message: 'One or both teams not found in this tournament' });
     }
 
-    // Verify that judges are tournament participants
-    const judgeParticipants = debate.participants.filter(p => p.role === 'judge');
-    const allJudgesValid = judgeIds.every(judgeId => 
-      judgeParticipants.some(jp => jp._id.toString() === judgeId || jp.id === judgeId)
+    // Instead of filtering by role, check if the judge IDs exist in the participants at all
+    const participantIds = debate.participants.map(p => p._id.toString());
+    
+    // Check if all judge IDs are in the participants array
+    const invalidJudges = judgeIds.filter(judgeId => 
+      !participantIds.includes(judgeId.toString())
     );
 
-    if (!allJudgesValid) {
-      return res.status(400).json({ message: 'One or more judges are not participants in this tournament' });
+    console.log('Judge IDs to validate:', judgeIds);
+    console.log('All participant IDs:', participantIds);
+    console.log('Invalid judges:', invalidJudges);
+
+    if (invalidJudges.length > 0) {
+      return res.status(400).json({ 
+        message: 'One or more judges are not participants in this tournament',
+        invalidJudges
+      });
     }
 
     // Create the APF game posting
@@ -1214,6 +1239,8 @@ exports.createApfPosting = async (req, res) => {
 
     // Return the created posting
     const createdPosting = debate.postings[debate.postings.length - 1];
+    
+    console.log('Successfully created APF posting:', createdPosting._id);
     
     res.status(201).json({
       message: 'APF game posted successfully',
@@ -1474,5 +1501,67 @@ exports.getPostingDetails = async (req, res) => {
   } catch (error) {
     console.error('Error getting posting details:', error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Randomize teams for a tournament
+exports.randomizeTeams = async (req, res) => {
+  try {
+    const { teams } = req.body;
+    const tournament = await Debate.findById(req.params.id);
+    
+    if (!tournament) {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+    
+    if (tournament.format !== 'tournament') {
+      return res.status(400).json({ message: 'This is not a tournament' });
+    }
+    
+    // Clear existing teams
+    tournament.teams = [];
+    
+    // Create new teams with the provided data
+    for (const teamData of teams) {
+      // Validate that both users exist
+      const leaderUser = await User.findById(teamData.leader);
+      const speakerUser = await User.findById(teamData.speaker);
+      
+      if (!leaderUser || !speakerUser) {
+        return res.status(400).json({ 
+          message: 'One or more team members not found',
+          leader: teamData.leader,
+          speaker: teamData.speaker
+        });
+      }
+      
+      // Create the team
+      const newTeam = {
+        name: teamData.name,
+        members: [
+          { userId: leaderUser._id, role: 'leader' },
+          { userId: speakerUser._id, role: 'speaker' }
+        ],
+        createdAt: new Date()
+      };
+      
+      tournament.teams.push(newTeam);
+    }
+    
+    // Save tournament with updated teams
+    await tournament.save();
+    
+    // Return updated tournament
+    const updatedTournament = await Debate.findById(req.params.id)
+      .populate('teams.members.userId', 'username email')
+      .populate('participants', 'username email role');
+    
+    res.json(updatedTournament);
+  } catch (error) {
+    console.error('Error randomizing teams:', error);
+    res.status(500).json({ 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
