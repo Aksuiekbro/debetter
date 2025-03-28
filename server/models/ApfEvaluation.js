@@ -27,6 +27,31 @@ const speakerScoreSchema = new Schema({
   }
 }, { _id: false });
 
+const detailedSpeakerScoreSchema = new Schema({
+  criteriaRatings: {
+    type: Map,
+    of: Number
+  },
+  feedback: {
+    type: String
+  },
+  totalPoints: {
+    type: Number,
+    min: 0,
+    max: 100
+  }
+}, { _id: false });
+
+const teamCriteriaScoreSchema = new Schema({
+  type: Map,
+  of: Number
+}, { _id: false });
+
+const transcriptionSchema = new Schema({
+  type: Map,
+  of: String
+}, { _id: false });
+
 const apfEvaluationSchema = new Schema({
   debateId: {
     type: Schema.Types.ObjectId,
@@ -44,6 +69,17 @@ const apfEvaluationSchema = new Schema({
     speakerGovernment: speakerScoreSchema,
     speakerOpposition: speakerScoreSchema
   },
+  speakerScores: {
+    leader_gov: detailedSpeakerScoreSchema,
+    leader_opp: detailedSpeakerScoreSchema,
+    speaker_gov: detailedSpeakerScoreSchema,
+    speaker_opp: detailedSpeakerScoreSchema
+  },
+  teamScores: {
+    team1: teamCriteriaScoreSchema,
+    team2: teamCriteriaScoreSchema
+  },
+  transcriptions: transcriptionSchema,
   winningTeam: {
     type: Schema.Types.ObjectId,
     ref: 'Team',
@@ -65,7 +101,7 @@ apfEvaluationSchema.pre('save', function(next) {
   const roles = ['leaderGovernment', 'leaderOpposition', 'speakerGovernment', 'speakerOpposition'];
   
   roles.forEach(role => {
-    if (this.scores[role]) {
+    if (this.scores && this.scores[role]) {
       const { content, style, strategy } = this.scores[role];
       this.scores[role].totalScore = content + style + strategy;
     }

@@ -11,36 +11,21 @@ const baseSchemas = {
   }
 };
 
-const teamSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
-  },
-  members: [{
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    role: {
-      type: String,
-      enum: ['leader', 'speaker'],
-      required: true
-    }
-  }],
-  wins: {
-    type: Number,
-    default: 0
-  },
-  losses: {
-    type: Number,
-    default: 0
-  },
-  points: {
-    type: Number,
-    default: 0
-  }
+// Sub-schema for team members within embedded teams
+const teamMemberSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  role: { type: String, enum: ['leader', 'speaker'], required: true }
+}, { _id: false }); // _id: false prevents Mongoose from creating an _id for subdocuments
+
+// Sub-schema for embedded teams within a Debate
+const embeddedTeamSchema = new Schema({
+  name: { type: String, required: true },
+  members: [teamMemberSchema],
+  wins: { type: Number, default: 0 },
+  losses: { type: Number, default: 0 },
+  points: { type: Number, default: 0 }
 });
+
 
 const roomSchema = new Schema({
   judge: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -50,12 +35,71 @@ const roomSchema = new Schema({
 });
 
 const matchSchema = new Schema({
-  round: Number, matchNumber: Number,
+  round: Number, 
+  matchNumber: Number,
   team1: { type: Schema.Types.ObjectId, ref: 'User' },
   team2: { type: Schema.Types.ObjectId, ref: 'User' },
   winner: { type: Schema.Types.ObjectId, ref: 'User' },
   completed: Boolean,
   room: roomSchema
+});
+
+const postingSchema = new Schema({
+  team1: { // Stores the _id of the embedded team object from Debate.teams
+    type: mongoose.Schema.Types.ObjectId,
+    required: true
+  },
+  team2: { // Stores the _id of the embedded team object from Debate.teams
+    type: mongoose.Schema.Types.ObjectId,
+    required: true
+  },
+  location: { 
+    type: String, 
+    required: true 
+  },
+  judges: [{ 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
+  }],
+  theme: { 
+    type: String, 
+    required: true 
+  },
+  status: { 
+    type: String, 
+    enum: ['scheduled', 'in_progress', 'completed'], 
+    default: 'scheduled' 
+  },
+  winner: { // Stores the _id of the embedded team object from Debate.teams
+    type: mongoose.Schema.Types.ObjectId
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
+  createdBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
+  },
+  evaluation: {
+    team1Score: Number,
+    team2Score: Number,
+    comments: String,
+    team1Comments: String,
+    team2Comments: String,
+    individualScores: Schema.Types.Mixed
+  },
+  transcription: {
+    full: String,
+    summary: String
+  },
+  notifications: {
+    judgesNotified: { 
+      type: Boolean, 
+      default: false 
+    },
+    sentAt: Date
+  }
 });
 
 const debateSchema = new Schema({
@@ -70,7 +114,7 @@ const debateSchema = new Schema({
   maxParticipants: { type: Number, default: function() { return this.format === 'tournament' ? 32 : 6; } },
   createdAt: { type: Date, default: Date.now },
   rooms: [roomSchema],
-  teams: [teamSchema],
+  teams: [embeddedTeamSchema], // Embed team data directly
   startedAt: Date,
   endedAt: Date,
   format: { type: String, enum: ['standard', 'tournament'], default: 'standard' },
@@ -89,7 +133,8 @@ const debateSchema = new Schema({
     confirmed: Boolean
   }],
   requiredJudges: { type: Number, default: function() { return this.format === 'tournament' ? 8 : 3 } },
-  maxJudges: { type: Number, default: function() { return this.format === 'tournament' ? 8 : 3; } }
+  maxJudges: { type: Number, default: function() { return this.format === 'tournament' ? 8 : 3; } },
+  postings: [postingSchema]
 }, {
   timestamps: true
 });
@@ -101,12 +146,12 @@ debateSchema.index({ 'creator': 1 });
 debateSchema.index({ startDate: 1 });
 
 debateSchema.pre('save', async function(next) {
-console.log('Debate pre-save hook triggered. Format:', this.format);
+  console.log('Debate pre-save hook triggered. Format:', this.format);
   if (this.format === 'tournament') {
     const parts = await this.populate('participants');
     const [debaters, judges] = [parts.participants.filter(p => p.role !== 'judge'), parts.participants.filter(p => p.role === 'judge')];
     Object.assign(this.tournamentSettings, { currentDebaters: debaters.length, currentJudges: judges.length });
-console.log('Debaters:', debaters.length, 'Judges:', judges.length);
+    console.log('Debaters:', debaters.length, 'Judges:', judges.length);
     if (debaters.length > 32 || judges.length > 8) throw new Error('Tournament limits exceeded');
   }
   next();
