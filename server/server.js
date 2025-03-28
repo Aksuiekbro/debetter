@@ -5,6 +5,7 @@ const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
 const debateRoutes = require('./routes/debateRoutes');
 const apfRoutes = require('./routes/apfRoutes');
+require('./models/Team'); // Ensure Team model is registered
 
 const app = express();
 

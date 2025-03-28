@@ -18,11 +18,17 @@ import {
   DialogActions,
   Card,
   CardContent,
+  CardHeader,
   Grid,
   Divider,
   FormControlLabel,
   Radio,
-  RadioGroup
+  RadioGroup,
+  Tabs,
+  Tab,
+  FormGroup,
+  TextField,
+  Rating
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MicIcon from '@mui/icons-material/Mic';
@@ -36,6 +42,7 @@ const ApfJudgeEvaluation = ({
   const [recording, setRecording] = useState(false);
   const [winningTeam, setWinningTeam] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [tabValue, setTabValue] = useState(0);
 
   const handleStartRecording = () => {
     // In the future, this would activate the STT functionality
@@ -50,6 +57,64 @@ const ApfJudgeEvaluation = ({
     setWinningTeam(teamId);
   };
 
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const [speakerFeedback, setSpeckerFeedback] = useState({
+    'leader_gov': '',
+    'leader_opp': '',
+    'speaker_gov': '',
+    'speaker_opp': ''
+  });
+
+  // Add state for speaker ratings and team ratings
+  const [speakerRatings, setSpeakerRatings] = useState({
+    'leader_gov': {},
+    'leader_opp': {},
+    'speaker_gov': {},
+    'speaker_opp': {}
+  });
+  
+  const [teamRatings, setTeamRatings] = useState({
+    'team1': {},
+    'team2': {}
+  });
+  
+  const [speakerTotalPoints, setSpeakerTotalPoints] = useState({
+    'leader_gov': '',
+    'leader_opp': '',
+    'speaker_gov': '',
+    'speaker_opp': ''
+  });
+
+  const handleRatingChange = (speakerRole, criterionId, value) => {
+    setSpeakerRatings(prev => ({
+      ...prev,
+      [speakerRole]: {
+        ...prev[speakerRole],
+        [criterionId]: value
+      }
+    }));
+  };
+
+  const handleTeamRatingChange = (teamId, criterionId, value) => {
+    setTeamRatings(prev => ({
+      ...prev,
+      [teamId]: {
+        ...prev[teamId],
+        [criterionId]: value
+      }
+    }));
+  };
+
+  const handleTotalPointsChange = (speakerRole, value) => {
+    setSpeakerTotalPoints(prev => ({
+      ...prev,
+      [speakerRole]: value
+    }));
+  };
+
   const handleSubmitEvaluation = () => {
     // Check if a winner has been selected
     if (!winningTeam) {
@@ -60,11 +125,41 @@ const ApfJudgeEvaluation = ({
     // Close the confirmation dialog
     setShowConfirmDialog(false);
     
-    // Call the parent's callback with evaluation data
+    // Prepare evaluation data
+    const speakerScores = {};
+    
+    // Process speaker ratings
+    Object.keys(speakerRatings).forEach(speakerRole => {
+      speakerScores[speakerRole] = {
+        criteriaRatings: speakerRatings[speakerRole],
+        feedback: speakerFeedback[speakerRole],
+        totalPoints: speakerTotalPoints[speakerRole] || 0
+      };
+    });
+    
+    // Process team criteria ratings
+    const teamScores = {
+      team1: teamRatings.team1,
+      team2: teamRatings.team2
+    };
+    
+    // Prepare transcription data if any
+    const transcriptionData = {};
+    Object.keys(transcriptions).forEach(key => {
+      if (transcriptions[key]) {
+        transcriptionData[key] = transcriptions[key];
+      }
+    });
+    
+    // Call the parent's callback with complete evaluation data
     onSubmitEvaluation({
-      gameId: game.id,
+      gameId: game.id,  // Posting ID
+      tournamentId: game.tournamentId, // Tournament/Debate ID
       winningTeamId: winningTeam,
-      // In a real implementation, you'd include scores and other evaluation metrics
+      speakerScores,
+      teamScores,
+      transcriptions: Object.keys(transcriptionData).length > 0 ? transcriptionData : undefined,
+      notes: ''  // Optional general notes
     });
     
     // Close the evaluation interface
@@ -88,9 +183,89 @@ const ApfJudgeEvaluation = ({
     { id: 'total', criteria: 'Total Score', scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } },
   ];
 
+  // Speaker evaluation criteria based on roles
+  const leaderCriteria = [
+    { id: 'clarity', label: 'Clarity of definition/framing' },
+    { id: 'construction', label: 'Argument construction' },
+    { id: 'responsiveness', label: 'Responsiveness to opponent' },
+    { id: 'strategic', label: 'Strategic positioning' },
+    { id: 'delivery', label: 'Delivery and oratory' }
+  ];
+
+  const speakerCriteria = [
+    { id: 'refutation', label: 'Refutation/rebuilding' },
+    { id: 'analysis', label: 'New analysis/depth' },
+    { id: 'engagement', label: 'Engagement and structure' },
+    { id: 'timeManagement', label: 'Time management & structure' },
+    { id: 'framing', label: 'Framing and clarity' }
+  ];
+
+  // Team evaluation criteria
+  const teamCriteria = [
+    { id: 'argumentStrength', label: 'Argument strength' },
+    { id: 'refutation', label: 'Refutation/Clash' },
+    { id: 'weighting', label: 'Weighting and impact' },
+    { id: 'teamCohesion', label: 'Team cohesion' },
+    { id: 'structure', label: 'Structure and organization' },
+    { id: 'delivery', label: 'Delivery' },
+    { id: 'visual', label: 'Visuals/body language' },
+    { id: 'ruleObedience', label: 'Rule obedience' }
+  ];
+
+  // Speech component criteria
+  const speechComponentCriteria = [
+    { id: 'constructiveSpeech', label: 'Constructive speech' },
+    { id: 'rebuttalSpeech', label: 'Rebuttal speech' },
+    { id: 'crossExamination', label: 'Cross examination' },
+    { id: 'useOfEvidence', label: 'Use of evidence' }
+  ];
+
+  // Mock STT transcription data (would be replaced with actual STT data)
+  const [transcriptions, setTranscriptions] = useState({
+    'leader_gov': '',
+    'leader_opp': '',
+    'speaker_gov': '',
+    'speaker_opp': ''
+  });
+
+  // Update transcription when recording is active (simulated)
+  React.useEffect(() => {
+    if (recording) {
+      // Simulating receiving STT data while recording is active
+      const timer = setTimeout(() => {
+        setTranscriptions(prev => ({
+          ...prev,
+          'leader_gov': prev.leader_gov || 'The government believes that this policy would benefit society because it addresses fundamental issues that have been overlooked for too long. Our first point is that...'
+        }));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [recording]);
+
+  // Helper function to get the appropriate criteria based on role
+  const getCriteriaForRole = (role) => {
+    return role.includes('leader') ? leaderCriteria : speakerCriteria;
+  };
+
+  // Helper function to get speaker name based on role
+  const getSpeakerName = (role) => {
+    if (role === 'leader_gov') return game.team1.leader || 'Leader Gov';
+    if (role === 'speaker_gov') return game.team1.speaker || 'Speaker Gov';
+    if (role === 'leader_opp') return game.team2.leader || 'Leader Opp';
+    if (role === 'speaker_opp') return game.team2.speaker || 'Speaker Opp';
+    return 'Unknown Speaker';
+  };
+
+  // Helper function to get speaker role title
+  const getSpeakerRole = (role) => {
+    if (role.includes('leader')) return 'Leader';
+    if (role.includes('speaker')) return 'Speaker';
+    return 'Unknown Role';
+  };
+
   return (
     <>
-      <Paper elevation={3} sx={{ p: 3, position: 'relative' }}>
+      <Paper elevation={3} sx={{ p: 3, position: 'relative', maxWidth: '1200px', mx: 'auto' }}>
         <IconButton 
           sx={{ position: 'absolute', top: 10, left: 10 }} 
           onClick={onClose}
@@ -128,7 +303,7 @@ const ApfJudgeEvaluation = ({
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
           <Button
             variant="contained"
-            color={recording ? "error" : "primary"}
+            color={recording ? "error" : "success"}
             startIcon={<MicIcon />}
             onClick={recording ? handleStopRecording : handleStartRecording}
             sx={{ px: 4 }}
@@ -143,46 +318,248 @@ const ApfJudgeEvaluation = ({
           </Typography>
         )}
 
-        <Typography variant="subtitle1" gutterBottom sx={{ mt: 4 }}>
-          Evaluation Table
-        </Typography>
-        
-        <TableContainer component={Paper} elevation={2}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                {columns.map((column) => (
-                  <TableCell 
-                    key={column.id}
-                    align={column.align || 'left'}
-                    sx={{ fontWeight: 'bold' }}
-                  >
-                    {column.label}
-                  </TableCell>
+        <Box sx={{ width: '100%', mb: 4 }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            variant="fullWidth"
+            indicatorColor="primary"
+            textColor="primary"
+            aria-label="evaluation tabs"
+          >
+            <Tab label="Transcription" />
+            <Tab label="Speaker Evaluation" />
+            <Tab label="Team Criteria" />
+          </Tabs>
+
+          {/* Evaluation Table Tab */}
+          <Box role="tabpanel" hidden={tabValue !== 0} sx={{ mt: 2 }}>
+            {tabValue === 0 && (
+              <>
+                <Card elevation={2} sx={{ mb: 4 }}>
+                  <CardHeader title="Speech Transcription" sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }} />
+                  <CardContent>
+                    <Grid container spacing={2}>
+                      {Object.entries(transcriptions).map(([speaker, text]) => (
+                        <Grid item xs={12} key={speaker}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            {getSpeakerName(speaker)} ({getSpeakerRole(speaker)}):
+                          </Typography>
+                          <Paper variant="outlined" sx={{ p: 2, minHeight: '60px', bgcolor: 'rgba(0, 0, 0, 0.01)' }}>
+                            <Typography variant="body2">
+                              {text || 'No speech transcribed yet...'}
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </Box>
+
+          {/* Speaker Evaluation Tab */}
+          <Box role="tabpanel" hidden={tabValue !== 1} sx={{ mt: 2 }}>
+            {tabValue === 1 && (
+              <Grid container spacing={3}>
+                {Object.keys(transcriptions).map((speakerRole) => (
+                  <Grid item xs={12} md={6} key={speakerRole}>
+                    <Card sx={{ mb: 3 }}>
+                      <CardHeader 
+                        title={`${getSpeakerName(speakerRole)}`}
+                        subheader={`${getSpeakerRole(speakerRole)} - ${speakerRole.includes('gov') ? 'Government' : 'Opposition'}`}
+                        sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }}
+                      />
+                      <CardContent>
+                        {getCriteriaForRole(speakerRole).map((criterion) => (
+                          <Box key={criterion.id} sx={{ mb: 2 }}>
+                            <Grid container alignItems="center" spacing={1}>
+                              <Grid item xs={8}>
+                                <Typography variant="body2">
+                                  {criterion.label}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={4}>
+                                <Rating 
+                                  name={`${criterion.id}-${speakerRole}`}
+                                  max={5}
+                                  size="small"
+                                  sx={{ mb: 1 }}
+                                  onChange={(event, newValue) => handleRatingChange(speakerRole, criterion.id, newValue)}
+                                  value={speakerRatings[speakerRole][criterion.id] || 0}
+                                />
+                              </Grid>
+                            </Grid>
+                            <Divider sx={{ mt: 1 }} />
+                          </Box>
+                        ))}
+                        
+                        <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
+                          Overall Speaker Feedback
+                        </Typography>
+                        <TextField
+                          fullWidth
+                          multiline
+                          rows={3}
+                          variant="outlined"
+                          placeholder="Enter feedback for this speaker..."
+                          value={speakerFeedback[speakerRole]}
+                          onChange={(e) => setSpeckerFeedback(prev => ({
+                            ...prev,
+                            [speakerRole]: e.target.value
+                          }))}
+                          size="small"
+                        />
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                          <Typography variant="subtitle2">
+                            Total Points:
+                          </Typography>
+                          <TextField
+                            variant="outlined"
+                            size="small"
+                            type="number"
+                            inputProps={{ 
+                              min: 0, 
+                              max: 100,
+                              style: { textAlign: 'center' }
+                            }}
+                            sx={{ width: '80px' }}
+                            value={speakerTotalPoints[speakerRole] || ''}
+                            onChange={(e) => handleTotalPointsChange(speakerRole, e.target.value)}
+                          />
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
                 ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{row.criteria}</TableCell>
-                  <TableCell align="center">
-                    {row.scores.leader_gov}
-                  </TableCell>
-                  <TableCell align="center">
-                    {row.scores.leader_opp}
-                  </TableCell>
-                  <TableCell align="center">
-                    {row.scores.speaker_gov}
-                  </TableCell>
-                  <TableCell align="center">
-                    {row.scores.speaker_opp}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </Grid>
+            )}
+          </Box>
+
+          {/* Team Criteria Tab */}
+          <Box role="tabpanel" hidden={tabValue !== 2} sx={{ mt: 2 }}>
+            {tabValue === 2 && (
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardHeader 
+                      title={`${game.team1.name} (Government)`}
+                      sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }}
+                    />
+                    <CardContent>
+                      <Typography variant="subtitle2" gutterBottom>Team Criteria</Typography>
+                      {teamCriteria.map((item) => (
+                        <Box key={item.id} sx={{ mb: 2 }}>
+                          <Grid container alignItems="center" spacing={1}>
+                            <Grid item xs={8}>
+                              <Typography variant="body2">
+                                {item.label}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Rating 
+                                name={`${item.id}-team1`}
+                                max={5}
+                                size="small"
+                                sx={{ mb: 1 }}
+                                onChange={(event, newValue) => handleTeamRatingChange('team1', item.id, newValue)}
+                                value={teamRatings.team1[item.id] || 0}
+                              />
+                            </Grid>
+                          </Grid>
+                          <Divider sx={{ mt: 1 }} />
+                        </Box>
+                      ))}
+                      
+                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>Speech Components</Typography>
+                      {speechComponentCriteria.map((item) => (
+                        <Box key={item.id} sx={{ mb: 2 }}>
+                          <Grid container alignItems="center" spacing={1}>
+                            <Grid item xs={8}>
+                              <Typography variant="body2">
+                                {item.label}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Rating 
+                                name={`${item.id}-team1`}
+                                max={5}
+                                size="small"
+                                sx={{ mb: 1 }}
+                                onChange={(event, newValue) => handleTeamRatingChange('team1', item.id, newValue)}
+                                value={teamRatings.team1[item.id] || 0}
+                              />
+                            </Grid>
+                          </Grid>
+                          <Divider sx={{ mt: 1 }} />
+                        </Box>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardHeader 
+                      title={`${game.team2.name} (Opposition)`}
+                      sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }}
+                    />
+                    <CardContent>
+                      <Typography variant="subtitle2" gutterBottom>Team Criteria</Typography>
+                      {teamCriteria.map((item) => (
+                        <Box key={item.id} sx={{ mb: 2 }}>
+                          <Grid container alignItems="center" spacing={1}>
+                            <Grid item xs={8}>
+                              <Typography variant="body2">
+                                {item.label}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Rating 
+                                name={`${item.id}-team2`}
+                                max={5}
+                                size="small"
+                                sx={{ mb: 1 }}
+                                onChange={(event, newValue) => handleTeamRatingChange('team2', item.id, newValue)}
+                                value={teamRatings.team2[item.id] || 0}
+                              />
+                            </Grid>
+                          </Grid>
+                          <Divider sx={{ mt: 1 }} />
+                        </Box>
+                      ))}
+                      
+                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>Speech Components</Typography>
+                      {speechComponentCriteria.map((item) => (
+                        <Box key={item.id} sx={{ mb: 2 }}>
+                          <Grid container alignItems="center" spacing={1}>
+                            <Grid item xs={8}>
+                              <Typography variant="body2">
+                                {item.label}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Rating 
+                                name={`${item.id}-team2`}
+                                max={5}
+                                size="small"
+                                sx={{ mb: 1 }}
+                                onChange={(event, newValue) => handleTeamRatingChange('team2', item.id, newValue)}
+                                value={teamRatings.team2[item.id] || 0}
+                              />
+                            </Grid>
+                          </Grid>
+                          <Divider sx={{ mt: 1 }} />
+                        </Box>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            )}
+          </Box>
+        </Box>
         
         <Box sx={{ mt: 4 }}>
           <Typography variant="subtitle1" gutterBottom>
@@ -196,12 +573,12 @@ const ApfJudgeEvaluation = ({
               >
                 <FormControlLabel 
                   value={game.team1.id} 
-                  control={<Radio />} 
+                  control={<Radio color="primary" />} 
                   label={`${game.team1.name} (Government)`} 
                 />
                 <FormControlLabel 
                   value={game.team2.id} 
-                  control={<Radio />} 
+                  control={<Radio color="primary" />} 
                   label={`${game.team2.name} (Opposition)`} 
                 />
               </RadioGroup>

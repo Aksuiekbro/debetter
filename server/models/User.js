@@ -59,6 +59,30 @@ const userSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  notifications: [{
+    type: {
+      type: String,
+      enum: ['game_assignment', 'evaluation_request', 'system_notice'],
+      required: true
+    },
+    debate: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Debate'
+    },
+    posting: mongoose.Schema.Types.ObjectId,
+    message: {
+      type: String,
+      required: true
+    },
+    seen: {
+      type: Boolean,
+      default: false
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   isFirstOrganizer: {
     type: Boolean,
     default: false

@@ -7,72 +7,61 @@ import {
   Grid,
   Tabs,
   Tab,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import JudgeGameCard from './JudgeGameCard';
 import ApfJudgeEvaluation from './ApfJudgeEvaluation';
 import { getAuthHeaders } from '../utils/auth';
+import { api } from '../config/api';
 
 const JudgePanel = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [assignedGames, setAssignedGames] = useState([]);
   const [selectedGame, setSelectedGame] = useState(null);
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [tabValue, setTabValue] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchAssignedGames();
   }, []);
 
+  // Check for navigation state to directly open evaluation
+  useEffect(() => {
+    if (location.state?.selectedGame) {
+      console.log('Received selectedGame from navigation state:', location.state.selectedGame);
+      setSelectedGame(location.state.selectedGame);
+      setShowEvaluation(true);
+      // Clear the state to prevent re-triggering on refresh/back navigation
+      navigate('.', { replace: true, state: {} }); 
+    }
+  }, [location.state, navigate]);
+
+
   const fetchAssignedGames = async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // In a real implementation, this would fetch from your API
-      // For now, using mock data
-      const mockGames = [
-        {
-          id: 'game1',
-          format: 'APF',
-          startTime: new Date().setHours(12, 0, 0),
-          duration: 60,
-          location: '203 кабинет',
-          team1: { id: 'team1', name: 'team 1' },
-          team2: { id: 'team2', name: 'team 2' },
-          theme: 'Health care has to be free',
-          status: 'pending'
-        },
-        {
-          id: 'game2',
-          format: 'APF',
-          startTime: new Date().setHours(14, 0, 0),
-          duration: 60,
-          location: '204 кабинет',
-          team1: { id: 'team3', name: 'team 3' },
-          team2: { id: 'team4', name: 'team 4' },
-          theme: 'Technology addiction is a serious problem',
-          status: 'pending'
-        },
-      ];
-      
-      // Simulate API call delay
-      setTimeout(() => {
-        setAssignedGames(mockGames);
-        setLoading(false);
-      }, 500);
-      
-      // For actual implementation:
-      // const response = await fetch('http://localhost:5001/api/debates/assigned', {
-      //   headers: getAuthHeaders()
-      // });
-      // if (response.ok) {
-      //   const games = await response.json();
-      //   setAssignedGames(games);
-      // }
+      // Fetch assigned games from API
+      const response = await fetch(`${api.baseUrl}/api/apf/assignments`, {
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch assigned games: ${response.status}`);
+      }
+
+      const games = await response.json();
+      console.log('Fetched assigned games:', games);
+      setAssignedGames(games);
     } catch (error) {
       console.error('Error fetching assigned games:', error);
+      setError('Failed to load your assigned games. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -92,6 +81,24 @@ const JudgePanel = () => {
     try {
       console.log('Submitting evaluation:', evaluationData);
       
+      // Use the tournament ID as the debate ID for the API endpoint
+      const debateId = selectedGame.tournamentId;
+      
+      // Submit evaluation to API
+      const response = await fetch(`${api.baseUrl}/api/apf/${debateId}/evaluate`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(evaluationData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to submit evaluation');
+      }
+      
       // Update local state to reflect the evaluated status
       setAssignedGames(prevGames => 
         prevGames.map(game => 
@@ -101,19 +108,14 @@ const JudgePanel = () => {
         )
       );
       
-      // In a real implementation, you would submit to API:
-      // await fetch(`http://localhost:5001/api/debates/${evaluationData.gameId}/evaluate`, {
-      //   method: 'POST',
-      //   headers: {
-      //     ...getAuthHeaders(),
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify(evaluationData)
-      // });
+      // Close the evaluation panel
+      handleCloseEvaluation();
       
+      // Refresh the games list
+      fetchAssignedGames();
     } catch (error) {
       console.error('Error submitting evaluation:', error);
-      alert('Failed to submit evaluation. Please try again.');
+      alert('Failed to submit evaluation: ' + error.message);
     }
   };
 
@@ -149,6 +151,8 @@ const JudgePanel = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress />
             </Box>
+          ) : error ? (
+            <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
           ) : (
             <>
               {tabValue === 0 && (
@@ -188,7 +192,7 @@ const JudgePanel = () => {
                         <Grid item xs={12} md={6} key={game.id}>
                           <JudgeGameCard 
                             game={game} 
-                            onClick={() => alert('This evaluation has already been submitted')} 
+                            onClick={() => navigate(`/debates/${game.tournamentId}/postings/${game.id}`)} 
                           />
                         </Grid>
                       ))

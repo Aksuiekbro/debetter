@@ -99,6 +99,9 @@ const TournamentManagement = () => {
   const [apfPostings, setApfPostings] = useState([]); // Stores successfully posted games
   // const [availableThemes, setAvailableThemes] = useState([]); // Optional: For predefined themes
   
+  // Add state for standings
+  const [standings, setStandings] = useState([]);
+  
   useEffect(() => {
     const fetchTournament = async () => {
       try {
@@ -145,7 +148,10 @@ const TournamentManagement = () => {
               leader: leaderMember?.userId?.username || 'Unknown',
               speaker: speakerMember?.userId?.username || 'Unknown',
               leaderId: leaderMember?.userId?._id || leaderMember?.userId,
-              speakerId: speakerMember?.userId?._id || speakerMember?.userId
+              speakerId: speakerMember?.userId?._id || speakerMember?.userId,
+              wins: team.wins || 0,
+              losses: team.losses || 0,
+              points: team.points || 0
             };
           }));
         } else {
@@ -159,7 +165,10 @@ const TournamentManagement = () => {
                 leader: tournamentEntrants[i*2].username,
                 speaker: tournamentEntrants[i*2+1].username,
                 leaderId: tournamentEntrants[i*2]._id,
-                speakerId: tournamentEntrants[i*2+1]._id
+                speakerId: tournamentEntrants[i*2+1]._id,
+                wins: 0,
+                losses: 0,
+                points: 0
               });
             }
           }
@@ -175,6 +184,9 @@ const TournamentManagement = () => {
             content: 'The schedule for the tournament has been finalized. Please check your email for details.'
           }
         ]);
+        
+        // Fetch standings data
+        fetchStandings();
         
         setLoading(false);
       } catch (error) {
@@ -609,263 +621,297 @@ const TournamentManagement = () => {
     setNotification({ ...notification, open: false });
   };
 
-    console.log('[generateTestData] Starting...');
-const generateTestData = async () => {
-  try {
-    setLoading(true);
-    console.log('Starting test data generation...');
-    
-    console.log('[generateTestData] Setting notification: Generating test data...');
-    setNotification({
-      open: true,
-      message: 'Generating test data...',
-      severity: 'info'
-    });
-
- console.log('[generateTestData] Fetching potential judges...');
-    // First, fetch all test users from database
-    console.log('[generateTestData] Fetching potential judges and debaters...');
-    const testJudgesResponse = await fetch(`${api.baseUrl}/api/users/test/judges`, {
-      headers: getAuthHeaders()
-    });
-    
-    const testDebatersResponse = await fetch(`${api.baseUrl}/api/users/test/debaters`, {
-      headers: getAuthHeaders()
-    });
-    
-    if (!testJudgesResponse.ok || !testDebatersResponse.ok) {
-      const judgesError = await testJudgesResponse.text();
-      const debatersError = await testDebatersResponse.text();
-      throw new Error(`Failed to fetch test users: Judges(${testJudgesResponse.status}): ${judgesError}, Debaters(${testDebatersResponse.status}): ${debatersError}`);
-    }
-    
-    const testJudgesData = await testJudgesResponse.json();
-    const testDebatersData = await testDebatersResponse.json();
-
-    const testJudges = testJudgesData.users;
-    const testDebaters = testDebatersData.users;
-    
-    console.log(`Found ${testJudges.length} judges and ${testDebaters.length} debaters`);
-    
-    if (!testJudges.length || !testDebaters.length) {
-      throw new Error(`Insufficient test users found. Judges: ${testJudges.length}, Debaters: ${testDebaters.length}`);
-    }
-    
-    // Register these users to the tournament
-    console.log('[generateTestData] Registering participants...');
-    const updateResponse = await fetch(`${api.baseUrl}/api/debates/${id}/register-participants`, {
-      method: 'POST',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        judges: testJudges.map(j => j._id.toString()),
-        debaters: testDebaters.map(d => d._id.toString())
-      })
-    });
-    
-    if (!updateResponse.ok) {
-      const errorText = await updateResponse.text();
-      throw new Error(`Failed to register participants to the tournament: ${errorText}`);
-    }
-    
-    const updatedData = await updateResponse.json();
-    console.log('Registration successful:', updatedData);
-
-    // Update the local state with new data
-    setTournament(updatedData);
-    
-    // Update entrants and judges lists
-    const newEntrants = testDebaters.map(debater => ({
-      id: debater._id,
-      name: debater.username,
-      email: debater.email,
-      enrollDate: new Date(debater.createdAt).toLocaleDateString()
-    }));
-    setEntrants(newEntrants);
-    
-    const newJudges = testJudges.map(judge => ({
-      id: judge._id,
-      name: judge.username,
-      email: judge.email,
-      role: judge.judgeRole || 'Judge'
-    }));
-    setJudges(newJudges);
-    
-    // Create teams from the debaters
-    const newTeams = [];
-    for (let i = 0; i < Math.floor(testDebaters.length / 2); i++) {
-    console.log('[generateTestData] Creating teams...');
-      if (i*2+1 < testDebaters.length) {
-        const teamResponse = await fetch(`${api.baseUrl}/api/debates/teams`, {
-          method: 'POST',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: `Team ${i+1}`,
-            leader: testDebaters[i*2]._id,
-            speaker: testDebaters[i*2+1]._id,
-            tournamentId: id
-          })
-        });
-        
-        if (teamResponse.ok) {
-          const teamResult = await teamResponse.json();
-          newTeams.push({
-            id: teamResult._id || `team-${i}`,
-            name: `Team ${i+1}`,
-            leader: testDebaters[i*2].username,
-            speaker: testDebaters[i*2+1].username,
-            leaderId: testJudges[i*2]._id,
-            speakerId: testDebaters[i*2+1]._id
-          });
-        } else {
-          console.warn('Failed to create team:', await teamResponse.text());
-        }
+  // Function to fetch standings data
+  const fetchStandings = async () => {
+    try {
+      const response = await fetch(`${api.baseUrl}/api/apf/tabulation/${id}`, {
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch standings: ${response.status}`);
       }
+      
+      const standingsData = await response.json();
+      console.log('Fetched standings data:', standingsData);
+      setStandings(standingsData);
+      
+      // Update teams with standings data
+      if (standingsData.length > 0) {
+        setTeams(prevTeams => {
+          const updatedTeams = [...prevTeams];
+          
+          // Update each team with its standings data
+          for (const team of updatedTeams) {
+            const teamStanding = standingsData.find(s => s.id === team.id);
+            if (teamStanding) {
+              team.wins = teamStanding.wins || 0;
+              team.points = teamStanding.score || 0;
+              // Calculate losses based on total games (we could improve this with actual game count)
+              team.losses = 0; // For now, just showing wins
+            }
+          }
+          
+          return updatedTeams;
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching standings:', error);
+      // Don't show error notification for standings as it's non-critical
     }
-    setTeams(newTeams);
-    
-    setNotification({
-      open: true,
-      message: 'Test data generated and registered successfully',
-      severity: 'success'
-    });
-    
-  } catch (error) {
-    console.error('API error during test data generation:', error);
-    console.log('[generateTestData] Error occurred:', error);
-    setNotification({
-      open: true,
-      message: 'Failed to generate test data: ' + error.message,
+  };
 
-    });
-  } finally {
- console.log('[generateTestData] Finished.');
-    setLoading(false);
-  }
-};
-
-// Function to randomize team selection
-const randomizeTeams = async () => {
-  try {
-    setLoading(true);
-    
-    // Check if we have enough entrants
-    if (entrants.length < 2) {
+  const generateTestData = async () => {
+    try {
+      setLoading(true);
+      console.log('Starting test data generation...');
+      
       setNotification({
         open: true,
-        message: 'Need at least 2 entrants to form teams',
-        severity: 'warning'
+        message: 'Generating test data...',
+        severity: 'info'
       });
-      setLoading(false);
-      return;
-    }
-    
-    // Create a copy of the entrants array and shuffle it
-    const shuffledEntrants = [...entrants].sort(() => Math.random() - 0.5);
-    
-    // Clear existing teams
-    const newTeams = [];
-    const teamDataForDb = [];
-    
-    // Create new teams with randomly paired entrants
-    for (let i = 0; i < Math.floor(shuffledEntrants.length / 2); i++) {
-      const entrant1 = shuffledEntrants[i*2];
-      const entrant2 = shuffledEntrants[i*2+1];
-      
-      // Create new team with randomized pairs
-      const newTeam = {
-        id: `team-${Date.now()}-${i}`,
-        name: `Team ${i+1}`,
-        leader: entrant1.name,
-        speaker: entrant2.name,
-        leaderId: entrant1.id,
-        speakerId: entrant2.id
-      };
-      
-      // Add to new teams array for UI
-      newTeams.push(newTeam);
-      
-      // Prepare team data for database
-      teamDataForDb.push({
-        name: newTeam.name,
-        leader: newTeam.leaderId,
-        speaker: newTeam.speakerId,
+
+      // First, fetch all test users from database
+      console.log('[generateTestData] Fetching potential judges and debaters...');
+      const testJudgesResponse = await fetch(`${api.baseUrl}/api/users/test/judges`, {
+        headers: getAuthHeaders()
       });
-    }
-    
-    // Save all teams to the database at once
-    try {
-      const response = await fetch(`${api.baseUrl}/api/debates/${id}/randomize-teams`, {
+      
+      const testDebatersResponse = await fetch(`${api.baseUrl}/api/users/test/debaters`, {
+        headers: getAuthHeaders()
+      });
+      
+      if (!testJudgesResponse.ok || !testDebatersResponse.ok) {
+        const judgesError = await testJudgesResponse.text();
+        const debatersError = await testDebatersResponse.text();
+        throw new Error(`Failed to fetch test users: Judges(${testJudgesResponse.status}): ${judgesError}, Debaters(${testDebatersResponse.status}): ${debatersError}`);
+      }
+      
+      const testJudgesData = await testJudgesResponse.json();
+      const testDebatersData = await testDebatersResponse.json();
+      const testJudges = testJudgesData.users;
+      const testDebaters = testDebatersData.users;
+      
+      console.log(`Found ${testJudges.length} judges and ${testDebaters.length} debaters`);
+      
+      if (!testJudges.length || !testDebaters.length) {
+        throw new Error(`Insufficient test users found. Judges: ${testJudges.length}, Debaters: ${testDebaters.length}`);
+      }
+      
+      // Register these users to the tournament
+      console.log('[generateTestData] Registering participants...');
+      const updateResponse = await fetch(`${api.baseUrl}/api/debates/${id}/register-participants`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          teams: teamDataForDb
+          judges: testJudges.map(j => j._id.toString()),
+          debaters: testDebaters.map(d => d._id.toString())
         })
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save randomized teams: ${errorText}`);
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        throw new Error(`Failed to register participants to the tournament: ${errorText}`);
       }
       
-      // Update tournament data with response
-      const updatedTournament = await response.json();
-      setTournament(updatedTournament);
+      const updatedData = await updateResponse.json();
+      console.log('Registration successful:', updatedData);
       
-      // Update teams state with data from server
-      if (updatedTournament.teams && updatedTournament.teams.length > 0) {
-        setTeams(updatedTournament.teams.map(team => ({
-          id: team._id,
-          name: team.name,
-          leader: team.members.find(m => m.role === 'leader')?.userId?.username || 'Unknown',
-          speaker: team.members.find(m => m.role === 'speaker')?.userId?.username || 'Unknown',
-          leaderId: team.members.find(m => m.role === 'leader')?.userId?._id,
-          speakerId: team.members.find(m => m.role === 'speaker')?.userId?._id
-        })));
-      } else {
-        // Fallback to local teams if server didn't return team data
-        setTeams(newTeams);
+      // Update the local state with new data
+      setTournament(updatedData);
+      
+      // Update entrants and judges lists
+      const newEntrants = testDebaters.map(debater => ({
+        id: debater._id,
+        name: debater.username,
+        email: debater.email,
+        enrollDate: new Date(debater.createdAt).toLocaleDateString()
+      }));
+      setEntrants(newEntrants);
+      
+      const newJudges = testJudges.map(judge => ({
+        id: judge._id,
+        name: judge.username,
+        email: judge.email,
+        role: judge.judgeRole || 'Judge'
+      }));
+      setJudges(newJudges);
+      
+      // Initialize standings for all teams with zero stats
+      setStandings([]);
+      
+      // Set teams with zero stats
+      if (updatedData.teams && updatedData.teams.length > 0) {
+        const updatedTeams = updatedData.teams.map(team => {
+          const leaderMember = team.members.find(m => m.role === 'leader');
+          const speakerMember = team.members.find(m => m.role === 'speaker');
+          
+          return {
+            id: team._id,
+            name: team.name,
+            leader: leaderMember?.userId?.username || 'Unknown',
+            speaker: speakerMember?.userId?.username || 'Unknown',
+            leaderId: leaderMember?.userId?._id || leaderMember?.userId,
+            speakerId: speakerMember?.userId?._id || speakerMember?.userId,
+            wins: 0,
+            losses: 0,
+            points: 0
+          };
+        });
+        
+        setTeams(updatedTeams);
       }
-    } catch (error) {
-      console.error('Failed to save teams to database:', error);
-      // Update local state even if server request failed
-      setTeams(newTeams);
-      throw error; // rethrow to be caught by outer catch block
-    }
-    
-    // Handle odd number of entrants if there are any
-    if (shuffledEntrants.length % 2 !== 0) {
+      
       setNotification({
         open: true,
-        message: `Teams randomized successfully! Note: One entrant (${shuffledEntrants[shuffledEntrants.length-1].name}) was left without a team due to odd number of participants.`,
-        severity: 'info'
-      });
-    } else {
-      setNotification({
-        open: true,
-        message: 'Teams randomized successfully!',
+        message: 'Test participants registered successfully. Click "Randomize Teams" to create teams.',
         severity: 'success'
       });
+      
+    } catch (error) {
+      console.error('API error during test data generation:', error);
+      console.log('[generateTestData] Error occurred:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to generate test data: ' + error.message,
+        severity: 'error'
+      });
+    } finally {
+      console.log('[generateTestData] Finished.');
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error randomizing teams:', error);
-    setNotification({
-      open: true,
-      message: 'Failed to randomize teams: ' + error.message,
-      severity: 'error'
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  // Function to randomize team selection
+  const randomizeTeams = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if we have enough entrants
+      if (entrants.length < 2) {
+        setNotification({
+          open: true,
+          message: 'Need at least 2 entrants to form teams',
+          severity: 'warning'
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Create a copy of the entrants array and shuffle it
+      const shuffledEntrants = [...entrants].sort(() => Math.random() - 0.5);
+      
+      // Clear existing teams
+      const newTeams = [];
+      const teamDataForDb = [];
+      
+      // Create new teams with randomly paired entrants
+      for (let i = 0; i < Math.floor(shuffledEntrants.length / 2); i++) {
+        const entrant1 = shuffledEntrants[i*2];
+        const entrant2 = shuffledEntrants[i*2+1];
+        
+        // Create new team with randomized pairs
+        const newTeam = {
+          id: `team-${Date.now()}-${i}`,
+          name: `Team ${i+1}`,
+          leader: entrant1.name,
+          speaker: entrant2.name,
+          leaderId: entrant1.id,
+          speakerId: entrant2.id,
+          wins: 0,
+          losses: 0,
+          points: 0
+        };
+        
+        // Add to new teams array for UI
+        newTeams.push(newTeam);
+        
+        // Prepare team data for database
+        teamDataForDb.push({
+          name: newTeam.name,
+          leader: newTeam.leaderId,
+          speaker: newTeam.speakerId,
+        });
+      }
+      
+      // Save all teams to the database at once
+      try {
+        const response = await fetch(`${api.baseUrl}/api/debates/${id}/randomize-teams`, {
+          method: 'POST',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            teams: teamDataForDb
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to save randomized teams: ${errorText}`);
+        }
+        
+        // Update tournament data with response
+        const updatedTournament = await response.json();
+        setTournament(updatedTournament);
+        
+        // Initialize standings with zero stats for all teams
+        setStandings([]);
+        
+        // Update teams state with data from server
+        if (updatedTournament.teams && updatedTournament.teams.length > 0) {
+          setTeams(updatedTournament.teams.map(team => ({
+            id: team._id,
+            name: team.name,
+            leader: team.members.find(m => m.role === 'leader')?.userId?.username || 'Unknown',
+            speaker: team.members.find(m => m.role === 'speaker')?.userId?.username || 'Unknown',
+            leaderId: team.members.find(m => m.role === 'leader')?.userId?._id,
+            speakerId: team.members.find(m => m.role === 'speaker')?.userId?._id,
+            wins: 0,
+            losses: 0,
+            points: 0
+          })));
+        } else {
+          // Fallback to local teams if server didn't return team data
+          setTeams(newTeams);
+        }
+      } catch (error) {
+        console.error('Failed to save teams to database:', error);
+        // Update local state even if server request failed
+        setTeams(newTeams);
+        throw error; // rethrow to be caught by outer catch block
+      }
+      
+      // Handle odd number of entrants if there are any
+      if (shuffledEntrants.length % 2 !== 0) {
+        setNotification({
+          open: true,
+          message: `Teams randomized successfully! Note: One entrant (${shuffledEntrants[shuffledEntrants.length-1].name}) was left without a team due to odd number of participants.`,
+          severity: 'info'
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: 'Teams randomized successfully!',
+          severity: 'success'
+        });
+      }
+    } catch (error) {
+      console.error('Error randomizing teams:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to randomize teams: ' + error.message,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   if (loading) {
     return (
@@ -1184,6 +1230,18 @@ const randomizeTeams = async () => {
       {/* Table Tab */}
       <TabPanel value={tabValue} index={4}>
         <Typography variant="h6" sx={{ mb: 2 }}>Tournament Standings</Typography>
+        
+        {/* Add refresh button for standings */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button 
+            variant="outlined" 
+            onClick={fetchStandings}
+            startIcon={<ShuffleIcon />}
+          >
+            Refresh Standings
+          </Button>
+        </Box>
+        
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -1196,15 +1254,28 @@ const randomizeTeams = async () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {teams.map((team, index) => (
-                <TableRow key={team.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{team.name}</TableCell>
-                  <TableCell align="right">{index % 3}</TableCell>
-                  <TableCell align="right">{index % 2}</TableCell>
-                  <TableCell align="right">{index * 2}</TableCell>
+              {/* Sort teams by wins (primary) and points (secondary) */}
+              {teams
+                .slice()
+                .sort((a, b) => {
+                  if (b.wins !== a.wins) return b.wins - a.wins;
+                  return b.points - a.points;
+                })
+                .map((team, index) => (
+                  <TableRow key={team.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{team.name}</TableCell>
+                    <TableCell align="right">{team.wins || 0}</TableCell>
+                    <TableCell align="right">{team.losses || 0}</TableCell>
+                    <TableCell align="right">{team.points || 0}</TableCell>
+                  </TableRow>
+                ))}
+                
+              {teams.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">No teams available</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>
