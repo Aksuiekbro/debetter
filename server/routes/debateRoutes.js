@@ -24,7 +24,8 @@ const {
     generateTestData,
     createApfPosting,
     registerTeam,
-    getPostingDetails
+    getPostingDetails,
+    randomizeTeams
 } = require('../controllers/debateController');
 const { protect, isOrganizer } = require('../middleware/authMiddleware');
 
@@ -68,6 +69,9 @@ router.post('/teams', createTeam);
 
 // Team registration route
 router.post('/:id/register-team', registerTeam);
+
+// Team randomization route
+router.post('/:id/randomize-teams', randomizeTeams);
 
 // APF Game posting routes
 router.post('/:id/postings', isOrganizer, createApfPosting);

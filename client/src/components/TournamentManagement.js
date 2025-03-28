@@ -133,14 +133,21 @@ const TournamentManagement = () => {
         
         // If there are teams in the tournament data
         if (data.teams && data.teams.length > 0) {
-          setTeams(data.teams.map(team => ({
-            id: team._id,
-            name: team.name,
-            leader: team.members.find(m => m.role === 'leader')?.userId?.username || 'Unknown',
-            speaker: team.members.find(m => m.role === 'speaker')?.userId?.username || 'Unknown',
-            leaderId: team.members.find(m => m.role === 'leader')?.userId?._id,
-            speakerId: team.members.find(m => m.role === 'speaker')?.userId?._id
-          })));
+          setTeams(data.teams.map(team => {
+            // Get leader and speaker details from the populated userId field
+            const leaderMember = team.members.find(m => m.role === 'leader');
+            const speakerMember = team.members.find(m => m.role === 'speaker');
+            
+            return {
+              id: team._id,
+              name: team.name,
+              // Access username from the populated userId object
+              leader: leaderMember?.userId?.username || 'Unknown',
+              speaker: speakerMember?.userId?.username || 'Unknown',
+              leaderId: leaderMember?.userId?._id || leaderMember?.userId,
+              speakerId: speakerMember?.userId?._id || speakerMember?.userId
+            };
+          }));
         } else {
           // Build teams from participants
           const mockTeams = [];
@@ -468,7 +475,7 @@ const TournamentManagement = () => {
       return;
     }
     if (team1.id === team2.id) {
-       setNotification({
+      setNotification({
         open: true,
         message: 'Team 1 and Team 2 cannot be the same.',
         severity: 'warning'
@@ -477,6 +484,21 @@ const TournamentManagement = () => {
     }
 
     console.log('Attempting to post APF game:', currentApfGameData);
+    console.log('Judges being sent:', judges);
+    console.log('Tournament participants:', tournament.participants);
+    
+    // Debug: Check if judge IDs match tournament participant IDs
+    const tournamentJudges = tournament.participants.filter(p => p.role === 'judge');
+    console.log('Tournament judges:', tournamentJudges);
+    const judgeIdsInTournament = tournamentJudges.map(j => j._id);
+    console.log('Judge IDs in tournament:', judgeIdsInTournament);
+    
+    // Important: We no longer need to filter judges by role in the client
+    // Instead, we'll send the judge IDs directly and let the server validate
+    // that they are participants in the tournament regardless of their role
+    const judgeIdsToSend = judges.map(judge => judge.id);
+    console.log('Judge IDs being sent:', judgeIdsToSend);
+    
     setLoading(true); // Indicate loading state
 
     try {
@@ -491,7 +513,7 @@ const TournamentManagement = () => {
           team1Id: team1.id,
           team2Id: team2.id,
           location,
-          judgeIds: judges.map(j => j.id),
+          judgeIds: judgeIdsToSend,
           theme: typeof theme === 'string' ? theme : theme.label, // Handle freeSolo or object
           tournamentId: id
         })
@@ -727,95 +749,123 @@ const generateTestData = async () => {
   }
 };
 
-  // Function to randomize team selection
-  const randomizeTeams = async () => {
-    try {
-      setLoading(true);
-      
-      // Check if we have enough entrants
-      if (entrants.length < 2) {
-        setNotification({
-          open: true,
-          message: 'Need at least 2 entrants to form teams',
-          severity: 'warning'
-        });
-        setLoading(false);
-        return;
-      }
-      
-      // Create a copy of the entrants array and shuffle it
-      const shuffledEntrants = [...entrants].sort(() => Math.random() - 0.5);
-      
-      // Clear existing teams
-      const newTeams = [];
-      
-      // Create new teams with randomly paired entrants
-      for (let i = 0; i < Math.floor(shuffledEntrants.length / 2); i++) {
-        const entrant1 = shuffledEntrants[i*2];
-        const entrant2 = shuffledEntrants[i*2+1];
-        
-        // Create new team with randomized pairs
-        const newTeam = {
-          id: `team-${Date.now()}-${i}`,
-          name: `Team ${i+1}`,
-          leader: entrant1.name,
-          speaker: entrant2.name,
-          leaderId: entrant1.id,
-          speakerId: entrant2.id
-        };
-        
-        // Add to new teams array
-        newTeams.push(newTeam);
-        
-        // Optional: Create actual team in the database
-        try {
-          await fetch(`${api.baseUrl}/api/debates/teams`, {
-            method: 'POST',
-            headers: {
-              ...getAuthHeaders(),
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              name: newTeam.name,
-              leader: newTeam.leaderId,
-              speaker: newTeam.speakerId,
-              tournamentId: id
-            })
-          });
-        } catch (error) {
-          console.error('Failed to save team to database:', error);
-          // Continue with next team even if there's an error
-        }
-      }
-      
-      // Update teams state
-      setTeams(newTeams);
-      
-      // Handle odd number of entrants if there are any
-      if (shuffledEntrants.length % 2 !== 0) {
-        setNotification({
-          open: true,
-          message: `Teams randomized successfully! Note: One entrant (${shuffledEntrants[shuffledEntrants.length-1].name}) was left without a team due to odd number of participants.`,
-          severity: 'info'
-        });
-      } else {
-        setNotification({
-          open: true,
-          message: 'Teams randomized successfully!',
-          severity: 'success'
-        });
-      }
-    } catch (error) {
-      console.error('Error randomizing teams:', error);
+// Function to randomize team selection
+const randomizeTeams = async () => {
+  try {
+    setLoading(true);
+    
+    // Check if we have enough entrants
+    if (entrants.length < 2) {
       setNotification({
         open: true,
-        message: 'Failed to randomize teams: ' + error.message,
-        severity: 'error'
+        message: 'Need at least 2 entrants to form teams',
+        severity: 'warning'
       });
-    } finally {
       setLoading(false);
+      return;
     }
-  };
+    
+    // Create a copy of the entrants array and shuffle it
+    const shuffledEntrants = [...entrants].sort(() => Math.random() - 0.5);
+    
+    // Clear existing teams
+    const newTeams = [];
+    const teamDataForDb = [];
+    
+    // Create new teams with randomly paired entrants
+    for (let i = 0; i < Math.floor(shuffledEntrants.length / 2); i++) {
+      const entrant1 = shuffledEntrants[i*2];
+      const entrant2 = shuffledEntrants[i*2+1];
+      
+      // Create new team with randomized pairs
+      const newTeam = {
+        id: `team-${Date.now()}-${i}`,
+        name: `Team ${i+1}`,
+        leader: entrant1.name,
+        speaker: entrant2.name,
+        leaderId: entrant1.id,
+        speakerId: entrant2.id
+      };
+      
+      // Add to new teams array for UI
+      newTeams.push(newTeam);
+      
+      // Prepare team data for database
+      teamDataForDb.push({
+        name: newTeam.name,
+        leader: newTeam.leaderId,
+        speaker: newTeam.speakerId,
+      });
+    }
+    
+    // Save all teams to the database at once
+    try {
+      const response = await fetch(`${api.baseUrl}/api/debates/${id}/randomize-teams`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          teams: teamDataForDb
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to save randomized teams: ${errorText}`);
+      }
+      
+      // Update tournament data with response
+      const updatedTournament = await response.json();
+      setTournament(updatedTournament);
+      
+      // Update teams state with data from server
+      if (updatedTournament.teams && updatedTournament.teams.length > 0) {
+        setTeams(updatedTournament.teams.map(team => ({
+          id: team._id,
+          name: team.name,
+          leader: team.members.find(m => m.role === 'leader')?.userId?.username || 'Unknown',
+          speaker: team.members.find(m => m.role === 'speaker')?.userId?.username || 'Unknown',
+          leaderId: team.members.find(m => m.role === 'leader')?.userId?._id,
+          speakerId: team.members.find(m => m.role === 'speaker')?.userId?._id
+        })));
+      } else {
+        // Fallback to local teams if server didn't return team data
+        setTeams(newTeams);
+      }
+    } catch (error) {
+      console.error('Failed to save teams to database:', error);
+      // Update local state even if server request failed
+      setTeams(newTeams);
+      throw error; // rethrow to be caught by outer catch block
+    }
+    
+    // Handle odd number of entrants if there are any
+    if (shuffledEntrants.length % 2 !== 0) {
+      setNotification({
+        open: true,
+        message: `Teams randomized successfully! Note: One entrant (${shuffledEntrants[shuffledEntrants.length-1].name}) was left without a team due to odd number of participants.`,
+        severity: 'info'
+      });
+    } else {
+      setNotification({
+        open: true,
+        message: 'Teams randomized successfully!',
+        severity: 'success'
+      });
+    }
+  } catch (error) {
+    console.error('Error randomizing teams:', error);
+    setNotification({
+      open: true,
+      message: 'Failed to randomize teams: ' + error.message,
+      severity: 'error'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
   
   if (loading) {
     return (
