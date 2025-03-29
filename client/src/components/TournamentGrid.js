@@ -35,62 +35,63 @@ const TournamentGrid = ({ rounds }) => {
     <Box sx={{ overflowX: 'auto', py: 4 }}>
       <Grid container spacing={4}>
         {rounds?.map((round, roundIndex) => (
-          <Grid item key={round.roundNumber}>
+          <Grid item key={round.roundNumber || roundIndex}>
             <Typography variant="h6" gutterBottom color="primary">
               {getRoundName(round.roundNumber, rounds.length)}
             </Typography>
             <Box>
               {round.matches.map((match, matchIndex) => (
-                <Paper
-                  key={match.matchNumber}
-                  elevation={2}
-                  sx={{
-                    width: '220px',
-                    ...calculateMatchPosition(roundIndex, matchIndex, rounds.length),
-                    position: 'relative',
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      right: '-24px',
-                      top: '50%',
-                      width: '24px',
-                      height: '2px',
-                      backgroundColor: 'grey.300',
-                      display: roundIndex < rounds.length - 1 ? 'block' : 'none'
-                    }
-                  }}
-                >
-                  <Card>
-                    <CardContent>
-                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                        Match {match.matchNumber}
-                      </Typography>
-                      <Box sx={{ mt: 1 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            p: 1,
-                            bgcolor: match.winner?._id === match.team1?._id ? 'success.light' : 'background.paper',
-                            borderRadius: 1,
-                            mb: 1
-                          }}
-                        >
-                          {match.team1?.username || 'TBD'}
+                <Box key={`match-${match.matchNumber || matchIndex}`}>
+                  <Paper
+                    elevation={2}
+                    sx={{
+                      width: '220px',
+                      ...calculateMatchPosition(roundIndex, matchIndex, rounds.length),
+                      position: 'relative',
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        right: '-24px',
+                        top: '50%',
+                        width: '24px',
+                        height: '2px',
+                        backgroundColor: 'grey.300',
+                        display: roundIndex < rounds.length - 1 ? 'block' : 'none'
+                      }
+                    }}
+                  >
+                    <Card>
+                      <CardContent>
+                        <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                          Match {match.matchNumber}
                         </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            p: 1,
-                            bgcolor: match.winner?._id === match.team2?._id ? 'success.light' : 'background.paper',
-                            borderRadius: 1
-                          }}
-                        >
-                          {match.team2?.username || 'TBD'}
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Paper>
+                        <Box sx={{ mt: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              p: 1,
+                              bgcolor: match.winner?._id === match.team1?._id ? 'success.light' : 'background.paper',
+                              borderRadius: 1,
+                              mb: 1
+                            }}
+                          >
+                            {match.team1?.username || 'TBD'}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              p: 1,
+                              bgcolor: match.winner?._id === match.team2?._id ? 'success.light' : 'background.paper',
+                              borderRadius: 1
+                            }}
+                          >
+                            {match.team2?.username || 'TBD'}
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Paper>
+                </Box>
               ))}
             </Box>
           </Grid>

@@ -35,7 +35,8 @@ const testUsers = [
     username: `Debater${i + 1}`,
     email: `debater${i + 1}@test.com`,
     password: 'Debate123!',
-    role: 'user'
+    role: 'user',
+    isTestAccount: true
   })),
   // Judges with judgeRole
   ...Array.from({ length: 8 }, (_, i) => ({
@@ -43,7 +44,8 @@ const testUsers = [
     email: `judge${i + 1}@test.com`,
     password: 'Judge123!',
     role: 'judge',
-    judgeRole: i === 0 ? 'Head Judge' : 'Judge' // First judge is Head Judge
+    judgeRole: i === 0 ? 'Head Judge' : 'Judge', // First judge is Head Judge
+    isTestAccount: true
   }))
 ];
 

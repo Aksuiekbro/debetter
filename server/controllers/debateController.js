@@ -4,6 +4,14 @@ const Debate = require('../models/Debate');
 const { analyzeDebateSpeech, analyzeDebateSummary, analyzeInterimTranscript } = require('../services/aiService');
 const bcrypt = require('bcrypt');
 
+// Import Services
+const debateService = require('../services/debateService');
+const tournamentService = require('../services/tournamentService');
+const teamService = require('../services/teamService');
+const postingService = require('../services/postingService');
+const transcriptService = require('../services/transcriptService');
+
+
 // Get all debates with filtering and sorting
 exports.getDebates = async (req, res) => {
   try {
@@ -122,209 +130,142 @@ const initializeTournamentRounds = (participants) => {
 // Create new debate
 exports.createDebate = async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      category,
-      difficulty,
-      startDate,
-      format,
-      mode,
-      registrationDeadline,
-      location,
-      duration
-    } = req.body;
+    const debateInput = req.body;
+    const creator = req.user; // User object from auth middleware
 
-    // Validate tournament-specific requirements
-    if (format === 'tournament') {
-      const now = new Date();
-      const tournamentStart = new Date(startDate);
-      const regDeadline = new Date(registrationDeadline);
+    let preparedData;
 
-      // Ensure 48 hours notice for tournaments
-      if (tournamentStart - now < 48 * 60 * 60 * 1000) {
-        return res.status(400).json({ message: 'Tournaments must be scheduled at least 48 hours in advance' });
-      }
-
-      // Validate registration deadline
-      if (regDeadline >= tournamentStart) {
-        return res.status(400).json({ message: 'Registration deadline must be before tournament start' });
-      }
-
-      if (tournamentStart - regDeadline < 24 * 60 * 60 * 1000) {
-        return res.status(400).json({ message: 'Registration must close at least 24 hours before tournament start' });
-      }
-    }
-
-    const debateData = {
-      title,
-      description,
-      category,
-      difficulty,
-      startDate,
-      format,
-      mode: format === 'tournament' ? mode : undefined,
-      registrationDeadline: format === 'tournament' ? registrationDeadline : undefined,
-      location,
-      duration,
-      creator: req.user._id,
-      status: 'upcoming',
-      participants: [{
-        _id: req.user._id,
-        username: req.user.username,
-        role: req.user.role
-      }]
-    };
-
-    // Initialize tournament structure if format is tournament
-    if (format === 'tournament') {
-      debateData.tournamentRounds = initializeTournamentRounds();
-      debateData.maxParticipants = 32;
-      debateData.maxJudges = 8;
-      // Set tournament-specific settings
-      debateData.tournamentSettings = {
-        maxDebaters: 32,
-        maxJudges: 8,
-        currentDebaters: req.user.role === 'judge' ? 0 : 1,
-        currentJudges: req.user.role === 'judge' ? 1 : 0
+    // If tournament, validate and prepare specific data using the service
+    if (debateInput.format === 'tournament') {
+      // Validate tournament-specific requirements using the service
+      tournamentService.validateTournamentCreation(debateInput.startDate, debateInput.registrationDeadline);
+      // Prepare tournament-specific data structure using the service
+      preparedData = tournamentService.prepareTournamentData(debateInput, creator);
+    } else {
+      // Prepare data for a standard debate
+      preparedData = {
+        ...debateInput, // title, description, category, etc.
+        creator: creator._id,
+        status: 'upcoming',
+        participants: [{ // Creator automatically joins
+          _id: creator._id,
+          username: creator.username,
+          role: creator.role
+        }],
+        // Ensure fields not applicable to standard debates are undefined
+        mode: undefined,
+        registrationDeadline: undefined,
+        tournamentSettings: undefined,
+        tournamentRounds: undefined,
+        teams: undefined,
+        postings: undefined,
       };
     }
 
-    const debate = await Debate.create(debateData);
+    // Create the debate using the debate service
+    const debate = await debateService.createDebate(preparedData);
+
+    // Respond with the created debate object
     res.status(201).json(debate);
+
   } catch (error) {
     console.error('Create debate error:', error);
-    res.status(500).json({ message: error.message });
+    // Send specific error messages from validation/preparation if available
+    res.status(400).json({ message: error.message || 'Failed to create debate' });
   }
 };
 
 exports.joinDebate = async (req, res) => {
   try {
-    const debate = await Debate.findById(req.params.id);
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
+    const debateId = req.params.id;
+    const user = req.user; // User from auth middleware
 
-    // Check if user is already a participant
-    if (debate.participants.some(p => p._id.toString() === req.user._id.toString())) {
-      return res.status(400).json({ message: 'Already a participant' });
-    }
+    // Validate using the service (checks existence, format, limits, deadlines, etc.)
+    // The service method throws specific errors if validation fails.
+    const { debate } = await tournamentService.validateJoinTournament(debateId, user._id);
 
-    const counts = debate.getParticipantCounts();
-    
-    // Validate based on format and role
-    if (debate.format === 'tournament') {
-      if (req.user.role === 'judge' && counts.judges >= counts.maxJudges) {
-        return res.status(400).json({ message: 'Maximum judges reached for this tournament' });
-      }
-      if (req.user.role !== 'judge' && counts.debaters >= counts.maxDebaters) {
-        return res.status(400).json({ message: 'Maximum debaters reached for this tournament' });
-      }
-      
-      // Update tournament settings counters
-      if (req.user.role === 'judge') {
-        debate.tournamentSettings.currentJudges += 1;
-      } else {
-        debate.tournamentSettings.currentDebaters += 1;
-      }
-    } else if (debate.isFull()) {
-      return res.status(400).json({ message: 'Debate is full' });
-    }
+    // Add participant using the service
+    const result = await tournamentService.addParticipant(debate, user);
 
-    // Add participant
-    debate.participants.push({
-      _id: req.user._id,
-      username: req.user.username,
-      role: req.user.role
+    // Respond with success and updated counts/info
+    // Note: The service currently returns counts. If the full debate object is needed,
+    // the service method or this controller needs adjustment.
+    // For now, returning a success message and the counts.
+    res.json({
+        message: 'Successfully joined tournament',
+        debateId: result.debateId,
+        currentDebaters: result.debaters,
+        currentJudges: result.judges,
+        maxDebaters: result.maxDebaters,
+        maxJudges: result.maxJudges
     });
 
-    // Check if tournament is ready to start
-    if (debate.format === 'tournament' && debate.validateTournamentStart()) {
-      debate.initializeTournamentBracket();
-    }
-
-    const updatedDebate = await debate.save();
-    
-    // Return updated counts to the client
-    if (debate.format === 'tournament') {
-      updatedDebate._doc.counts = {
-        debaters: debate.tournamentSettings.currentDebaters,
-        judges: debate.tournamentSettings.currentJudges,
-        maxDebaters: debate.tournamentSettings.maxDebaters,
-        maxJudges: debate.tournamentSettings.maxJudges
-      };
-    }
-    
-    res.json(updatedDebate);
   } catch (error) {
     console.error('Join debate error:', error);
-    res.status(500).json({ message: error.message });
+    // Handle specific errors from the service
+    if (error.message === 'Debate not found' || error.message === 'User not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message === 'Already a participant' ||
+        error.message.includes('Maximum') ||
+        error.message.includes('deadline') ||
+        error.message.includes('started or ended')) {
+      return res.status(400).json({ message: error.message });
+    }
+    // Generic error
+    res.status(500).json({ message: error.message || 'Failed to join debate' });
   }
 };
 
 // Leave debate
 exports.leaveDebate = async (req, res) => {
   try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('creator', 'username')
-      .populate('participants', 'username role');
-      
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
+    const debateId = req.params.id;
+    const user = req.user;
 
-    // Check if user is actually in the debate
-    if (!debate.participants.some(p => p._id.toString() === req.user._id.toString())) {
-      return res.status(400).json({ message: 'You are not a participant in this debate' });
-    }
+    // Use the service to handle leaving the tournament/debate
+    // The service handles finding the debate, validation, removing participant, and updating counts
+    // Assuming leaveTournament handles both standard and tournament debates appropriately,
+    // or a separate debateService.leaveDebate method is needed for standard debates.
+    // For now, using tournamentService as it contains the logic.
+    const { updatedDebate, updatedCounts } = await tournamentService.leaveTournament(debateId, user._id);
 
-    // Remove user from participants
-    debate.participants = debate.participants.filter(
-      p => p._id.toString() !== req.user._id.toString()
-    );
-    
-    await debate.save();
-
-    const updatedDebate = await Debate.findById(debate._id)
-      .populate('participants', 'username role')
-      .populate('creator', 'username role')
-      .lean();
-
+    // Respond with the updated debate object (or just counts if preferred)
     res.json(updatedDebate);
+
   } catch (error) {
     console.error('Error leaving debate:', error);
-    res.status(500).json({ message: error.message });
+    // Handle specific errors from the service
+    if (error.message === 'Debate not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message === 'User is not a participant in this tournament' || error.message === 'User is not a participant in this debate') {
+       return res.status(400).json({ message: error.message });
+    }
+    // Add handling for other potential errors like registration closed if implemented in service
+    res.status(500).json({ message: error.message || 'Failed to leave debate' });
   }
 };
 
 // Get single debate
 exports.getDebate = async (req, res) => {
   try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('creator', 'username role')
-      .populate('participants', 'username role')
-      .populate('teams.members.userId', 'username role email') // Properly populate team member user data
-      .lean()
-      .exec();
+    const debateId = req.params.id;
+    const debate = await debateService.getDebateById(debateId); // Use the service
+    // The service now handles population and adding counts if needed
 
+    // Service throws error if not found, but double-check just in case
     if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Add participant counts for tournament format
-    if (debate.format === 'tournament') {
-      const counts = {
-        debaters: debate.participants.filter(p => p.role !== 'judge').length,
-        judges: debate.participants.filter(p => p.role === 'judge').length,
-        maxDebaters: 32,
-        maxJudges: 8
-      };
-      debate.counts = counts;
+       return res.status(404).json({ message: 'Debate not found' });
     }
 
     res.json(debate);
   } catch (error) {
     console.error('Get debate error:', error);
+    // Handle specific errors from the service if needed
+    if (error.message === 'Debate not found') {
+      return res.status(404).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -335,9 +276,10 @@ exports.getUserDebates = async (req, res) => {
     const createdDebates = await Debate.find({ creator: req.user._id })
       .populate('creator', 'username role')
       .populate('participants', 'username role')
+      .populate('teams.members.userId', 'username email _id')
       .populate({ // Populate judges within postings
         path: 'postings',
-        populate: { path: 'judges', select: '_id' }
+        populate: { path: 'judges', select: '_id username role' }
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -348,16 +290,43 @@ exports.getUserDebates = async (req, res) => {
     })
       .populate('creator', 'username role')
       .populate('participants', 'username role')
+      .populate('teams.members.userId', 'username email _id')
       .populate({ // Populate judges within postings
         path: 'postings',
-        populate: { path: 'judges', select: '_id' }
+        populate: { path: 'judges', select: '_id username role' }
       })
       .sort({ createdAt: -1 })
       .lean();
 
+    // Process the debateData to include additional information about teams
+    const processDebateData = (debates) => {
+      return debates.map(debate => {
+        if (debate.postings && debate.postings.length > 0) {
+          debate.postings = debate.postings.map(posting => {
+            // Find the team objects referenced in the posting
+            const team1 = debate.teams?.find(t => t._id.toString() === posting.team1?.toString());
+            const team2 = debate.teams?.find(t => t._id.toString() === posting.team2?.toString());
+            
+            // Add team names to the posting for easier access
+            if (team1) {
+              posting.team1Name = team1.name;
+              posting.team1Members = team1.members;
+            }
+            if (team2) {
+              posting.team2Name = team2.name;
+              posting.team2Members = team2.members;
+            }
+            
+            return posting;
+          });
+        }
+        return debate;
+      });
+    };
+
     res.json({
-      created: createdDebates,
-      participated: participatedDebates
+      created: processDebateData(createdDebates),
+      participated: processDebateData(participatedDebates)
     });
   } catch (error) {
     console.error('Error fetching user debates:', error);
@@ -913,75 +882,77 @@ exports.updateParticipants = async (req, res) => {
 // Create a new team for tournament
 exports.createTeam = async (req, res) => {
   try {
-    const { name, leader, speaker, tournamentId } = req.body;
-    
-    // Validate that both users exist and are participants in the tournament
-    const debate = await Debate.findById(tournamentId);
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
+    const { name, leader, speaker, tournamentId } = req.body; // tournamentId might be in req.params.id depending on route
+
+    // Basic input check
+    if (!name || !leader || !speaker) {
+        return res.status(400).json({ message: 'Missing required fields: name, leader, speaker' });
     }
-    
-    // Check if debate has participants in the expected structure
-    if (!debate.participants || !Array.isArray(debate.participants)) {
-      return res.status(400).json({ 
-        message: 'Invalid participant structure in tournament',
-        debug: { participantsType: typeof debate.participants }
-      });
+
+    const debateId = req.params.id || tournamentId; // Get ID from params or body
+    if (!debateId) {
+        return res.status(400).json({ message: 'Missing tournament ID' });
     }
-    
-    // In some schemas, participants might have userId, in others they might have _id directly
-    // Handle both cases safely
-    const isLeaderParticipant = debate.participants.some(p => {
-      const participantId = p.userId ? p.userId.toString() : (p._id ? p._id.toString() : null);
-      return participantId === leader && p.role !== 'judge';
-    });
-    
-    const isSpeakerParticipant = debate.participants.some(p => {
-      const participantId = p.userId ? p.userId.toString() : (p._id ? p._id.toString() : null);
-      return participantId === speaker && p.role !== 'judge';
-    });
-    
-    // Skip validation during test data generation to avoid errors
-    const isTestMode = req.query.test === 'true' || req.body.isTest === true;
-    
-    if (!isTestMode && (!isLeaderParticipant || !isSpeakerParticipant)) {
-      return res.status(400).json({ 
-        message: 'Both team members must be tournament participants',
-        details: { 
-          leaderFound: isLeaderParticipant,
-          speakerFound: isSpeakerParticipant,
-          leader,
-          speaker
-        }
-      });
-    }
-    
-    // Create the team
-    const team = {
-      name,
-      members: [
-        { userId: leader, role: 'leader' },
-        { userId: speaker, role: 'speaker' }
-      ],
-      // Initialize points and wins to zero
-      wins: 0,
-      losses: 0,
-      points: 0
-    };
-    
-    // Add team to debate
-    if (!debate.teams) {
-      debate.teams = [];
-    }
-    
-    debate.teams.push(team);
-    await debate.save();
-    
-    // Return the created team
-    res.status(201).json(team);
+
+    // Use the team service to handle validation and creation
+    const teamData = { name, leader, speaker };
+    const createdTeam = await teamService.createTeam(debateId, teamData);
+
+    res.status(201).json(createdTeam); // Return the team data from the service
+
   } catch (error) {
     console.error('Error creating team:', error);
-    res.status(500).json({ message: error.message });
+    // Handle specific errors from the service more generically
+    if (error.message === 'Tournament not found' || error.message === 'Debate is not a tournament') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Service validation errors (like invalid members) should result in 400
+    if (error.message.includes('participant') || error.message.includes('Invalid member')) {
+        return res.status(400).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({ message: error.message || 'Failed to create team' });
+  }
+};
+
+// Update an existing team
+exports.updateTeam = async (req, res) => {
+  try {
+    // Extract IDs from params, data from body
+    const { teamId } = req.params; // Get teamId from URL params
+    const { name, leader, speaker, tournamentId } = req.body;
+
+    // Basic input validation
+    if (!name || !leader || !speaker) {
+      return res.status(400).json({ message: 'Missing required fields: name, leader, speaker' });
+    }
+    if (!tournamentId) {
+      return res.status(400).json({ message: 'Missing tournament ID in request body' });
+    }
+
+    // Prepare update data for the service
+    const teamUpdateData = { name, leader, speaker };
+
+    // Call the service method
+    const updatedTeam = await teamService.updateTeam(tournamentId, teamId, teamUpdateData);
+
+    res.status(200).json({
+      message: 'Team updated successfully',
+      team: updatedTeam // Return the updated team from the service
+    });
+
+  } catch (error) {
+    console.error('Error updating team:', error);
+    // Handle specific errors from the service
+    if (error.message === 'Tournament not found' || error.message === 'Team not found in tournament') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Service validation errors (like invalid members) should result in 400
+    if (error.message.includes('participant') || error.message.includes('Invalid member')) {
+      return res.status(400).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({ message: error.message || 'Failed to update team' });
   }
 };
 
@@ -990,121 +961,42 @@ exports.registerParticipants = async (req, res) => {
   try {
     const { judges, debaters } = req.body;
     console.log('Received registration request:', { judges, debaters });
-    const debate = await Debate.findById(req.params.id);
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-    if (debate.format !== 'tournament') {
-      return res.status(400).json({ message: 'This is not a tournament debate' });
-    }
+    const debateId = req.params.id; // Get debateId from params
+
     if (!Array.isArray(judges) || !Array.isArray(debaters)) {
-      return res.status(400).json({ 
-        message: 'Invalid input: judges and debaters must be arrays' 
+      return res.status(400).json({
+        message: 'Invalid input: judges and debaters must be arrays'
       });
     }
 
-    // Check if limits will be exceeded
-    const currentCounts = debate.getParticipantCounts();
-    const newJudgeCount = Math.min(8 - currentCounts.judges, judges.length);
-    const newDebaterCount = Math.min(32 - currentCounts.debaters, debaters.length);
-    
-    if (newJudgeCount < judges.length) {
-      console.warn(`Only adding ${newJudgeCount} of ${judges.length} judges due to tournament limit`);
-    }
-    
-    if (newDebaterCount < debaters.length) {
-      console.warn(`Only adding ${newDebaterCount} of ${debaters.length} debaters due to tournament limit`);
-    }
+    // Use the tournament service to handle registration
+    const result = await tournamentService.registerParticipants(debateId, judges, debaters);
 
-    // Start with current participants
-    const currentParticipants = debate.participants || [];
-    
-    // Convert simple ID strings to proper participant objects for judges (limit to 8)
-    let judgeCount = 0;
-    for (const judgeId of judges) {
-      if (judgeCount >= newJudgeCount) break; // Enforce judge limit
-      
-      // Skip if judge is already a participant
-      if (currentParticipants.some(p => p._id.toString() === judgeId)) {
-        continue;
-      }
-      
-      if (judgeId) {
-        try {
-          const user = await User.findById(judgeId);
-          if (user) {
-            currentParticipants.push({
-              _id: user._id,
-              username: user.username,
-              role: 'judge',
-              judgeRole: 'main'
-            });
-            judgeCount++;
-          }
-        } catch (err) {
-          console.error(`Error processing judge ID ${judgeId}:`, err);
-        }
-      }
-    }
-    
-    // Convert simple ID strings to proper participant objects for debaters (limit to 32)
-    let debaterCount = 0;
-    for (const debaterId of debaters) {
-      if (debaterCount >= newDebaterCount) break; // Enforce debater limit
-      
-      // Skip if debater is already a participant
-      if (currentParticipants.some(p => p._id.toString() === debaterId)) {
-        continue;
-      }
-      
-      if (debaterId) {
-        try {
-          const user = await User.findById(debaterId);
-          if (user) {
-            currentParticipants.push({
-              _id: user._id,
-              username: user.username,
-              role: user.role || 'debater'
-            });
-            debaterCount++;
-          }
-        } catch (err) {
-          console.error(`Error processing debater ID ${debaterId}:`, err);
-        }
-      }
-    }
-    
-    // Update the debate with the new participants
-    debate.participants = currentParticipants;
-    
-    // Update tournament settings counters
-    const finalCounts = {
-      judges: debate.participants.filter(p => p.role === 'judge').length,
-      debaters: debate.participants.filter(p => p.role !== 'judge').length
-    };
-    
-    debate.tournamentSettings.currentJudges = finalCounts.judges;
-    debate.tournamentSettings.currentDebaters = finalCounts.debaters;
-    
-    // Save with updated timestamps
-    debate.updatedAt = new Date();
-    await debate.save();
-    
+     // Fetch the fully populated debate to return
+     const updatedDebate = await Debate.findById(debateId)
+       .populate('participants._id', 'username email role') // Populate user details within participants
+       .lean(); // Use lean for performance
+
     res.json({
       message: 'Participants registered successfully',
-      debate: {
-        _id: debate._id,
-        title: debate.title,
-        participantCount: currentParticipants.length,
-        judges: finalCounts.judges,
-        debaters: finalCounts.debaters,
-        updatedAt: debate.updatedAt
+      debate: updatedDebate, // Return the updated debate object
+      summary: { // Include summary counts from service result
+          judgesAdded: result.judgesAdded,
+          debatersAdded: result.debatersAdded,
+          totalJudges: result.totalJudges,
+          totalDebaters: result.totalDebaters
       }
     });
-    
+
   } catch (error) {
     console.error('Error registering participants:', error);
-    res.status(500).json({ message: error.message });
+    if (error.message === 'Tournament not found') {
+      return res.status(404).json({ message: error.message });
+    }
+     if (error.message === 'Not a tournament debate') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message || 'Failed to register participants' });
   }
 };
 
@@ -1120,7 +1012,7 @@ exports.generateTestData = async (req, res) => {
     // Fetch test judges and debaters from the database, ensuring we don't exceed limits
     // Limit judges to 7 to leave room for potential organizer/creator
     const testJudges = await User.find({ role: 'judge', isTestAccount: true }).limit(7);
-    const testDebaters = await User.find({ role: 'debater', isTestAccount: true }).limit(32);
+    const testDebaters = await User.find({ role: 'user', isTestAccount: true }).limit(32);
     
     console.log(`Found ${testJudges.length} test judges and ${testDebaters.length} test debaters`);
     
@@ -1133,7 +1025,7 @@ exports.generateTestData = async (req, res) => {
         _id: judge._id,
         username: judge.username,
         role: 'judge',
-        judgeRole: 'main'
+        judgeRole: judge.judgeRole || 'Judge'
       });
     }
     
@@ -1193,446 +1085,296 @@ exports.generateTestData = async (req, res) => {
 // Create APF game posting
 exports.createApfPosting = async (req, res) => {
   try {
-    const { team1Id, team2Id, location, judgeIds, theme, tournamentId } = req.body;
-    const debateId = req.params.id || tournamentId;
-    
-    console.log('Creating APF posting with:', { 
-      team1Id, team2Id, location, judgeIds, theme, debateId 
-    });
-    
-    // Validate required fields
-    if (!team1Id || !team2Id || !location || !judgeIds || !theme) {
-      return res.status(400).json({ message: 'Missing required fields for APF posting' });
+    const postingData = req.body;
+    const debateId = req.params.id || postingData.tournamentId; // Get ID from params or body
+    const userId = req.user._id; // Assuming user ID is available from auth middleware
+
+    if (!debateId) {
+        return res.status(400).json({ message: 'Missing tournament ID' });
     }
 
-    // Validate that teams are different
-    if (team1Id === team2Id) {
-      return res.status(400).json({ message: 'Teams cannot be the same' });
+    // Basic validation (service handles more detailed checks)
+    if (!postingData.team1Id || !postingData.team2Id || (!postingData.location && !postingData.virtualLink) || !postingData.judgeIds || !postingData.theme) {
+      return res.status(400).json({ message: 'Missing required fields for APF posting (team1Id, team2Id, location/virtualLink, judgeIds, theme)' });
     }
 
-    // Fetch debate and populate participants
-    const debate = await Debate.findById(debateId).populate('participants');
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
+    // Call the posting service to handle creation, validation, and notifications
+    const result = await postingService.createPosting(debateId, userId, postingData);
 
-    console.log('Tournament participants structure:', debate.participants.map(p => ({
-      id: p._id?.toString(),
-      username: p.username,
-      role: p.role
-    })));
-
-    // Ensure the teams exist in the tournament
-    const team1Exists = debate.teams && debate.teams.some(team => 
-      team._id.toString() === team1Id.toString() || team.id === team1Id.toString()
-    );
-    const team2Exists = debate.teams && debate.teams.some(team => 
-      team._id.toString() === team2Id.toString() || team.id === team2Id.toString()
-    );
-    
-    if (!team1Exists || !team2Exists) {
-      return res.status(400).json({ message: 'One or both teams not found in this tournament' });
-    }
-
-    // Instead of filtering by role, check if the judge IDs exist in the participants at all
-    const participantIds = debate.participants.map(p => p._id.toString());
-    
-    // Check if all judge IDs are in the participants array
-    const invalidJudges = judgeIds.filter(judgeId => 
-      !participantIds.includes(judgeId.toString())
-    );
-
-    console.log('Judge IDs to validate:', judgeIds);
-    console.log('All participant IDs:', participantIds);
-    console.log('Invalid judges:', invalidJudges);
-
-    if (invalidJudges.length > 0) {
-      return res.status(400).json({ 
-        message: 'One or more judges are not participants in this tournament',
-        invalidJudges
-      });
-    }
-
-    // Create the APF game posting
-    const apfPosting = {
-      team1: team1Id,
-      team2: team2Id,
-      location,
-      judges: judgeIds,
-      theme,
-      createdAt: new Date(),
-      status: 'scheduled',
-      createdBy: req.user._id,
-      notifications: {
-        judgesNotified: false
-      }
-    };
-
-    // Add to debate postings
-    if (!debate.postings) {
-      debate.postings = [];
-    }
-    
-    debate.postings.push(apfPosting);
-    await debate.save();
-
-    // Get the created posting
-    const createdPosting = debate.postings[debate.postings.length - 1];
-
-    // Add notifications for assigned judges
-    const judgeNotifications = [];
-    for (const judgeId of judgeIds) {
-      const judge = await User.findById(judgeId);
-      if (judge) {
-        // Create notification in judge's notifications array
-        if (!judge.notifications) {
-          judge.notifications = [];
-        }
-        
-        const notification = {
-          type: 'game_assignment',
-          debate: debateId,
-          posting: createdPosting._id,
-          message: `You have been assigned to judge an APF debate: ${theme}`,
-          seen: false,
-          createdAt: new Date()
-        };
-        
-        judge.notifications.push(notification);
-        await judge.save();
-        judgeNotifications.push({
-          judgeId: judgeId,
-          notificationId: notification._id
-        });
-      }
-    }
-    
-    // Update posting to track that notifications were sent
-    const updatedDebate = await Debate.findById(debateId);
-    const updatedPosting = updatedDebate.postings.id(createdPosting._id);
-    if (updatedPosting) {
-      updatedPosting.notifications.judgesNotified = true;
-      updatedPosting.notifications.sentAt = new Date();
-      await updatedDebate.save();
-    }
-    
-    console.log('Successfully created APF posting:', createdPosting._id);
-    
+    // The service returns the created posting data and notification results
     res.status(201).json({
       message: 'APF game posted successfully',
-      _id: createdPosting._id,
-      team1: team1Id,
-      team2: team2Id,
-      location,
-      judges: judgeIds,
-      theme,
-      createdAt: createdPosting.createdAt,
-      judgeNotifications
+      posting: result // Return the full result from the service
     });
-    
+
   } catch (error) {
     console.error('Error creating APF posting:', error);
-    res.status(500).json({ 
-      message: error.message,
+    // Handle specific errors from the service
+    if (error.message === 'Tournament not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message.includes('Missing required fields') ||
+        error.message.includes('Teams cannot be the same') ||
+        error.message.includes('not found in this tournament') ||
+        error.message.includes('not participants')) {
+      return res.status(400).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({
+      message: error.message || 'Failed to create APF posting',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
 
-// Register a team for a tournament
-exports.registerTeam = async (req, res) => {
+// Batch creation of APF game postings
+exports.createApfBatchPostings = async (req, res) => {
   try {
-    const { leader, speaker, teamName } = req.body;
-    const tournamentId = req.params.id;
+    const batchData = req.body; // Contains batchGames and batchName
+    const debateId = req.params.id;
+    const userId = req.user._id;
 
-    // Validate required fields
-    if (!leader || !leader.name || !leader.email || !speaker || !speaker.name || !speaker.email || !teamName) {
-      return res.status(400).json({ message: 'Missing required fields for team registration' });
+    // Basic validation
+    if (!Array.isArray(batchData.batchGames) || batchData.batchGames.length === 0) {
+      return res.status(400).json({ message: 'No games provided for batch creation' });
+    }
+    if (!debateId) {
+        return res.status(400).json({ message: 'Missing tournament ID' });
     }
 
-    // Get the tournament
-    const tournament = await Debate.findById(tournamentId);
-    if (!tournament) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
+    // Call the service to handle batch creation, validation, saving, and notifications
+    const { results, errors } = await postingService.createBatchPostings(debateId, userId, batchData);
 
-    // Verify tournament is accepting registrations
-    if (tournament.format !== 'tournament') {
-      return res.status(400).json({ message: 'This is not a tournament' });
-    }
+    // Determine appropriate status code based on errors
+    const statusCode = errors.length > 0 && results.length === 0 ? 400 : 201; // 400 if all failed, 201 otherwise
 
-    if (tournament.status !== 'upcoming') {
-      return res.status(400).json({ message: 'Tournament is no longer accepting registrations' });
-    }
-
-    // Check if registration deadline has passed
-    if (tournament.registrationDeadline) {
-      const now = new Date();
-      const deadline = new Date(tournament.registrationDeadline);
-      if (now > deadline) {
-        return res.status(400).json({ message: 'Registration deadline has passed for this tournament' });
-      }
-    }
-
-    // Check if the tournament has reached max participants
-    const debaterCount = tournament.participants.filter(p => p.role !== 'judge').length;
-    if (debaterCount >= 32) {
-      return res.status(400).json({ message: 'Tournament has reached maximum number of debaters' });
-    }
-
-    // Find or create users for both team members
-    const [leaderUser, speakerUser] = await Promise.all([
-      findOrCreateUser(leader.name, leader.email),
-      findOrCreateUser(speaker.name, speaker.email)
-    ]);
-
-    // Add users to tournament participants if not already there
-    const leaderExists = tournament.participants.some(p => 
-      p._id.toString() === leaderUser._id.toString()
-    );
-
-    const speakerExists = tournament.participants.some(p => 
-      p._id.toString() === speakerUser._id.toString()
-    );
-
-    if (!leaderExists) {
-      tournament.participants.push({
-        _id: leaderUser._id,
-        username: leaderUser.username,
-        role: 'debater'
-      });
-    }
-
-    if (!speakerExists) {
-      tournament.participants.push({
-        _id: speakerUser._id,
-        username: speakerUser.username,
-        role: 'debater'
-      });
-    }
-
-    // Create a new team
-    const newTeam = {
-      name: teamName,
-      members: [
-        { userId: leaderUser._id, role: 'leader' },
-        { userId: speakerUser._id, role: 'speaker' }
-      ]
-    };
-
-    if (!tournament.teams) {
-      tournament.teams = [];
-    }
-
-    tournament.teams.push(newTeam);
-    await tournament.save();
-
-    res.status(201).json({
-      message: 'Team registered successfully',
-      team: {
-        id: newTeam._id,
-        name: teamName,
-        members: [
-          { id: leaderUser._id, name: leaderUser.username, role: 'leader' },
-          { id: speakerUser._id, name: speakerUser.username, role: 'speaker' }
-        ]
-      }
+    res.status(statusCode).json({
+      message: `Batch creation processed: ${results.length} succeeded, ${errors.length} failed.`,
+      results, // Array of successfully created posting summaries
+      errors: errors.length > 0 ? errors : undefined // Array of errors for failed games
     });
 
   } catch (error) {
-    console.error('Error registering team:', error);
-    res.status(500).json({ 
-      message: error.message,
+    console.error('Error creating batch APF postings:', error);
+    // Handle specific errors from the service (e.g., tournament not found)
+    if (error.message === 'Tournament not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({
+      message: error.message || 'Failed to process batch APF postings',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
 
-// Helper function to find or create a user
-const findOrCreateUser = async (name, email) => {
-  try {
-    // Check if user exists with this email
-    let user = await User.findOne({ email });
-    
-    if (!user) {
-      // Create new user with temporary password
-      const password = await bcrypt.hash(Math.random().toString(36).substring(2, 15), 10);
+// Helper function to send notifications for a game
+async function sendGameNotifications(debate, game, debateId, batchName) {
+  const judgeIds = game.judges.map(j => j.id);
+  
+  // Send notifications to judges
+  for (const judgeId of judgeIds) {
+    const judge = await User.findById(judgeId);
+    if (judge) {
+      if (!judge.notifications) {
+        judge.notifications = [];
+      }
       
-      user = await User.create({
-        username: name,
-        email: email,
-        password: password,
-        role: 'user',
-        temporary: true
-      });
+      const notification = {
+        type: 'game_assignment',
+        debate: debateId,
+        message: `You have been assigned to judge an APF debate${game.scheduledTime ? ` on ${new Date(game.scheduledTime).toLocaleString()}` : ''}${batchName ? ` (${batchName})` : ''}: ${typeof game.theme === 'string' ? game.theme : game.theme?.label || 'Topic not specified'}`,
+        seen: false,
+        createdAt: new Date()
+      };
+      
+      judge.notifications.push(notification);
+      await judge.save();
     }
-    
-    return user;
+  }
+  
+  // Send notifications to team members
+  const team1 = debate.teams.find(t => t._id.toString() === game.team1.id);
+  const team2 = debate.teams.find(t => t._id.toString() === game.team2.id);
+  
+  if (team1 && team1.members) {
+    for (const member of team1.members) {
+      if (member.userId) {
+        const teamMember = await User.findById(typeof member.userId === 'object' ? member.userId._id : member.userId);
+        if (teamMember) {
+          if (!teamMember.notifications) {
+            teamMember.notifications = [];
+          }
+          
+          const notification = {
+            type: 'game_assignment',
+            debate: debateId,
+            message: `Your team (${team1.name}) has been scheduled for an APF debate${game.scheduledTime ? ` on ${new Date(game.scheduledTime).toLocaleString()}` : ''}${batchName ? ` (${batchName})` : ''}: ${typeof game.theme === 'string' ? game.theme : game.theme?.label || 'Topic not specified'}`,
+            seen: false,
+            createdAt: new Date()
+          };
+          
+          teamMember.notifications.push(notification);
+          await teamMember.save();
+        }
+      }
+    }
+  }
+  
+  if (team2 && team2.members) {
+    for (const member of team2.members) {
+      if (member.userId) {
+        const teamMember = await User.findById(typeof member.userId === 'object' ? member.userId._id : member.userId);
+        if (teamMember) {
+          if (!teamMember.notifications) {
+            teamMember.notifications = [];
+          }
+          
+          const notification = {
+            type: 'game_assignment',
+            debate: debateId,
+            message: `Your team (${team2.name}) has been scheduled for an APF debate${game.scheduledTime ? ` on ${new Date(game.scheduledTime).toLocaleString()}` : ''}${batchName ? ` (${batchName})` : ''}: ${typeof game.theme === 'string' ? game.theme : game.theme?.label || 'Topic not specified'}`,
+            seen: false,
+            createdAt: new Date()
+          };
+          
+          teamMember.notifications.push(notification);
+          await teamMember.save();
+        }
+      }
+    }
+  }
+  
+  // Find the posting and mark notifications as sent
+  const postingIndex = debate.postings.findIndex(p => 
+    p.team1.toString() === game.team1.id && 
+    p.team2.toString() === game.team2.id &&
+    p.batchName === batchName
+  );
+  
+  if (postingIndex !== -1) {
+    debate.postings[postingIndex].notifications.judgesNotified = true;
+    debate.postings[postingIndex].notifications.sentAt = new Date();
+    await debate.save();
+  }
+}
+
+// Update APF posting status (or other details via service)
+exports.updateApfPostingStatus = async (req, res) => {
+  try {
+    const { id: debateId, postingId } = req.params;
+    const updateData = req.body; // Can include status or other fields
+    const userId = req.user._id; // Assuming user ID is available
+
+    // Basic validation if only status is expected by this specific route
+    if (updateData.status && !['scheduled', 'in_progress', 'completed', 'cancelled'].includes(updateData.status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: 'No update data provided' });
+    }
+
+    // Call the service method to handle the update
+    const updatedPosting = await postingService.updatePostingDetails(debateId, postingId, updateData, userId);
+
+    res.status(200).json({
+      message: 'APF posting updated successfully',
+      posting: updatedPosting // Return the updated posting from the service
+    });
+
   } catch (error) {
-    console.error('Error finding/creating user:', error);
-    throw error;
+    console.error('Error updating APF posting status:', error);
+    // Handle specific errors from the service
+    if (error.message === 'Tournament not found' || error.message === 'Posting not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message === 'Invalid status value' || error.message.includes('not participants')) {
+        return res.status(400).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({ message: error.message || 'Failed to update APF posting' });
   }
 };
 
-// Get detailed information about a specific debate posting
-exports.getPostingDetails = async (req, res) => {
+// Get APF postings for a specific tournament
+exports.getApfPostings = async (req, res) => {
   try {
-    const { id, postingId } = req.params;
-    
-    // Find the debate
-    const debate = await Debate.findById(id)
-      .populate('teams.members.userId', 'username email') // Populate user details within embedded teams
-      // Removed populate for postings.team1 and postings.team2 as they now store embedded team _ids
-      .populate('postings.judges', 'username role judgeRole'); // Populate judge user details
-    
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
+    const { id: debateId } = req.params;
+    const filters = req.query; // Allow filtering via query params (e.g., ?status=scheduled)
+
+    if (!debateId) {
+        return res.status(400).json({ message: 'Missing tournament ID in request parameters' });
     }
-    
-    // Find the specific posting
-    const posting = debate.postings?.find(p => p._id.toString() === postingId);
-    
-    if (!posting) {
-      return res.status(404).json({ message: 'Posting not found' });
-    }
-    
-    // Find the team details
-    const team1 = debate.teams?.find(t => t._id.toString() === posting.team1.toString());
-    const team2 = debate.teams?.find(t => t._id.toString() === posting.team2.toString());
-    
-    // Get winner team name if applicable
-    let winnerTeamName = null;
-    if (posting.winner) {
-      const winnerTeam = debate.teams?.find(t => t._id.toString() === posting.winner.toString());
-      winnerTeamName = winnerTeam?.name || 'Unknown Team';
-    }
-    
-    // Prepare team member information
-    const team1Members = team1 ? {
-      leader: team1.members.find(m => m.role === 'leader')?.userId,
-      speaker: team1.members.find(m => m.role === 'speaker')?.userId
-    } : null;
-    
-    const team2Members = team2 ? {
-      leader: team2.members.find(m => m.role === 'leader')?.userId,
-      speaker: team2.members.find(m => m.role === 'speaker')?.userId
-    } : null;
-    
-    // Format response
-    const postingDetails = {
-      _id: posting._id,
-      tournamentId: id,
-      tournamentTitle: debate.title,
-      team1: {
-        _id: team1?._id,
-        name: team1?.name || 'Team 1'
-      },
-      team2: {
-        _id: team2?._id,
-        name: team2?.name || 'Team 2'
-      },
-      team1Members,
-      team2Members,
-      location: posting.location,
-      theme: posting.theme,
-      status: posting.status || 'scheduled',
-      createdAt: posting.createdAt,
-      judges: posting.judges,
-      winner: posting.winner,
-      winnerTeamName
-    };
-    
-    // Add evaluation data if available
-    if (posting.evaluation) {
-      postingDetails.evaluation = {
-        team1Score: posting.evaluation.team1Score,
-        team2Score: posting.evaluation.team2Score,
-        comments: posting.evaluation.comments,
-        team1Comments: posting.evaluation.team1Comments,
-        team2Comments: posting.evaluation.team2Comments,
-        individualScores: posting.evaluation.individualScores
-      };
-    }
-    
-    // Add transcription data if available
-    if (posting.transcription) {
-      postingDetails.transcription = {
-        full: posting.transcription.full,
-        summary: posting.transcription.summary
-      };
-    }
-    
-    res.json(postingDetails);
+
+    // Call the service method to get postings
+    const postings = await postingService.getPostingsForDebate(debateId, filters);
+
+    res.status(200).json(postings); // Return the array of postings
+
   } catch (error) {
-    console.error('Error getting posting details:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Error getting APF postings:', error);
+    // Handle specific errors from the service
+    if (error.message === 'Tournament not found' || error.message === 'Debate is not a tournament') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({ message: error.message || 'Failed to get APF postings' });
+  }
+};
+
+
+// Send reminders for APF game
+exports.sendApfGameReminder = async (req, res) => {
+  try {
+    const { id: debateId, postingId } = req.params;
+    const userId = req.user._id; // Assuming user ID is available
+
+    if (!debateId || !postingId) {
+        return res.status(400).json({ message: 'Missing tournament ID or posting ID in request parameters' });
+    }
+
+    // Call the service method to handle finding the posting and sending notifications
+    const notificationResults = await postingService.sendReminders(debateId, postingId, userId);
+
+    res.status(200).json({
+      message: 'Reminders sent successfully',
+      ...notificationResults // Spread the results (judgesNotified, teamMembersNotified, errors)
+    });
+
+  } catch (error) {
+    console.error('Error sending APF game reminders:', error);
+    // Handle specific errors from the service
+    if (error.message === 'Tournament not found' || error.message === 'APF posting not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({ message: error.message || 'Failed to send reminders' });
   }
 };
 
 // Randomize teams for tournament
 exports.randomizeTeams = async (req, res) => {
   try {
-    const debate = await Debate.findById(req.params.id);
-    
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-    
-    if (debate.format !== 'tournament') {
-      return res.status(400).json({ message: 'This is not a tournament' });
-    }
-    
-    // Get all debaters
-    const debaters = debate.participants.filter(p => p.role !== 'judge');
-    
-    if (debaters.length < 2) {
-      return res.status(400).json({ message: 'Not enough debaters to randomize teams' });
-    }
-    
-    // Shuffle debaters
-    const shuffledDebaters = [...debaters].sort(() => Math.random() - 0.5);
-    
-    // Create teams (leader, speaker pairs)
-    const teams = [];
-    for (let i = 0; i < shuffledDebaters.length; i += 2) {
-      if (i + 1 >= shuffledDebaters.length) break; // Skip if we can't form a complete team
-      
-      const teamName = `Team ${Math.floor(i/2) + 1}`;
-      const leader = shuffledDebaters[i];
-      const speaker = shuffledDebaters[i + 1];
-      
-      teams.push({
-        name: teamName,
-        members: [
-          { userId: leader._id, role: 'leader' },
-          { userId: speaker._id, role: 'speaker' }
-        ]
-      });
-    }
-    
-    // Update tournament
-    debate.teams = teams;
-    await debate.save();
-    
+    const debateId = req.params.id;
+    // Call the service method which handles finding debate, validation, shuffling, and saving
+    const updatedDebateWithTeams = await teamService.randomizeTeams(debateId);
+
     res.json({
       message: 'Teams randomized successfully',
-      teams: teams.map(team => ({
-        id: team._id,
-        name: team.name,
-        members: team.members.map(m => ({
-          id: m.userId,
-          role: m.role
-        }))
-      }))
+      // Return the teams array from the populated debate object returned by the service
+      teams: updatedDebateWithTeams.teams
     });
-    
+
   } catch (error) {
-    // Log the full error object for detailed validation info
-    console.error('Error randomizing teams:', JSON.stringify(error, null, 2));
-    // Send a more specific error message if it's a validation error
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: 'Validation failed', errors: error.errors });
+    console.error('Error randomizing teams:', error);
+    // Handle specific errors from the service
+    if (error.message === 'Tournament not found' || error.message === 'Not a tournament') {
+      return res.status(404).json({ message: error.message });
     }
-    res.status(500).json({ message: error.message || 'Internal server error' });
+    if (error.message === 'Not enough debaters to randomize teams') {
+      return res.status(400).json({ message: error.message });
+    }
+    // Default to 500 for unexpected errors
+    res.status(500).json({ message: error.message || 'Failed to randomize teams' });
   }
 };

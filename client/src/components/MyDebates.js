@@ -14,12 +14,14 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Badge
+  Badge,
+  Paper
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
 import { getAuthHeaders } from '../utils/auth';
 import GavelIcon from '@mui/icons-material/Gavel';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
 // TabPanel component for the tabs
 function TabPanel(props) {
@@ -58,6 +60,36 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
   const tournamentAssignments = userRole === 'judge'
     ? judgeAssignments.filter(assignment => assignment.tournamentId === debate._id)
     : [];
+
+  // Check if there are completed postings with evaluations
+  const hasCompletedGames = debate.postings && debate.postings.some(posting => 
+    posting.status === 'completed' && posting.evaluation
+  );
+
+  // Check if this user is a participant in any of the teams
+  const isParticipant = debate.postings && debate.postings.some(posting => {
+    const team1HasUser = posting.team1Members && posting.team1Members.some(
+      member => member.userId?._id === userId || member.userId === userId
+    );
+    const team2HasUser = posting.team2Members && posting.team2Members.some(
+      member => member.userId?._id === userId || member.userId === userId
+    );
+    return team1HasUser || team2HasUser;
+  });
+
+  // Find all completed postings where the user is a participant
+  const userCompletedPostings = debate.postings ? debate.postings.filter(posting => {
+    if (posting.status !== 'completed' || !posting.evaluation) return false;
+    
+    const team1HasUser = posting.team1Members && posting.team1Members.some(
+      member => member.userId?._id === userId || member.userId === userId
+    );
+    const team2HasUser = posting.team2Members && posting.team2Members.some(
+      member => member.userId?._id === userId || member.userId === userId
+    );
+    
+    return team1HasUser || team2HasUser;
+  }) : [];
 
   return (
     <Card sx={{ mb: 2, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
@@ -137,21 +169,62 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                       <Typography variant="subtitle2" gutterBottom>
                         Judge Assignment #{index + 1}
                       </Typography>
-                      <Typography variant="body2">
-                        <strong>Teams:</strong> {assignment.team1.name} vs {assignment.team2.name}
-                      </Typography>
+                      
+                      {/* Team 1 Section with Players */}
+                      <Box sx={{ mb: 1.5, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
+                        <Typography variant="body2" fontWeight="bold" color="primary">
+                          Team 1 (Gov): {assignment.team1.name}
+                        </Typography>
+                        {assignment.team1.leader && (
+                          <Typography variant="body2" sx={{ pl: 1 }}>
+                            • Leader: {assignment.team1.leader.name}
+                          </Typography>
+                        )}
+                        {assignment.team1.speaker && (
+                          <Typography variant="body2" sx={{ pl: 1 }}>
+                            • Speaker: {assignment.team1.speaker.name}
+                          </Typography>
+                        )}
+                      </Box>
+                      
+                      {/* Team 2 Section with Players */}
+                      <Box sx={{ mb: 1.5, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
+                        <Typography variant="body2" fontWeight="bold" color="secondary">
+                          Team 2 (Opp): {assignment.team2.name}
+                        </Typography>
+                        {assignment.team2.leader && (
+                          <Typography variant="body2" sx={{ pl: 1 }}>
+                            • Leader: {assignment.team2.leader.name}
+                          </Typography>
+                        )}
+                        {assignment.team2.speaker && (
+                          <Typography variant="body2" sx={{ pl: 1 }}>
+                            • Speaker: {assignment.team2.speaker.name}
+                          </Typography>
+                        )}
+                      </Box>
+                      
                       <Typography variant="body2">
                         <strong>Theme:</strong> {assignment.theme}
                       </Typography>
                       <Typography variant="body2">
                         <strong>Location:</strong> {assignment.location}
                       </Typography>
-                      <Typography variant="body2">
+                      
+                      {/* Other judges section */}
+                      {assignment.otherJudges && assignment.otherJudges.length > 0 && (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="body2">
+                            <strong>Co-Judges:</strong> {assignment.otherJudges.map(j => j.name).join(', ')}
+                          </Typography>
+                        </Box>
+                      )}
+                      
+                      <Typography variant="body2" component="div" sx={{ mt: 1 }}>
                         <Chip
                           size="small"
-                          label={assignment.status === 'evaluated' ? 'Evaluated' : 'Pending'}
+                          label={assignment.status === 'evaluated' ? 'Evaluated' : 'Pending Evaluation'}
                           color={assignment.status === 'evaluated' ? 'success' : 'primary'}
-                          sx={{ mt: 1 }}
                         />
                       </Typography>
                     </CardContent>
@@ -159,7 +232,17 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                       <Button
                         size="small"
                         color="primary"
-                        onClick={() => navigate('/judge-panel')}
+                        onClick={() => {
+                          if (assignment.status === 'evaluated' && assignment.evaluationId) {
+                            // Navigate to evaluation details
+                            navigate(`/debates/${assignment.tournamentId}/evaluation/${assignment.evaluationId}`);
+                          } else {
+                            // Navigate to judge panel with this game preselected
+                            navigate('/judge-panel', { 
+                              state: { selectedGame: assignment }
+                            });
+                          }
+                        }}
                       >
                         {assignment.status === 'evaluated' ? 'View Evaluation' : 'Evaluate'}
                       </Button>
@@ -167,6 +250,148 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                   </Card>
                 </Grid>
               ))}
+            </Grid>
+          </>
+        )}
+        
+        {/* Feedback & Evaluations Section for Participants */}
+        {isParticipant && userCompletedPostings.length > 0 && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ color: 'success.main', display: 'flex', alignItems: 'center' }}>
+              <EmojiEventsIcon sx={{ mr: 1 }} />
+              Your Debate Feedback & Evaluations
+            </Typography>
+            <Grid container spacing={2}>
+              {userCompletedPostings.map((posting, index) => {
+                // Determine which team the user participated in
+                const inTeam1 = posting.team1Members && posting.team1Members.some(
+                  member => member.userId?._id === userId || member.userId === userId
+                );
+                const userTeam = inTeam1 ? 'team1' : 'team2';
+                const userTeamName = inTeam1 ? posting.team1Name : posting.team2Name;
+                const opponentTeamName = inTeam1 ? posting.team2Name : posting.team1Name;
+                
+                // Get the user's role in the team
+                let userRole = '';
+                if (inTeam1 && posting.team1Members) {
+                  const member = posting.team1Members.find(m => m.userId?._id === userId || m.userId === userId);
+                  userRole = member?.role === 'leader' ? 'Leader' : 'Speaker';
+                } else if (!inTeam1 && posting.team2Members) {
+                  const member = posting.team2Members.find(m => m.userId?._id === userId || m.userId === userId);
+                  userRole = member?.role === 'leader' ? 'Leader' : 'Speaker';
+                }
+                
+                // Get feedback for the user's team
+                const teamFeedback = posting.evaluation[`${userTeam}Comments`];
+                const teamScore = posting.evaluation[`${userTeam}Score`];
+                
+                // Check if this user's team won
+                const isWinner = posting.winner === (inTeam1 ? posting.team1 : posting.team2);
+                
+                // Find individual scores for this user, if available
+                let userScore = null;
+                if (posting.evaluation.individualScores) {
+                  userScore = posting.evaluation.individualScores.find(
+                    score => score.role.toLowerCase().includes(userRole.toLowerCase())
+                  );
+                }
+                
+                return (
+                  <Grid item xs={12} key={posting._id || index}>
+                    <Card variant="outlined" sx={{ 
+                      borderLeft: '4px solid',
+                      borderColor: isWinner ? 'success.main' : 'primary.main',
+                    }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                            Game: {posting.theme}
+                          </Typography>
+                          {isWinner ? (
+                            <Chip
+                              label="Winner" 
+                              color="success"
+                              size="small"
+                            />
+                          ) : (
+                            <Chip
+                              label="Completed" 
+                              color="primary"
+                              size="small"
+                            />
+                          )}
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                          <Chip size="small" label={`Your Team: ${userTeamName || 'Team'}`} />
+                          <Chip size="small" label={`Role: ${userRole}`} variant="outlined" />
+                          <Chip size="small" label={`Opponent: ${opponentTeamName || 'Team'}`} variant="outlined" />
+                        </Box>
+                        
+                        <Grid container spacing={2}>
+                          {/* Team Score */}
+                          <Grid item xs={12} sm={6}>
+                            <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                              <Typography variant="subtitle2" gutterBottom color="primary">
+                                Team Score
+                              </Typography>
+                              <Typography variant="h4" color="primary.main" gutterBottom>
+                                {teamScore || '0'} points
+                              </Typography>
+                              <Typography variant="body2">
+                                {teamFeedback || 'No specific team feedback provided.'}
+                              </Typography>
+                            </Paper>
+                          </Grid>
+                          
+                          {/* Individual Score */}
+                          {userScore && (
+                            <Grid item xs={12} sm={6}>
+                              <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom color="primary">
+                                  Individual Performance
+                                </Typography>
+                                <Typography variant="body2" gutterBottom>
+                                  <strong>Matter:</strong> {userScore.matter}/30
+                                </Typography>
+                                <Typography variant="body2" gutterBottom>
+                                  <strong>Method:</strong> {userScore.method}/30
+                                </Typography>
+                                <Typography variant="body2" gutterBottom>
+                                  <strong>Manner:</strong> {userScore.manner}/30
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
+                                  Total: {userScore.matter + userScore.method + userScore.manner}/90
+                                </Typography>
+                              </Paper>
+                            </Grid>
+                          )}
+                        </Grid>
+                        
+                        {/* Judge's Comments */}
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom color="primary">
+                            Judge's Overall Comments
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontStyle: 'italic', pl: 1, borderLeft: '2px solid', borderColor: 'primary.light', py: 0.5 }}>
+                            "{posting.evaluation.comments || 'No overall comments provided.'}"
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                      <CardActions>
+                        <Button
+                          size="small"
+                          color="primary"
+                          onClick={() => navigate(`/debates/${debate._id}/postings/${posting._id}`)}
+                        >
+                          View Full Evaluation
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                );
+              })}
             </Grid>
           </>
         )}
@@ -186,6 +411,35 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                       <Typography variant="subtitle2" gutterBottom>
                         Game #{index + 1}
                       </Typography>
+                      
+                      {/* Try to display team names if available */}
+                      {posting.team1Name && posting.team2Name && (
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Teams:</strong> {posting.team1Name} vs {posting.team2Name}
+                        </Typography>
+                      )}
+                      
+                      {/* Display team members if available */}
+                      {posting.team1Members && posting.team1Members.length > 0 && (
+                        <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem' }}>
+                          <strong>Team 1:</strong> {posting.team1Members.map(member => (
+                            member.userId?.username ? 
+                              `${member.role === 'leader' ? 'Leader' : 'Speaker'}: ${member.userId.username}` 
+                              : null
+                          )).filter(Boolean).join(', ')}
+                        </Typography>
+                      )}
+                      
+                      {posting.team2Members && posting.team2Members.length > 0 && (
+                        <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem' }}>
+                          <strong>Team 2:</strong> {posting.team2Members.map(member => (
+                            member.userId?.username ? 
+                              `${member.role === 'leader' ? 'Leader' : 'Speaker'}: ${member.userId.username}` 
+                              : null
+                          )).filter(Boolean).join(', ')}
+                        </Typography>
+                      )}
+                      
                       <Typography variant="body2">
                         <strong>Theme:</strong> {posting.theme}
                       </Typography>
@@ -224,22 +478,123 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                           console.log(`User ID: ${userId}, Role: ${userRole}, Is Judge for Posting: ${isJudgeForPosting}`);
                           
                           if (isJudgeForPosting && posting.status !== 'completed') {
-                            // Create a simplified game object that matches what JudgePanel expects
-                            const gameData = {
+                            // Get the actual team objects from debate.teams
+                            const team1Obj = debate.teams ? debate.teams.find(t => 
+                              t._id === posting.team1 || 
+                              (posting.team1 && t._id.toString() === posting.team1.toString())
+                            ) : null;
+                            
+                            const team2Obj = debate.teams ? debate.teams.find(t => 
+                              t._id === posting.team2 || 
+                              (posting.team2 && t._id.toString() === posting.team2.toString())
+                            ) : null;
+                            
+                            // Log for debugging
+                            console.log('Found team1:', team1Obj?.name, 'team2:', team2Obj?.name);
+                            console.log('Teams array:', debate.teams);
+                            console.log('Posting team IDs:', posting.team1,  posting.team2);
+                            console.log('Team members:', posting.team1Members, posting.team2Members);
+                            
+                            // More robust game data preparation
+                            let gameData = {
                               id: posting._id,
                               tournamentId: debate._id,
                               team1: {
                                 id: posting.team1?._id || posting.team1,
-                                name: posting.team1Name || 'Team 1' 
+                                name: team1Obj?.name || posting.team1Name || 'Team 1',
+                                leader: null,
+                                speaker: null
                               },
                               team2: {
                                 id: posting.team2?._id || posting.team2,
-                                name: posting.team2Name || 'Team 2'
+                                name: team2Obj?.name || posting.team2Name || 'Team 2',
+                                leader: null,
+                                speaker: null
                               },
-                              theme: posting.theme,
-                              location: posting.location,
-                              status: 'pending'
+                              theme: posting.theme || 'No theme specified',
+                              location: posting.location || 'TBD',
+                              status: 'pending',
+                              // Include any other required fields
+                              startTime: new Date().toISOString()
                             };
+                            
+                            // Add team1 member details directly from posting data
+                            if (posting.team1Members && posting.team1Members.length > 0) {
+                              const leaderMember = posting.team1Members.find(m => m.role === 'leader');
+                              const speakerMember = posting.team1Members.find(m => m.role === 'speaker');
+                              
+                              if (leaderMember?.userId) {
+                                gameData.team1.leader = {
+                                  id: typeof leaderMember.userId === 'object' ? leaderMember.userId._id : leaderMember.userId,
+                                  name: leaderMember.userId.username || `Leader (${gameData.team1.name})`
+                                };
+                              }
+                              
+                              if (speakerMember?.userId) {
+                                gameData.team1.speaker = {
+                                  id: typeof speakerMember.userId === 'object' ? speakerMember.userId._id : speakerMember.userId,
+                                  name: speakerMember.userId.username || `Speaker (${gameData.team1.name})`
+                                };
+                              }
+                            }
+                            // Fallback to team1Obj if posting.team1Members not available
+                            else if (team1Obj?.members?.length > 0) {
+                              const leaderMember = team1Obj.members.find(m => m.role === 'leader');
+                              const speakerMember = team1Obj.members.find(m => m.role === 'speaker');
+                              
+                              if (leaderMember?.userId) {
+                                gameData.team1.leader = {
+                                  id: typeof leaderMember.userId === 'object' ? leaderMember.userId._id : leaderMember.userId,
+                                  name: typeof leaderMember.userId === 'object' ? leaderMember.userId.username : `Leader (${team1Obj.name})`
+                                };
+                              }
+                              
+                              if (speakerMember?.userId) {
+                                gameData.team1.speaker = {
+                                  id: typeof speakerMember.userId === 'object' ? speakerMember.userId._id : speakerMember.userId,
+                                  name: typeof speakerMember.userId === 'object' ? speakerMember.userId.username : `Speaker (${team1Obj.name})`
+                                };
+                              }
+                            }
+                            
+                            // Add team2 member details directly from posting data
+                            if (posting.team2Members && posting.team2Members.length > 0) {
+                              const leaderMember = posting.team2Members.find(m => m.role === 'leader');
+                              const speakerMember = posting.team2Members.find(m => m.role === 'speaker');
+                              
+                              if (leaderMember?.userId) {
+                                gameData.team2.leader = {
+                                  id: typeof leaderMember.userId === 'object' ? leaderMember.userId._id : leaderMember.userId,
+                                  name: leaderMember.userId.username || `Leader (${gameData.team2.name})`
+                                };
+                              }
+                              
+                              if (speakerMember?.userId) {
+                                gameData.team2.speaker = {
+                                  id: typeof speakerMember.userId === 'object' ? speakerMember.userId._id : speakerMember.userId,
+                                  name: speakerMember.userId.username || `Speaker (${gameData.team2.name})`
+                                };
+                              }
+                            }
+                            // Fallback to team2Obj if posting.team2Members not available
+                            else if (team2Obj?.members?.length > 0) {
+                              const leaderMember = team2Obj.members.find(m => m.role === 'leader');
+                              const speakerMember = team2Obj.members.find(m => m.role === 'speaker');
+                              
+                              if (leaderMember?.userId) {
+                                gameData.team2.leader = {
+                                  id: typeof leaderMember.userId === 'object' ? leaderMember.userId._id : leaderMember.userId,
+                                  name: typeof leaderMember.userId === 'object' ? leaderMember.userId.username : `Leader (${team2Obj.name})`
+                                };
+                              }
+                              
+                              if (speakerMember?.userId) {
+                                gameData.team2.speaker = {
+                                  id: typeof speakerMember.userId === 'object' ? speakerMember.userId._id : speakerMember.userId,
+                                  name: typeof speakerMember.userId === 'object' ? speakerMember.userId.username : `Speaker (${team2Obj.name})`
+                                };
+                              }
+                            }
                             
                             console.log('Navigating to judge-panel with game data:', gameData);
                             navigate('/judge-panel', { 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
@@ -17,6 +17,7 @@ import ApfTabulation from './components/ApfTabulation';
 import ApfJudgeEvaluation from './components/ApfJudgeEvaluation';
 import TeamRegistrationForm from './components/TeamRegistrationForm';
 import PostingDetails from './components/PostingDetails';
+import LandingPage from './components/LandingPage';
 
 const theme = createTheme({
   palette: {
@@ -40,30 +41,44 @@ const theme = createTheme({
   }
 });
 
+// Layout component that includes Navbar and Outlet for nested routes
+const MainLayout = () => {
+  return (
+    <>
+      <Navbar />
+      <Outlet />
+    </>
+  );
+};
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
         <div className="App">
-          <Navbar />
           <Routes>
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Home />} />
-            <Route path="/debates" element={<Debates />} />
-            <Route path="/debates/:id" element={<DebateDetails />} />
-            <Route path="/host-debate" element={<HostDebate />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/my-debates" element={<MyDebates />} />
-            <Route path="/tournaments" element={<Tournaments />} />
-            <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
-            <Route path="/judge-panel" element={<JudgePanel />} />
-            <Route path="/tabulation" element={<ApfTabulation />} />
-            <Route path="/debates/:id/evaluate" element={<ApfJudgeEvaluation />} />
-            {/* New Routes */}
-            <Route path="/debates/:id/register-team" element={<TeamRegistrationForm />} />
-            <Route path="/debates/:id/postings/:postingId" element={<PostingDetails />} />
+            {/* Landing page route */}
+            <Route path="/" element={<LandingPage />} />
+            
+            {/* All other routes with Navbar */}
+            <Route element={<MainLayout />}>
+              <Route path="/home" element={<Home />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/debates" element={<Debates />} />
+              <Route path="/debates/:id" element={<DebateDetails />} />
+              <Route path="/host-debate" element={<HostDebate />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/my-debates" element={<MyDebates />} />
+              <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
+              <Route path="/judge-panel" element={<JudgePanel />} />
+              <Route path="/tabulation" element={<ApfTabulation />} />
+              <Route path="/debates/:id/evaluate" element={<ApfJudgeEvaluation />} />
+              <Route path="/debates/:id/register-team" element={<TeamRegistrationForm />} />
+              <Route path="/debates/:id/postings/:postingId" element={<PostingDetails />} />
+            </Route>
           </Routes>
         </div>
       </Router>

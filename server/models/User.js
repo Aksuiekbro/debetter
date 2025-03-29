@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema({
       return this.role === 'judge';
     }
   },
+  isTestAccount: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

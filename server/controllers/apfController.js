@@ -257,42 +257,221 @@ exports.submitApfEvaluation = async (req, res) => {
 // Get judge's assigned APF debates
 exports.getJudgeAssignedDebates = async (req, res) => {
   try {
-    // Find tournaments where the user is a judge
+    console.log('Fetching judge assignments for user:', req.user._id);
+    
+    // Find tournaments where the user is a judge through participants array
+    // OR where the user is directly assigned as a judge to a posting
     const tournaments = await Debate.find({
-      'participants': { 
-        $elemMatch: { 
-          _id: req.user._id,
-          role: 'judge'
+      $or: [
+        // Check if user is in participants array as a judge
+        {
+          'participants': { 
+            $elemMatch: { 
+              _id: req.user._id,
+              role: 'judge'
+            }
+          },
+          'format': 'tournament'
+        },
+        // Check if user is directly assigned as a judge to any posting
+        {
+          'postings.judges': req.user._id,
+          'format': 'tournament'
         }
-      },
-      'format': 'tournament'
+      ]
     })
+    // Populate teams with their members
     .populate({
       path: 'teams',
+      // Deeply populate the team members' user data
       populate: {
         path: 'members.userId',
-        select: 'username'
+        model: 'User',
+        select: 'username email _id' // Include essential user fields
       }
     })
+    .populate('participants', 'username email role judgeRole')
+    // Also directly populate all user references
+    .populate({
+      path: 'postings.judges',
+      model: 'User',
+      select: 'username email _id'
+    })
     .sort({ startDate: 1 });
+    
+    console.log(`Found ${tournaments.length} tournaments for judge`);
     
     // Get all APF postings where this judge is assigned
     const assignedGames = [];
     
     for (const tournament of tournaments) {
+      console.log(`Processing tournament: ${tournament.title}, ID: ${tournament._id}`);
+      console.log(`Tournament has ${tournament.teams?.length || 0} teams and ${tournament.postings?.length || 0} postings`);
+      
       if (tournament.postings && tournament.postings.length > 0) {
         // Filter postings where this judge is assigned
         const judgePostings = tournament.postings.filter(posting => 
-          posting.judges.includes(req.user._id)
+          posting.judges.some(judge => 
+            // Handle both populated and unpopulated judges
+            (typeof judge === 'object' ? judge._id.toString() : judge.toString()) === req.user._id.toString()
+          )
         );
         
+        console.log(`Found ${judgePostings.length} postings assigned to this judge`);
+        
         for (const posting of judgePostings) {
-          // Find team details
+          console.log(`Processing posting: ${posting._id}, Teams: ${posting.team1} vs ${posting.team2}`);
+          
+          // Find team details with debug logging
           const team1 = tournament.teams.find(t => t._id.toString() === posting.team1.toString());
           const team2 = tournament.teams.find(t => t._id.toString() === posting.team2.toString());
           
+          console.log(`Team1 found: ${!!team1}, Team2 found: ${!!team2}`);
+          if (team1) console.log(`Team1 name: ${team1.name}, members: ${team1.members?.length || 0}`);
+          if (team2) console.log(`Team2 name: ${team2.name}, members: ${team2.members?.length || 0}`);
+          
+          // Extract team member details for UI with improved debugging
+          let team1Members = {
+            leader: null,
+            speaker: null
+          };
+          
+          let team2Members = {
+            leader: null,
+            speaker: null 
+          };
+          
+          // Process team 1 members
+          if (team1 && team1.members && team1.members.length > 0) {
+            const leaderMember = team1.members.find(m => m.role === 'leader');
+            const speakerMember = team1.members.find(m => m.role === 'speaker');
+            
+            console.log(`Team1 leader member:`, leaderMember);
+            console.log(`Team1 speaker member:`, speakerMember);
+            
+            if (leaderMember && leaderMember.userId) {
+              // If userId is already populated, use it directly
+              if (typeof leaderMember.userId === 'object') {
+                team1Members.leader = leaderMember.userId;
+              } else {
+                // Otherwise, create a partial object with just the ID
+                team1Members.leader = {
+                  _id: leaderMember.userId,
+                  username: `Leader (${team1.name})`
+                };
+              }
+              console.log(`Team1 leader user data:`, team1Members.leader);
+            }
+            
+            if (speakerMember && speakerMember.userId) {
+              // If userId is already populated, use it directly
+              if (typeof speakerMember.userId === 'object') {
+                team1Members.speaker = speakerMember.userId;
+              } else {
+                // Otherwise, create a partial object with just the ID
+                team1Members.speaker = {
+                  _id: speakerMember.userId,
+                  username: `Speaker (${team1.name})`
+                };
+              }
+              console.log(`Team1 speaker user data:`, team1Members.speaker);
+            }
+          }
+          
+          // Process team 2 members
+          if (team2 && team2.members && team2.members.length > 0) {
+            const leaderMember = team2.members.find(m => m.role === 'leader');
+            const speakerMember = team2.members.find(m => m.role === 'speaker');
+            
+            console.log(`Team2 leader member:`, leaderMember);
+            console.log(`Team2 speaker member:`, speakerMember);
+            
+            if (leaderMember && leaderMember.userId) {
+              // If userId is already populated, use it directly
+              if (typeof leaderMember.userId === 'object') {
+                team2Members.leader = leaderMember.userId;
+              } else {
+                // Otherwise, create a partial object with just the ID
+                team2Members.leader = {
+                  _id: leaderMember.userId,
+                  username: `Leader (${team2.name})`
+                };
+              }
+              console.log(`Team2 leader user data:`, team2Members.leader);
+            }
+            
+            if (speakerMember && speakerMember.userId) {
+              // If userId is already populated, use it directly
+              if (typeof speakerMember.userId === 'object') {
+                team2Members.speaker = speakerMember.userId;
+              } else {
+                // Otherwise, create a partial object with just the ID
+                team2Members.speaker = {
+                  _id: speakerMember.userId,
+                  username: `Speaker (${team2.name})`
+                };
+              }
+              console.log(`Team2 speaker user data:`, team2Members.speaker);
+            }
+          }
+          
+          // Find other judges assigned to this posting
+          const otherJudges = posting.judges
+            .filter(judgeId => {
+              const judgeIdStr = typeof judgeId === 'object' ? judgeId._id.toString() : judgeId.toString();
+              return judgeIdStr !== req.user._id.toString();
+            })
+            .map(judgeId => {
+              // If judge is already populated
+              if (typeof judgeId === 'object' && judgeId._id) {
+                return {
+                  id: judgeId._id,
+                  name: judgeId.username || 'Unknown Judge',
+                  role: judgeId.judgeRole || 'Judge'
+                };
+              }
+              
+              // Otherwise, look for judge data in participants
+              const judgeData = tournament.participants.find(p => 
+                p._id.toString() === judgeId.toString()
+              );
+              
+              return judgeData ? {
+                id: judgeData._id,
+                name: judgeData.username,
+                role: judgeData.judgeRole || 'Judge'
+              } : {
+                id: judgeId,
+                name: 'Unknown Judge',
+                role: 'Judge'
+              };
+            })
+            .filter(judge => judge !== null);
+          
           // Check if judge has already submitted an evaluation
           const isEvaluated = posting.status === 'completed';
+          
+          // Prepare data for formatted leader and speaker objects
+          const formatUserObject = (user) => {
+            if (!user) return null;
+            
+            // Handle populated user object
+            if (user._id) {
+              return {
+                id: user._id,
+                name: user.username || 'Unknown User'
+              };
+            } 
+            // Handle user ID string (fallback)
+            else if (typeof user === 'string') {
+              return {
+                id: user,
+                name: 'Unknown User'
+              };
+            }
+            
+            return null;
+          };
           
           // Format the posting for the judge panel
           assignedGames.push({
@@ -303,20 +482,32 @@ exports.getJudgeAssignedDebates = async (req, res) => {
             duration: tournament.duration || 60,
             location: posting.location || 'TBD',
             team1: {
-              id: team1?._id || 'team1',
-              name: team1?.name || 'Team 1'
+              id: team1?._id || posting.team1,
+              name: team1?.name || 'Team 1',
+              // Include member details with improved data handling
+              leader: formatUserObject(team1Members.leader),
+              speaker: formatUserObject(team1Members.speaker)
             },
             team2: {
-              id: team2?._id || 'team2',
-              name: team2?.name || 'Team 2'
+              id: team2?._id || posting.team2,
+              name: team2?.name || 'Team 2',
+              // Include member details with improved data handling
+              leader: formatUserObject(team2Members.leader),
+              speaker: formatUserObject(team2Members.speaker)
             },
             theme: posting.theme || 'No theme specified',
-            status: isEvaluated ? 'evaluated' : 'pending'
+            status: isEvaluated ? 'evaluated' : 'pending',
+            otherJudges: otherJudges,
+            // Additional useful information for the frontend
+            category: tournament.category,
+            difficulty: tournament.difficulty,
+            evaluationId: posting.evaluation?.evaluationId || null
           });
         }
       }
     }
     
+    console.log(`Returning ${assignedGames.length} assigned games for judge`);
     res.json(assignedGames);
   } catch (error) {
     console.error('Error getting assigned debates:', error);
