@@ -8,7 +8,8 @@ import {
   Tabs,
   Tab,
   CircularProgress,
-  Alert
+  Alert,
+  Snackbar
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import JudgeGameCard from './JudgeGameCard';
@@ -25,6 +26,11 @@ const JudgePanel = () => {
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
 
   useEffect(() => {
     fetchAssignedGames();
@@ -77,12 +83,27 @@ const JudgePanel = () => {
     setSelectedGame(null);
   };
 
+  const handleCloseNotification = () => {
+    setNotification({...notification, open: false});
+  };
+
   const handleSubmitEvaluation = async (evaluationData) => {
     try {
       console.log('Submitting evaluation:', evaluationData);
       
       // Use the tournament ID as the debate ID for the API endpoint
       const debateId = selectedGame.tournamentId;
+      
+      // Ensure we have all required fields 
+      if (!debateId || !evaluationData.gameId || !evaluationData.winningTeamId) {
+        console.error('Missing required data:', { debateId, gameId: evaluationData.gameId, winningTeamId: evaluationData.winningTeamId });
+        setNotification({
+          open: true,
+          message: 'Missing required evaluation data. Please try again.',
+          severity: 'error'
+        });
+        return;
+      }
       
       // Submit evaluation to API
       const response = await fetch(`${api.baseUrl}/api/apf/${debateId}/evaluate`, {
@@ -91,7 +112,13 @@ const JudgePanel = () => {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(evaluationData)
+        body: JSON.stringify({
+          ...evaluationData,
+          // Ensure we're sending the proper ID format as expected by the server
+          gameId: evaluationData.gameId.toString(),
+          tournamentId: debateId.toString(),
+          winningTeamId: evaluationData.winningTeamId.toString()
+        })
       });
 
       if (!response.ok) {
@@ -108,6 +135,13 @@ const JudgePanel = () => {
         )
       );
       
+      // Show success notification
+      setNotification({
+        open: true,
+        message: 'Evaluation submitted successfully!',
+        severity: 'success'
+      });
+      
       // Close the evaluation panel
       handleCloseEvaluation();
       
@@ -115,7 +149,11 @@ const JudgePanel = () => {
       fetchAssignedGames();
     } catch (error) {
       console.error('Error submitting evaluation:', error);
-      alert('Failed to submit evaluation: ' + error.message);
+      setNotification({
+        open: true,
+        message: `Failed to submit evaluation: ${error.message}`,
+        severity: 'error'
+      });
     }
   };
 
@@ -210,6 +248,18 @@ const JudgePanel = () => {
           )}
         </Paper>
       )}
+      
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseNotification} severity={notification.severity}>
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

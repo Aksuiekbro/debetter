@@ -39,6 +39,11 @@ const ApfJudgeEvaluation = ({
   onClose, 
   onSubmitEvaluation 
 }) => {
+  // Debug log to see the game object structure
+  console.log('ApfJudgeEvaluation - game object:', game);
+  console.log('Team1 data:', game.team1);
+  console.log('Team2 data:', game.team2);
+  
   const [recording, setRecording] = useState(false);
   const [winningTeam, setWinningTeam] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -249,10 +254,101 @@ const ApfJudgeEvaluation = ({
 
   // Helper function to get speaker name based on role
   const getSpeakerName = (role) => {
-    if (role === 'leader_gov') return game.team1.leader || 'Leader Gov';
-    if (role === 'speaker_gov') return game.team1.speaker || 'Speaker Gov';
-    if (role === 'leader_opp') return game.team2.leader || 'Leader Opp';
-    if (role === 'speaker_opp') return game.team2.speaker || 'Speaker Opp';
+    // Log the game object to debug
+    console.log(`Getting speaker name for role: ${role}`);
+    
+    if (role === 'leader_gov') {
+      // Team 1 leader
+      const leader = game.team1.leader;
+      if (!leader) return 'Leader Gov';
+      
+      // Log the leader object to debug its structure
+      console.log('Leader Gov object:', leader);
+      
+      // If leader is a string, return it
+      if (typeof leader === 'string') return leader;
+      
+      // If leader is an object with name property, return the name
+      if (leader && typeof leader === 'object') {
+        // Return the name directly if available
+        if (leader.name) return leader.name;
+        
+        // For UI display, we prioritize showing the actual person's name
+        return 'Leader Gov';
+      }
+      
+      return 'Leader Gov';
+    }
+    
+    if (role === 'speaker_gov') {
+      // Team 1 speaker
+      const speaker = game.team1.speaker;
+      if (!speaker) return 'Speaker Gov';
+      
+      // Log the speaker object to debug its structure
+      console.log('Speaker Gov object:', speaker);
+      
+      // If speaker is a string, return it
+      if (typeof speaker === 'string') return speaker;
+      
+      // If speaker is an object with name property, return the name
+      if (speaker && typeof speaker === 'object') {
+        // Return the name directly if available
+        if (speaker.name) return speaker.name;
+        
+        // For UI display, we prioritize showing the actual person's name
+        return 'Speaker Gov';
+      }
+      
+      return 'Speaker Gov';
+    }
+    
+    if (role === 'leader_opp') {
+      // Team 2 leader
+      const leader = game.team2.leader;
+      if (!leader) return 'Leader Opp';
+      
+      // Log the leader object to debug its structure
+      console.log('Leader Opp object:', leader);
+      
+      // If leader is a string, return it
+      if (typeof leader === 'string') return leader;
+      
+      // If leader is an object with name property, return the name
+      if (leader && typeof leader === 'object') {
+        // Return the name directly if available
+        if (leader.name) return leader.name;
+        
+        // For UI display, we prioritize showing the actual person's name
+        return 'Leader Opp';
+      }
+      
+      return 'Leader Opp';
+    }
+    
+    if (role === 'speaker_opp') {
+      // Team 2 speaker
+      const speaker = game.team2.speaker;
+      if (!speaker) return 'Speaker Opp';
+      
+      // Log the speaker object to debug its structure
+      console.log('Speaker Opp object:', speaker);
+      
+      // If speaker is a string, return it
+      if (typeof speaker === 'string') return speaker;
+      
+      // If speaker is an object with name property, return the name
+      if (speaker && typeof speaker === 'object') {
+        // Return the name directly if available
+        if (speaker.name) return speaker.name;
+        
+        // For UI display, we prioritize showing the actual person's name
+        return 'Speaker Opp';
+      }
+      
+      return 'Speaker Opp';
+    }
+    
     return 'Unknown Speaker';
   };
 
@@ -327,9 +423,9 @@ const ApfJudgeEvaluation = ({
             textColor="primary"
             aria-label="evaluation tabs"
           >
-            <Tab label="Transcription" />
+            <Tab label="Debate Transcription" />
             <Tab label="Speaker Evaluation" />
-            <Tab label="Team Criteria" />
+            <Tab label={`Team Assessment (${game.team1.name} vs ${game.team2.name})`} />
           </Tabs>
 
           {/* Evaluation Table Tab */}
@@ -343,7 +439,7 @@ const ApfJudgeEvaluation = ({
                       {Object.entries(transcriptions).map(([speaker, text]) => (
                         <Grid item xs={12} key={speaker}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                            {getSpeakerName(speaker)} ({getSpeakerRole(speaker)}):
+                            {getSpeakerName(speaker)} ({getSpeakerRole(speaker)} - {speaker.includes('gov') ? game.team1.name : game.team2.name}):
                           </Typography>
                           <Paper variant="outlined" sx={{ p: 2, minHeight: '60px', bgcolor: 'rgba(0, 0, 0, 0.01)' }}>
                             <Typography variant="body2">
@@ -367,9 +463,9 @@ const ApfJudgeEvaluation = ({
                   <Grid item xs={12} md={6} key={speakerRole}>
                     <Card sx={{ mb: 3 }}>
                       <CardHeader 
-                        title={`${getSpeakerName(speakerRole)}`}
-                        subheader={`${getSpeakerRole(speakerRole)} - ${speakerRole.includes('gov') ? 'Government' : 'Opposition'}`}
-                        sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }}
+                        title={`${getSpeakerName(speakerRole)} - ${getSpeakerRole(speakerRole)}`}
+                        subheader={`${speakerRole.includes('gov') ? `${game.team1.name} (Government)` : `${game.team2.name} (Opposition)`}`}
+                        sx={{ background: speakerRole.includes('gov') ? 'rgba(63, 81, 181, 0.08)' : 'rgba(255, 82, 82, 0.08)', p: 2 }}
                       />
                       <CardContent>
                         {getCriteriaForRole(speakerRole).map((criterion) => (
@@ -445,8 +541,13 @@ const ApfJudgeEvaluation = ({
                 <Grid item xs={12} md={6}>
                   <Card>
                     <CardHeader 
-                      title={`${game.team1.name} (Government)`}
-                      sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }}
+                      title={`${game.team1.name}`}
+                      subheader="Government Team" 
+                      sx={{ 
+                        background: 'rgba(63, 81, 181, 0.08)', 
+                        p: 2,
+                        '& .MuiCardHeader-title': { fontWeight: 'bold' } 
+                      }}
                     />
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>Team Criteria</Typography>
@@ -502,8 +603,13 @@ const ApfJudgeEvaluation = ({
                 <Grid item xs={12} md={6}>
                   <Card>
                     <CardHeader 
-                      title={`${game.team2.name} (Opposition)`}
-                      sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }}
+                      title={`${game.team2.name}`}
+                      subheader="Opposition Team"
+                      sx={{ 
+                        background: 'rgba(255, 82, 82, 0.08)', 
+                        p: 2,
+                        '& .MuiCardHeader-title': { fontWeight: 'bold' } 
+                      }}
                     />
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>Team Criteria</Typography>
@@ -562,7 +668,7 @@ const ApfJudgeEvaluation = ({
         </Box>
         
         <Box sx={{ mt: 4 }}>
-          <Typography variant="subtitle1" gutterBottom>
+          <Typography variant="subtitle1" gutterBottom fontWeight="bold">
             Winner Selection
           </Typography>
           <Card elevation={2}>
@@ -574,12 +680,33 @@ const ApfJudgeEvaluation = ({
                 <FormControlLabel 
                   value={game.team1.id} 
                   control={<Radio color="primary" />} 
-                  label={`${game.team1.name} (Government)`} 
+                  label={
+                    <Box sx={{ 
+                      py: 1, 
+                      px: 2, 
+                      bgcolor: 'rgba(63, 81, 181, 0.08)',
+                      borderRadius: 1,
+                      fontWeight: winningTeam === game.team1.id ? 'bold' : 'normal'
+                    }}>
+                      {game.team1.name} (Government)
+                    </Box>
+                  }
+                  sx={{ mb: 1 }}
                 />
                 <FormControlLabel 
                   value={game.team2.id} 
-                  control={<Radio color="primary" />} 
-                  label={`${game.team2.name} (Opposition)`} 
+                  control={<Radio color="secondary" />} 
+                  label={
+                    <Box sx={{ 
+                      py: 1, 
+                      px: 2, 
+                      bgcolor: 'rgba(255, 82, 82, 0.08)',
+                      borderRadius: 1,
+                      fontWeight: winningTeam === game.team2.id ? 'bold' : 'normal'
+                    }}>
+                      {game.team2.name} (Opposition)
+                    </Box>
+                  }
                 />
               </RadioGroup>
             </CardContent>

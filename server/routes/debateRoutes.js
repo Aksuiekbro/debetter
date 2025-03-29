@@ -20,12 +20,16 @@ const {
     updateTournamentMatch,
     updateParticipants,
     createTeam,
+    updateTeam,
     registerParticipants,
     generateTestData,
     createApfPosting,
     registerTeam,
     getPostingDetails,
-    randomizeTeams
+    randomizeTeams,
+    createApfBatchPostings,
+    updateApfPostingStatus,
+    sendApfGameReminder
 } = require('../controllers/debateController');
 const { protect, isOrganizer } = require('../middleware/authMiddleware');
 
@@ -66,21 +70,24 @@ router.post('/:id/tournament/bracket/generate', generateTournamentBracket);
 router.post('/:id/tournament/match/update', updateTournamentMatch);
 router.put('/:id/tournament/participants', updateParticipants);
 router.post('/teams', createTeam);
+router.put('/teams/:teamId', updateTeam);
 
 // Team registration route
-router.post('/:id/register-team', registerTeam);
+// router.post('/:id/register-team', registerTeam);
 
 // Team randomization route
 router.post('/:id/randomize-teams', randomizeTeams);
 
 // APF Game posting routes
 router.post('/:id/postings', isOrganizer, createApfPosting);
-router.get('/:id/postings/:postingId', getPostingDetails); // New route to get posting details
+router.post('/:id/batch-postings', isOrganizer, createApfBatchPostings);
+router.put('/:id/postings/:postingId/status', isOrganizer, updateApfPostingStatus);
+router.post('/:id/postings/:postingId/reminders', isOrganizer, sendApfGameReminder);
 
 // Special route for tournament participant registration
 router.post('/:id/register-participants', validateParticipantData, registerParticipants);
 
 // Organizer only routes
-router.post('/:id/test/generate', isOrganizer, generateTestData);
+router.post('/:id/generate-test-data', isOrganizer, generateTestData);
 
 module.exports = router;

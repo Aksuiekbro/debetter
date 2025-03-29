@@ -16,17 +16,26 @@ import {
   CircularProgress,
   Chip,
   Card,
-  CardContent
+  CardContent,
+  Avatar,
+  Button,
+  useTheme
 } from '@mui/material';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
 import { getAuthHeaders } from '../utils/auth';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PersonIcon from '@mui/icons-material/Person';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
 const PostingDetails = () => {
   const { id, postingId } = useParams();
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(null);
   const [error, setError] = useState('');
+  const [userId, setUserId] = useState(localStorage.getItem('userId') || '');
+  const navigate = useNavigate();
+  const theme = useTheme();
   
   useEffect(() => {
     fetchPostingDetails();
@@ -52,6 +61,69 @@ const PostingDetails = () => {
       setLoading(false);
     }
   };
+
+  // Check if the current user is a participant in this debate
+  const getUserParticipationDetails = () => {
+    if (!posting || !userId) return null;
+    
+    // Check if user is in team1
+    const inTeam1 = posting.team1?.members?.some(member => 
+      (member.user?._id === userId) || (member.userId?._id === userId) || (member.userId === userId)
+    );
+    
+    // Check if user is in team2
+    const inTeam2 = posting.team2?.members?.some(member => 
+      (member.user?._id === userId) || (member.userId?._id === userId) || (member.userId === userId)
+    );
+    
+    if (!inTeam1 && !inTeam2) return null;
+    
+    const userTeam = inTeam1 ? 'team1' : 'team2';
+    const userTeamObj = inTeam1 ? posting.team1 : posting.team2;
+    const userTeamName = inTeam1 ? posting.team1?.name : posting.team2?.name;
+    
+    // Get the user's role in the team
+    let userRole = '';
+    let userMember = null;
+    
+    if (inTeam1) {
+      userMember = posting.team1?.members?.find(m => 
+        (m.user?._id === userId) || (m.userId?._id === userId) || (m.userId === userId)
+      );
+    } else {
+      userMember = posting.team2?.members?.find(m => 
+        (m.user?._id === userId) || (m.userId?._id === userId) || (m.userId === userId)
+      );
+    }
+    
+    userRole = userMember?.role === 'leader' ? 'Leader' : 'Speaker';
+    
+    // Check if user's team won
+    const isWinner = posting.winner === (inTeam1 ? posting.team1?._id : posting.team2?._id);
+    
+    return {
+      userTeam,
+      userTeamObj,
+      userTeamName,
+      userRole,
+      isWinner,
+      inTeam1,
+      inTeam2
+    };
+  };
+  
+  const userParticipation = getUserParticipationDetails();
+  
+  const getUserIndividualScore = () => {
+    if (!posting?.evaluation?.individualScores || !userParticipation) return null;
+    
+    const { userRole } = userParticipation;
+    return posting.evaluation.individualScores.find(
+      score => score.role.toLowerCase().includes(userRole.toLowerCase())
+    );
+  };
+  
+  const userScore = getUserIndividualScore();
   
   if (loading) {
     return (
@@ -82,6 +154,26 @@ const PostingDetails = () => {
   
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
+      {/* Back navigation */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate(-1)}
+          sx={{ mb: 2 }}
+        >
+          Back
+        </Button>
+        
+        {userParticipation && (
+          <Chip 
+            icon={<PersonIcon />}
+            label={`You participated as ${userParticipation.userRole} in ${userParticipation.userTeamName || 'your team'}`}
+            color="primary"
+            variant="outlined"
+          />
+        )}
+      </Box>
+      
       <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
@@ -99,47 +191,98 @@ const PostingDetails = () => {
             {posting.location && <Chip label={`Location: ${posting.location}`} variant="outlined" />}
           </Box>
           <Typography variant="h6" gutterBottom sx={{ mt: 2, color: 'secondary.main' }}>
-            Theme: {posting.theme}
+            {posting.useCustomModel ? 'Custom Debate Model:' : 'Theme:'}
           </Typography>
+          
+          {posting.useCustomModel ? (
+            <Paper variant="outlined" sx={{ p: 2, mb: 2, maxHeight: '300px', overflow: 'auto' }}>
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                {posting.theme || 'No custom model text available'}
+              </Typography>
+            </Paper>
+          ) : (
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {posting.theme}
+            </Typography>
+          )}
+          
           <Divider sx={{ my: 2 }} />
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 2,
+                  borderLeft: userParticipation?.inTeam1 ? `4px solid ${theme.palette.primary.main}` : undefined,
+                  bgcolor: userParticipation?.inTeam1 ? 'rgba(50, 205, 50, 0.05)' : undefined
+                }}
+              >
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                   Team 1 (Government)
+                  {userParticipation?.inTeam1 && (
+                    <Chip size="small" label="Your Team" color="primary" sx={{ ml: 1 }} />
+                  )}
                 </Typography>
                 <Typography variant="body1">
                   {posting.team1?.name || 'Team 1'}
                 </Typography>
-                {posting.team1Members && (
+                {posting.team1?.members && posting.team1.members.length > 0 ? (
                   <Box sx={{ mt: 1 }}>
-                    <Typography variant="body2">
-                      <strong>Leader:</strong> {posting.team1Members.leader?.username || 'Not specified'}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Speaker:</strong> {posting.team1Members.speaker?.username || 'Not specified'}
-                    </Typography>
+                    {posting.team1.members.map((member, index) => (
+                      <Typography 
+                        variant="body2" 
+                        key={index}
+                        sx={{
+                          fontWeight: (member.user?._id === userId || member.userId?._id === userId || member.userId === userId) ? 'bold' : 'normal',
+                          color: (member.user?._id === userId || member.userId?._id === userId || member.userId === userId) ? 'primary.main' : 'inherit'
+                        }}
+                      >
+                        <strong>{member.role === 'leader' ? 'Leader' : 'Speaker'}:</strong> {member.user?.username || 'Not specified'}
+                        {(member.user?._id === userId || member.userId?._id === userId || member.userId === userId) && ' (You)'}
+                      </Typography>
+                    ))}
                   </Box>
+                ) : (
+                  <Typography variant="body2">No team members specified</Typography>
                 )}
               </Paper>
             </Grid>
             <Grid item xs={12} md={6}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 2,
+                  borderLeft: userParticipation?.inTeam2 ? `4px solid ${theme.palette.primary.main}` : undefined,
+                  bgcolor: userParticipation?.inTeam2 ? 'rgba(50, 205, 50, 0.05)' : undefined
+                }}
+              >
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                   Team 2 (Opposition)
+                  {userParticipation?.inTeam2 && (
+                    <Chip size="small" label="Your Team" color="primary" sx={{ ml: 1 }} />
+                  )}
                 </Typography>
                 <Typography variant="body1">
                   {posting.team2?.name || 'Team 2'}
                 </Typography>
-                {posting.team2Members && (
+                {posting.team2?.members && posting.team2.members.length > 0 ? (
                   <Box sx={{ mt: 1 }}>
-                    <Typography variant="body2">
-                      <strong>Leader:</strong> {posting.team2Members.leader?.username || 'Not specified'}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Speaker:</strong> {posting.team2Members.speaker?.username || 'Not specified'}
-                    </Typography>
+                    {posting.team2.members.map((member, index) => (
+                      <Typography 
+                        variant="body2" 
+                        key={index}
+                        sx={{
+                          fontWeight: (member.user?._id === userId || member.userId?._id === userId || member.userId === userId) ? 'bold' : 'normal',
+                          color: (member.user?._id === userId || member.userId?._id === userId || member.userId === userId) ? 'primary.main' : 'inherit'
+                        }}
+                      >
+                        <strong>{member.role === 'leader' ? 'Leader' : 'Speaker'}:</strong> {member.user?.username || 'Not specified'}
+                        {(member.user?._id === userId || member.userId?._id === userId || member.userId === userId) && ' (You)'}
+                      </Typography>
+                    ))}
                   </Box>
+                ) : (
+                  <Typography variant="body2">No team members specified</Typography>
                 )}
               </Paper>
             </Grid>
@@ -148,10 +291,17 @@ const PostingDetails = () => {
           {posting.winner && (
             <Box sx={{ mt: 3, textAlign: 'center' }}>
               <Chip 
+                icon={<EmojiEventsIcon />}
                 label={`Winner: ${posting.winnerTeamName || 'Team'}`} 
                 color="success" 
                 sx={{ fontSize: '1.1rem', py: 2, px: 3 }} 
               />
+              
+              {userParticipation?.isWinner && (
+                <Typography variant="subtitle1" color="success.main" sx={{ mt: 1, fontWeight: 'bold' }}>
+                  Congratulations! Your team won this debate.
+                </Typography>
+              )}
             </Box>
           )}
         </Box>
@@ -159,6 +309,76 @@ const PostingDetails = () => {
       
       {posting.status === 'completed' && posting.evaluation && (
         <>
+          {/* For user's feedback highlight */}
+          {userParticipation && (
+            <Paper elevation={3} sx={{ p: 3, mb: 4, bgcolor: 'primary.light', color: 'white' }}>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+                Your Debate Performance
+              </Typography>
+              
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary.main">
+                        Team Score
+                      </Typography>
+                      <Typography variant="h3" color="primary.main" gutterBottom>
+                        {posting.evaluation[`${userParticipation.userTeam}Score`] || '0'} points
+                      </Typography>
+                      <Typography variant="body1">
+                        {posting.evaluation[`${userParticipation.userTeam}Comments`] || 'No specific feedback provided.'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                {userScore && (
+                  <Grid item xs={12} md={6}>
+                    <Card sx={{ height: '100%' }}>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom color="primary.main">
+                          Your Individual Performance ({userParticipation.userRole})
+                        </Typography>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'rgba(50, 205, 50, 0.1)', borderRadius: 1, width: '30%' }}>
+                            <Typography variant="body1" gutterBottom>Matter</Typography>
+                            <Typography variant="h5" color="primary.main">{userScore.matter}/30</Typography>
+                          </Box>
+                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'rgba(50, 205, 50, 0.1)', borderRadius: 1, width: '30%' }}>
+                            <Typography variant="body1" gutterBottom>Method</Typography>
+                            <Typography variant="h5" color="primary.main">{userScore.method}/30</Typography>
+                          </Box>
+                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'rgba(50, 205, 50, 0.1)', borderRadius: 1, width: '30%' }}>
+                            <Typography variant="body1" gutterBottom>Manner</Typography>
+                            <Typography variant="h5" color="primary.main">{userScore.manner}/30</Typography>
+                          </Box>
+                        </Box>
+                        
+                        <Typography variant="body1" gutterBottom sx={{ fontWeight: 'bold', textAlign: 'center', mt: 2 }}>
+                          Total Score: {userScore.matter + userScore.method + userScore.manner}/90
+                        </Typography>
+                        
+                        <Box sx={{ mt: 2, bgcolor: 'background.paper', p: 2, borderRadius: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            <strong>Matter</strong> - Quality of arguments, logic, and evidence
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            <strong>Method</strong> - Structure, organization, and strategic approach
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            <strong>Manner</strong> - Delivery, persuasiveness, and speaking style
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
+          )}
+          
           <Typography variant="h5" gutterBottom sx={{ mt: 4, mb: 2, color: 'primary.main' }}>
             Judge's Evaluation
           </Typography>
@@ -181,6 +401,9 @@ const PostingDetails = () => {
                   <CardContent>
                     <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                       Team 1 Score
+                      {userParticipation?.inTeam1 && (
+                        <Chip size="small" label="Your Team" color="primary" sx={{ ml: 1 }} />
+                      )}
                     </Typography>
                     <Typography variant="h4" color="primary.main">
                       {posting.evaluation.team1Score || '0'} points
@@ -196,6 +419,9 @@ const PostingDetails = () => {
                   <CardContent>
                     <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                       Team 2 Score
+                      {userParticipation?.inTeam2 && (
+                        <Chip size="small" label="Your Team" color="primary" sx={{ ml: 1 }} />
+                      )}
                     </Typography>
                     <Typography variant="h4" color="primary.main">
                       {posting.evaluation.team2Score || '0'} points
@@ -301,18 +527,34 @@ const PostingDetails = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {posting.evaluation.individualScores.map((score, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{score.role}</TableCell>
-                        <TableCell>{score.speaker}</TableCell>
-                        <TableCell>{score.matter}</TableCell>
-                        <TableCell>{score.method}</TableCell>
-                        <TableCell>{score.manner}</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
-                          {score.matter + score.method + score.manner}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {posting.evaluation.individualScores.map((score, index) => {
+                      // Check if this score belongs to the current user
+                      const isCurrentUser = userParticipation?.userRole?.toLowerCase() === score.role.toLowerCase();
+                      
+                      return (
+                        <TableRow 
+                          key={index}
+                          sx={{ 
+                            bgcolor: isCurrentUser ? 'rgba(50, 205, 50, 0.1)' : undefined,
+                            '& td': {
+                              fontWeight: isCurrentUser ? 'bold' : 'normal'
+                            }
+                          }}
+                        >
+                          <TableCell>
+                            {score.role}
+                            {isCurrentUser && ' (You)'}
+                          </TableCell>
+                          <TableCell>{score.speaker}</TableCell>
+                          <TableCell>{score.matter}</TableCell>
+                          <TableCell>{score.method}</TableCell>
+                          <TableCell>{score.manner}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>
+                            {score.matter + score.method + score.manner}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

@@ -114,7 +114,7 @@ const Navbar = () => {
         <Box sx={{ flexGrow: 1, display: 'flex', gap: 2 }}>
           <Button 
             color="inherit" 
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/home')}
             sx={{ fontWeight: 'bold' }}
           >
             DeBetter
