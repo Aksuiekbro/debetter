@@ -7,16 +7,21 @@
     "start": "node server.js",
     "server": "nodemon server.js",
     "client": "cd client && npm start",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "cd client && npm run build",
+    "test": "jest",
+    "tournament:setup": "node scripts/runTournamentSetup.js"
   },
   "dependencies": {
     "@mui/x-date-pickers": "^7.28.2",
+    "axios": "^1.8.4",
     "bcryptjs": "^3.0.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^16.3.1",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
+    "mcp-mongodb-atlas": "^0.1.10",
     "mongoose": "^7.8.6",
     "react-beautiful-dnd": "^13.1.1"
   },

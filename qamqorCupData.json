@@ -1,0 +1,149 @@
+{
+  "teams": [
+    { "id": "team1", "name": "Aibek's Team" },
+    { "id": "team2", "name": "Nurlan's Team" },
+    { "id": "team3", "name": "Kairat's Team" },
+    { "id": "team4", "name": "Sanzhar's Team" },
+    { "id": "team5", "name": "Azamat's Team" },
+    { "id": "team6", "name": "Timur's Team" },
+    { "id": "team7", "name": "Ruslan's Team" },
+    { "id": "team8", "name": "Marat's Team" },
+    { "id": "team9", "name": "Damir's Team" },
+    { "id": "team10", "name": "Olzhas's Team" },
+    { "id": "team11", "name": "Galymzhan's Team" },
+    { "id": "team12", "name": "Yerlan's Team" },
+    { "id": "team13", "name": "Serik's Team" },
+    { "id": "team14", "name": "Berik's Team" },
+    { "id": "team15", "name": "Kanat's Team" },
+    { "id": "team16", "name": "Askhat's Team" }
+  ],
+  "rounds": [
+    {
+      "name": "Round 1",
+      "matches": [
+        {
+          "team1": { "id": "team1", "name": "Aibek's Team" },
+          "team2": { "id": "team2", "name": "Nurlan's Team" },
+          "winner": { "id": "team1", "name": "Aibek's Team" },
+          "completed": true,
+          "scores": { "team1": 85, "team2": 78 }
+        },
+        {
+          "team1": { "id": "team3", "name": "Kairat's Team" },
+          "team2": { "id": "team4", "name": "Sanzhar's Team" },
+          "winner": { "id": "team4", "name": "Sanzhar's Team" },
+          "completed": true,
+          "scores": { "team1": 76, "team2": 88 }
+        },
+        {
+          "team1": { "id": "team5", "name": "Azamat's Team" },
+          "team2": { "id": "team6", "name": "Timur's Team" },
+          "winner": { "id": "team5", "name": "Azamat's Team" },
+          "completed": true,
+          "scores": { "team1": 90, "team2": 85 }
+        },
+        {
+          "team1": { "id": "team7", "name": "Ruslan's Team" },
+          "team2": { "id": "team8", "name": "Marat's Team" },
+          "winner": { "id": "team8", "name": "Marat's Team" },
+          "completed": true,
+          "scores": { "team1": 82, "team2": 91 }
+        },
+        {
+          "team1": { "id": "team9", "name": "Damir's Team" },
+          "team2": { "id": "team10", "name": "Olzhas's Team" },
+          "winner": { "id": "team9", "name": "Damir's Team" },
+          "completed": true,
+          "scores": { "team1": 87, "team2": 75 }
+        },
+        {
+          "team1": { "id": "team11", "name": "Galymzhan's Team" },
+          "team2": { "id": "team12", "name": "Yerlan's Team" },
+          "winner": { "id": "team11", "name": "Galymzhan's Team" },
+          "completed": true,
+          "scores": { "team1": 94, "team2": 88 }
+        },
+        {
+          "team1": { "id": "team13", "name": "Serik's Team" },
+          "team2": { "id": "team14", "name": "Berik's Team" },
+          "winner": { "id": "team14", "name": "Berik's Team" },
+          "completed": true,
+          "scores": { "team1": 79, "team2": 86 }
+        },
+        {
+          "team1": { "id": "team15", "name": "Kanat's Team" },
+          "team2": { "id": "team16", "name": "Askhat's Team" },
+          "winner": { "id": "team16", "name": "Askhat's Team" },
+          "completed": true,
+          "scores": { "team1": 84, "team2": 89 }
+        }
+      ]
+    },
+    {
+      "name": "Quarterfinals",
+      "matches": [
+        {
+          "team1": { "id": "team1", "name": "Aibek's Team" },
+          "team2": { "id": "team4", "name": "Sanzhar's Team" },
+          "winner": { "id": "team1", "name": "Aibek's Team" },
+          "completed": true,
+          "scores": { "team1": 91, "team2": 87 }
+        },
+        {
+          "team1": { "id": "team5", "name": "Azamat's Team" },
+          "team2": { "id": "team8", "name": "Marat's Team" },
+          "winner": { "id": "team8", "name": "Marat's Team" },
+          "completed": true,
+          "scores": { "team1": 86, "team2": 92 }
+        },
+        {
+          "team1": { "id": "team9", "name": "Damir's Team" },
+          "team2": { "id": "team11", "name": "Galymzhan's Team" },
+          "winner": { "id": "team11", "name": "Galymzhan's Team" },
+          "completed": true,
+          "scores": { "team1": 85, "team2": 93 }
+        },
+        {
+          "team1": { "id": "team14", "name": "Berik's Team" },
+          "team2": { "id": "team16", "name": "Askhat's Team" },
+          "winner": { "id": "team16", "name": "Askhat's Team" },
+          "completed": true,
+          "scores": { "team1": 88, "team2": 90 }
+        }
+      ]
+    },
+    {
+      "name": "Semifinals",
+      "matches": [
+        {
+          "team1": { "id": "team1", "name": "Aibek's Team" },
+          "team2": { "id": "team8", "name": "Marat's Team" },
+          "winner": { "id": "team1", "name": "Aibek's Team" },
+          "completed": true,
+          "scores": { "team1": 95, "team2": 90 }
+        },
+        {
+          "team1": { "id": "team11", "name": "Galymzhan's Team" },
+          "team2": { "id": "team16", "name": "Askhat's Team" },
+          "winner": { "id": "team11", "name": "Galymzhan's Team" },
+          "completed": true,
+          "scores": { "team1": 94, "team2": 89 }
+        }
+      ]
+    },
+    {
+      "name": "Final",
+      "matches": [
+        {
+          "team1": { "id": "team1", "name": "Aibek's Team" },
+          "team2": { "id": "team11", "name": "Galymzhan's Team" },
+          "winner": { "id": "team11", "name": "Galymzhan's Team" },
+          "completed": true,
+          "scores": { "team1": 92, "team2": 96 }
+        }
+      ]
+    }
+  ],
+  "status": "completed",
+  "winner": { "id": "team11", "name": "Galymzhan's Team" }
+} 
