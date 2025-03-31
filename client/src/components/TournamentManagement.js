@@ -25,6 +25,7 @@ import TeamsTab from './TournamentManagement/TeamsTab';
 import JudgesTab from './TournamentManagement/JudgesTab';
 import PostingTab from './TournamentManagement/PostingTab';
 import StandingsTab from './TournamentManagement/StandingsTab';
+import BracketTab from './TournamentManagement/BracketTab';
 
 // Import Dialog Components
 import DeleteConfirmationDialog from './TournamentManagement/DeleteConfirmationDialog';
@@ -116,6 +117,7 @@ const TournamentManagement = () => {
           <Tab label="Judges" />
           <Tab label="Posting" />
           <Tab label="Standings" />
+          <Tab label="Bracket" />
         </Tabs>
       </Box>
 
@@ -179,6 +181,22 @@ const TournamentManagement = () => {
           teams={dataManager.teams} // Pass teams potentially updated by standings fetch
           onRefreshStandings={dataManager.refreshStandings}
           loading={dataManager.loading} // Use main loading or add specific one
+        />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={5}>
+        <BracketTab
+          tournamentRounds={dataManager.tournament?.tournamentRounds || []}
+          loading={dataManager.loading}
+          onInitializeBracket={async () => {
+            try {
+              // This function should be added to dataManager
+              await dataManager.initializeBracket();
+              uiManager.showNotification('Tournament bracket initialized successfully', 'success');
+            } catch (error) {
+              uiManager.showNotification(error.message || 'Failed to initialize bracket', 'error');
+            }
+          }}
+          initializing={dataManager.initializingBracket}
         />
       </TabPanel>
 

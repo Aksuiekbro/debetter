@@ -133,12 +133,14 @@ const Navbar = () => {
           </Button>
           {isAuthenticated && (
             <>
+              {/* Temporarily commented out per user request
               <Button
                 color="inherit"
                 onClick={() => navigate('/my-debates')}
               >
                 My Debates
               </Button>
+              */}
               <Button
                 color="inherit"
                 onClick={() => navigate('/tournaments')}

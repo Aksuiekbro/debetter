@@ -48,6 +48,12 @@ const Home = () => {
     winRate: 0
   });
   const [loading, setLoading] = useState(true);
+  const [communityStats, setCommunityStats] = useState({
+    activeUsers: 0,
+    debatesHosted: 0,
+    activeTournaments: 0,
+    teamsFormed: 0
+  });
   
   useEffect(() => {
     // This will update when localStorage changes
@@ -58,6 +64,9 @@ const Home = () => {
     };
     
     window.addEventListener('auth-change', handleStorageChange);
+    
+    // Always fetch community stats regardless of auth status
+    fetchCommunityStats();
     
     // Fetch recent debates and user stats if authenticated
     if (isAuthenticated) {
@@ -75,49 +84,23 @@ const Home = () => {
 
   const fetchUserData = async () => {
     try {
-      // In a real application, you would fetch this data from your API
-      // For now, we'll use mock data
-      setUserStats({
-        participatedDebates: 12,
-        wins: 7,
-        totalPoints: 230,
-        winRate: 58
-      });
+      const response = await api.get('/stats/users/stats', { headers: getAuthHeaders() });
+      setUserStats(response.data);
     } catch (error) {
       console.error('Error fetching user data:', error);
+      // Keep the previous stats if there's an error
     }
   };
 
   const fetchRecentDebates = async () => {
     try {
-      // In a real application, you would fetch from your API
-      // For now, we'll use mock data
-      setRecentDebates([
-        {
-          id: '1',
-          title: 'The Impact of AI on Global Labor Markets',
-          date: '2023-04-15',
-          participants: 8,
-          status: 'completed',
-          winner: 'Team Innovators'
-        },
-        {
-          id: '2',
-          title: 'Universal Basic Income: Solution or Problem?',
-          date: '2023-04-22',
-          participants: 6,
-          status: 'scheduled',
-          time: '14:00'
-        },
-        {
-          id: '3',
-          title: 'Climate Change Policy: Regulation vs Innovation',
-          date: '2023-04-29',
-          participants: 10,
-          status: 'scheduled',
-          time: '16:30'
-        }
-      ]);
+      const response = await api.get('/debates/user/mydebates', { headers: getAuthHeaders() });
+      // Combine created and participated debates, sort by date
+      const allDebates = [...response.data.created, ...response.data.participated]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5); // Get only the 5 most recent
+      
+      setRecentDebates(allDebates);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching debates:', error);
@@ -127,27 +110,27 @@ const Home = () => {
 
   const fetchPublicDebates = async () => {
     try {
-      // For non-authenticated users, show public debates
-      setRecentDebates([
-        {
-          id: '1',
-          title: 'The Impact of AI on Global Labor Markets',
-          date: '2023-04-15',
-          participants: 8,
-          status: 'completed'
-        },
-        {
-          id: '2',
-          title: 'Universal Basic Income: Solution or Problem?',
-          date: '2023-04-22',
-          participants: 6,
-          status: 'scheduled'
+      const response = await api.get('/debates', {
+        params: {
+          limit: 5,
+          sortBy: 'recent'
         }
-      ]);
+      });
+      setRecentDebates(response.data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching public debates:', error);
       setLoading(false);
+    }
+  };
+
+  const fetchCommunityStats = async () => {
+    try {
+      const response = await api.get('/stats/community');
+      setCommunityStats(response.data);
+    } catch (error) {
+      console.error('Error fetching community stats:', error);
+      // Keep the previous stats if there's an error
     }
   };
 
@@ -634,7 +617,7 @@ const Home = () => {
                 </ListItemAvatar>
                 <ListItemText 
                   primary="Active Users" 
-                  secondary="1,250+"
+                  secondary={communityStats.activeUsers.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
                 />
@@ -647,7 +630,7 @@ const Home = () => {
                 </ListItemAvatar>
                 <ListItemText 
                   primary="Debates Hosted" 
-                  secondary="450+"
+                  secondary={communityStats.debatesHosted.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
                 />
@@ -660,7 +643,7 @@ const Home = () => {
                 </ListItemAvatar>
                 <ListItemText 
                   primary="Active Tournaments" 
-                  secondary="24"
+                  secondary={communityStats.activeTournaments.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
                 />
@@ -673,7 +656,7 @@ const Home = () => {
                 </ListItemAvatar>
                 <ListItemText 
                   primary="Teams Formed" 
-                  secondary="320+"
+                  secondary={communityStats.teamsFormed.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
                 />

@@ -64,7 +64,7 @@ const Register = () => {
       console.log('Role stored in localStorage:', localStorage.getItem('userRole'));
       
       window.dispatchEvent(new Event('auth-change'));
-      navigate('/');
+      navigate('/home');
     } catch (error) {
       console.error('Registration error:', error);
       const errorMessage = error.response?.data?.message || 'Registration failed. Please check your connection and try again.';
