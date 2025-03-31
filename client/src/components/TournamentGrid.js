@@ -75,7 +75,7 @@ const TournamentGrid = ({ rounds }) => {
                               mb: 1
                             }}
                           >
-                            {match.team1?.username || 'TBD'}
+                            {match.team1?.name || match.team1?.username || 'TBD'}
                           </Typography>
                           <Typography
                             variant="body2"
@@ -85,7 +85,7 @@ const TournamentGrid = ({ rounds }) => {
                               borderRadius: 1
                             }}
                           >
-                            {match.team2?.username || 'TBD'}
+                            {match.team2?.name || match.team2?.username || 'TBD'}
                           </Typography>
                         </Box>
                       </CardContent>

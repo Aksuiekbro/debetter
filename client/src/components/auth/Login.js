@@ -39,7 +39,7 @@ const Login = () => {
       localStorage.setItem('username', data.username);
       localStorage.setItem('userId', data._id);
       window.dispatchEvent(new Event('auth-change'));
-      navigate('/');
+      navigate('/home');
     } catch (error) {
       console.error('Login error:', error);
       const errorMessage = error.response?.data?.message || 'Login failed. Please check your connection and try again.';

@@ -12,7 +12,9 @@ import axios from 'axios';
  */
 
 // API configuration for the application
-const API_BASE_URL = 'http://localhost:5001';
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? '' // Empty string for same-domain requests in production
+  : 'http://localhost:5001';
 
 // Add a token refresh and validation function
 const validateToken = () => {
