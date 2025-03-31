@@ -3,6 +3,22 @@ import { useParams } from 'react-router-dom';
 import { api } from '../config/api';
 import { getAuthHeaders } from '../utils/auth';
 
+// Helper function to format debater names
+const formatDebaterName = (username) => {
+  if (!username) return 'Unknown';
+  
+  // If username has the format "debater_name123", extract just "Name"
+  if (username.startsWith('debater_')) {
+    // Extract the name part without prefix and digits
+    const namePart = username.replace('debater_', '');
+    // Capitalize first letter and remove any trailing numbers
+    return namePart.replace(/[0-9]+$/, '')
+                  .charAt(0).toUpperCase() + 
+                  namePart.replace(/[0-9]+$/, '').slice(1);
+  }
+  return username; // Return original if not matching pattern
+};
+
 export const useTournamentData = () => {
   const { id: tournamentId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -13,6 +29,7 @@ export const useTournamentData = () => {
   const [postings, setPostings] = useState([]); // Renamed from apfPostings for consistency
   const [standings, setStandings] = useState([]);
   const [error, setError] = useState(null);
+  const [initializingBracket, setInitializingBracket] = useState(false); // Add state for bracket initialization
 
   const processFetchedData = useCallback((data) => {
     setTournament(data);
@@ -23,7 +40,7 @@ export const useTournamentData = () => {
 
     setEntrants(tournamentEntrants.map(e => ({
       id: e._id,
-      name: e.username,
+      name: e.name || formatDebaterName(e.username),
       email: e.email || 'N/A',
       enrollDate: new Date(e.createdAt || Date.now()).toLocaleDateString(),
       role: e.role
@@ -31,7 +48,7 @@ export const useTournamentData = () => {
 
     setJudges(tournamentJudges.map(j => ({
       id: j._id,
-      name: j.username,
+      name: j.name || formatDebaterName(j.username),
       email: j.email || 'N/A',
       role: j.judgeRole || 'Judge'
     })));
@@ -41,11 +58,12 @@ export const useTournamentData = () => {
       setTeams(data.teams.map(team => {
         const leaderMember = team.members.find(m => m.role === 'leader');
         const speakerMember = team.members.find(m => m.role === 'speaker');
+        
         return {
           id: team._id,
           name: team.name,
-          leader: leaderMember?.userId?.username || 'Unknown',
-          speaker: speakerMember?.userId?.username || 'Unknown',
+          leader: formatDebaterName(leaderMember?.userId?.username),
+          speaker: formatDebaterName(speakerMember?.userId?.username),
           leaderId: leaderMember?.userId?._id || leaderMember?.userId,
           speakerId: speakerMember?.userId?._id || speakerMember?.userId,
           wins: team.wins || 0,
@@ -210,6 +228,32 @@ export const useTournamentData = () => {
     }
   }, [tournamentId, fetchTournament]);
 
+  // Function to initialize or regenerate the tournament bracket
+  const initializeBracket = useCallback(async () => {
+    console.log(`[useTournamentData] Initializing tournament bracket for ID: ${tournamentId}`);
+    setInitializingBracket(true);
+    try {
+      const response = await fetch(`${api.baseUrl}/api/debates/${tournamentId}/initialize-bracket`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to initialize bracket: ${errorText}`);
+      }
+
+      const result = await response.json();
+      await fetchTournament(); // Refresh tournament data to get the new bracket
+      return result;
+    } catch (error) {
+      console.error('Error initializing tournament bracket:', error);
+      throw error;
+    } finally {
+      setInitializingBracket(false);
+    }
+  }, [tournamentId, fetchTournament]);
+
   return {
     tournamentId,
     loading,
@@ -220,6 +264,7 @@ export const useTournamentData = () => {
     judges,
     postings,
     standings,
+    initializingBracket,
     setTournament, // Expose setters if needed for optimistic updates elsewhere
     setEntrants,
     setTeams,
@@ -230,5 +275,6 @@ export const useTournamentData = () => {
     refreshStandings: fetchStandings, // Renamed for clarity
     refreshPostings,
     generateTestData, // Add the new function to the return object
+    initializeBracket, // Add the bracket initialization function to the return object
   };
 };

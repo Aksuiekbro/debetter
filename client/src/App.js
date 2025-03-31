@@ -12,6 +12,7 @@ import Profile from './components/Profile';
 import MyDebates from './components/MyDebates';
 import TournamentManagement from './components/TournamentManagement';
 import Tournaments from './components/Tournaments';
+import TournamentDetail from './components/TournamentDetail';
 import JudgePanel from './components/JudgePanel';
 import ApfTabulation from './components/ApfTabulation';
 import ApfJudgeEvaluation from './components/ApfJudgeEvaluation';
@@ -72,6 +73,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/my-debates" element={<MyDebates />} />
               <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/tournaments/:id" element={<TournamentDetail />} />
               <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
               <Route path="/judge-panel" element={<JudgePanel />} />
               <Route path="/tabulation" element={<ApfTabulation />} />
