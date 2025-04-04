@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -25,6 +26,7 @@ const TeamsTab = ({
   onRandomizeTeams, // Corresponds to randomizeTeams()
   loadingTeams // Loading state from useTeamManagement
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearchChange = (event) => {
@@ -42,12 +44,12 @@ const TeamsTab = ({
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
-          Tournament Teams ({teams.length})
+          {t('teamsTab.title', { count: teams.length, defaultValue: `Tournament Teams (${teams.length})` })}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <TextField
             size="small"
-            placeholder="Search teams..."
+            placeholder={t('teamsTab.searchPlaceholder', { defaultValue: 'Search teams...' })}
             value={searchTerm}
             onChange={handleSearchChange}
             sx={{ width: 250 }}
@@ -59,7 +61,7 @@ const TeamsTab = ({
             onClick={onRandomizeTeams}
             disabled={loadingTeams} // Disable while randomizing/saving
           >
-            Randomize Teams
+            {t('teamsTab.randomizeButton', { defaultValue: 'Randomize Teams' })}
           </Button>
           <Button
             variant="contained"
@@ -68,7 +70,7 @@ const TeamsTab = ({
             onClick={onAddTeam}
             disabled={loadingTeams}
           >
-            Add Team
+            {t('teamsTab.addTeamButton', { defaultValue: 'Add Team' })}
           </Button>
         </Box>
       </Box>
@@ -77,13 +79,13 @@ const TeamsTab = ({
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Team Name</TableCell>
-              <TableCell>Role 1 / Leader</TableCell>
-              <TableCell>Role 2 / Speaker</TableCell>
+              <TableCell>{t('teamsTab.headerName', { defaultValue: 'Team Name' })}</TableCell>
+              <TableCell>{t('teamsTab.headerLeader', { defaultValue: 'Role 1 / Leader' })}</TableCell>
+              <TableCell>{t('teamsTab.headerSpeaker', { defaultValue: 'Role 2 / Speaker' })}</TableCell>
               {/* Optional: Add Wins/Losses/Points if needed here */}
               {/* <TableCell align="right">Wins</TableCell> */}
               {/* <TableCell align="right">Points</TableCell> */}
-              <TableCell align="right">Actions</TableCell>
+              <TableCell align="right">{t('teamsTab.headerActions', { defaultValue: 'Actions' })}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -115,7 +117,9 @@ const TeamsTab = ({
             {filteredTeams.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center"> {/* Adjust colSpan if columns added */}
-                  {teams.length > 0 ? 'No teams match search' : 'No teams found'}
+                  {teams.length > 0
+                    ? t('teamsTab.noMatch', { defaultValue: 'No teams match search' })
+                    : t('teamsTab.noTeams', { defaultValue: 'No teams found' })}
                 </TableCell>
               </TableRow>
             )}

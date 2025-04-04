@@ -82,6 +82,7 @@ router.post('/:id/randomize-teams', randomizeTeams);
 // APF Game posting routes
 router.post('/:id/postings', isOrganizer, createApfPosting);
 router.post('/:id/batch-postings', isOrganizer, createApfBatchPostings);
+router.get('/:id/postings/:postingId', getPostingDetails); // Added route for fetching specific posting details
 router.put('/:id/postings/:postingId/status', isOrganizer, updateApfPostingStatus);
 router.post('/:id/postings/:postingId/reminders', isOrganizer, sendApfGameReminder);
 

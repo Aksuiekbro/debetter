@@ -79,6 +79,10 @@ class TournamentService {
        },
        teams: [],
        postings: [],
+       // Explicitly add the new fields from the input
+       tournamentFormats: debateInput.tournamentFormats,
+       eligibilityCriteria: debateInput.eligibilityCriteria,
+       registrationDeadline: debateInput.registrationDeadline,
      };
      return data;
   }
@@ -268,6 +272,78 @@ class TournamentService {
                                       .lean(); // Use lean if no further modifications needed
 
     return { updatedDebate, updatedCounts }; // Return both for flexibility
+  }
+
+
+  // Advances the winner of a match in the tournament bracket
+  async advanceWinnerInBracket(debateId, roundNumber, matchNumber, winnerTeamId) {
+    const debate = await Debate.findById(debateId).populate('teams.members.userId', 'username'); // Populate user details in teams
+    if (!debate) throw new Error('Tournament not found');
+    if (!debate.tournamentRounds || debate.tournamentRounds.length === 0) throw new Error('Tournament bracket not initialized');
+
+    // Find the round (adjusting for 0-based index if roundNumber is 1-based)
+    const currentRoundIndex = roundNumber - 1;
+    const currentRound = debate.tournamentRounds[currentRoundIndex];
+    if (!currentRound) throw new Error(`Round ${roundNumber} not found in bracket`);
+
+    // Find the match (adjusting for 0-based index if matchNumber is 1-based)
+    const currentMatchIndex = matchNumber - 1;
+    const currentMatch = currentRound.matches[currentMatchIndex];
+    if (!currentMatch) throw new Error(`Match ${matchNumber} in Round ${roundNumber} not found`);
+
+    // --- Resolve Winner Team ID to Representative User ID ---
+    const winningTeam = debate.teams.find(t => t._id.toString() === winnerTeamId.toString());
+    if (!winningTeam) throw new Error(`Winning team with ID ${winnerTeamId} not found in tournament`);
+
+    // Find the leader of the winning team (assuming leader represents the team in bracket)
+    const teamLeaderMember = winningTeam.members.find(m => m.role === 'leader');
+    if (!teamLeaderMember || !teamLeaderMember.userId) {
+        // Fallback: maybe use the first member? Or throw error? For now, log and potentially skip advancement.
+        console.warn(`Could not find leader for winning team ${winningTeam.name} (ID: ${winnerTeamId}). Cannot advance winner.`);
+        // Depending on requirements, you might want to throw an error here instead.
+        // throw new Error(`Leader not found for winning team ${winningTeam.name}`);
+        return debate; // Return without advancing
+    }
+    const winnerRepresentativeUserId = teamLeaderMember.userId._id; // Get the ObjectId
+    console.log(`[advanceWinner] Advancing winner: Team ${winningTeam.name}, Representative User ID: ${winnerRepresentativeUserId}`);
+    // --- End Winner Resolution ---
+
+    // Update the current match (optional, could be done elsewhere)
+    currentMatch.winner = winnerRepresentativeUserId; // Store the representative User ID
+    currentMatch.completed = true;
+
+    // Check if it's the final round
+    if (currentRoundIndex === debate.tournamentRounds.length - 1) {
+      // This was the final match
+      console.log(`[advanceWinner] Final match completed. Tournament Winner User ID: ${winnerRepresentativeUserId}`);
+      debate.winner = winnerRepresentativeUserId; // Set tournament winner (User ID)
+      debate.status = 'completed';
+    } else {
+      // Advance winner to the next round
+      const nextRoundIndex = currentRoundIndex + 1;
+      const nextMatchIndex = Math.floor(currentMatchIndex / 2); // 0-based index for next round match
+
+      const nextRound = debate.tournamentRounds[nextRoundIndex];
+      if (!nextRound) throw new Error(`Next round (Index ${nextRoundIndex}) not found`);
+
+      const nextMatch = nextRound.matches[nextMatchIndex];
+      if (!nextMatch) throw new Error(`Next match (Index ${nextMatchIndex}) in Round ${nextRoundIndex + 1} not found`);
+
+      // Determine if the current match feeds into team1 or team2 slot of the next match
+      const isLeftFeeder = currentMatchIndex % 2 === 0;
+      if (isLeftFeeder) {
+        console.log(`[advanceWinner] Placing winner ${winnerRepresentativeUserId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team1`);
+        nextMatch.team1 = winnerRepresentativeUserId;
+      } else {
+        console.log(`[advanceWinner] Placing winner ${winnerRepresentativeUserId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team2`);
+        nextMatch.team2 = winnerRepresentativeUserId;
+      }
+    }
+
+    debate.markModified('tournamentRounds'); // Mark the array as modified
+    await debate.save();
+    console.log(`[advanceWinner] Bracket updated successfully for Debate ID: ${debateId}`);
+    return debate; // Return the updated debate document
   }
 
   // TODO: Add methods for generateTournamentBracket, updateTournamentMatch, updateTournamentBrackets etc.

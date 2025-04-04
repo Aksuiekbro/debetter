@@ -8,6 +8,7 @@ import {
   Divider
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 
 // Import the existing components used within this tab
 import EnhancedApfPostingCard from '../EnhancedApfPostingCard';
@@ -37,12 +38,14 @@ const PostingTab = ({
   loadingApf      // General loading state for posting actions
 }) => {
 
+  const { t } = useTranslation();
+
   return (
     <Box>
       {/* Header and Controls */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
-          APF Game Management
+          {t('postingTab.title', 'APF Game Management')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <FormControlLabel
@@ -54,7 +57,7 @@ const PostingTab = ({
                 disabled={loadingApf}
               />
             }
-            label="Batch Creation Mode"
+            label={t('postingTab.batchModeLabel', 'Batch Creation Mode')}
           />
           {/* Button to open dialog might be redundant if card is always visible */}
           {/* Consider if the card should be inside the dialog instead */}
@@ -89,7 +92,7 @@ const PostingTab = ({
 
       {/* List of Posted Games */}
       <Typography variant="h6" sx={{ mb: 2 }}>
-        Posted APF Games ({apfPostings.length})
+        {t('postingTab.postedGamesTitle', 'Posted APF Games ({{count}})', { count: apfPostings.length })}
       </Typography>
 
       <ApfPostingList

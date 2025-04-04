@@ -68,7 +68,13 @@ const postingSchema = new Schema({
   status: { 
     type: String, 
     enum: ['scheduled', 'in_progress', 'completed'], 
-    default: 'scheduled' 
+    default: 'scheduled'
+  },
+  round: { // Link to the tournament round
+    type: Number
+  },
+  matchNumber: { // Link to the match number within the round
+    type: Number
   },
   winner: { // Stores the _id of the embedded team object from Debate.teams
     type: mongoose.Schema.Types.ObjectId
@@ -109,6 +115,7 @@ const debateSchema = new Schema({
   status: { type: String, required: true, enum: ['upcoming', 'team-assignment', 'in-progress', 'completed'], default: 'upcoming' },
   difficulty: { type: String, required: true, enum: ['beginner', 'intermediate', 'advanced'] },
   startDate: { type: Date, required: true },
+  registrationDeadline: { type: Date },
   participants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   maxParticipants: { type: Number, default: function() { return this.format === 'tournament' ? 32 : 6; } },
@@ -124,6 +131,8 @@ const debateSchema = new Schema({
     currentDebaters: { type: Number, default: 0 },
     currentJudges: { type: Number, default: 0 }
   },
+  tournamentFormats: { type: [String], enum: ['APD', 'BP', 'LD'] }, // Added for tournament format specification
+  eligibilityCriteria: { type: String }, // Added for tournament eligibility rules
   mode: { type: String, enum: ['solo', 'duo'] },
   tournamentRounds: [{ roundNumber: Number, matches: [matchSchema] }],
   registrationDeadline: Date,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next'; // Add import
 import { api } from '../config/api';
 import {
   Container,
@@ -36,6 +37,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 
 const HostDebate = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation(); // Add hook call
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -72,12 +74,12 @@ const HostDebate = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.title) newErrors.title = 'Title is required';
-    if (!formData.description) newErrors.description = 'Description is required';
-    if (!formData.category) newErrors.category = 'Category is required';
-    if (!formData.location) newErrors.location = 'Location is required';
-    if (new Date(formData.startDate) < new Date()) newErrors.startDate = 'Start date must be in the future';
-    if (formData.duration < 30) newErrors.duration = 'Duration must be at least 30 minutes';
+    if (!formData.title) newErrors.title = t('hostDebate.validation.titleRequired', 'Title is required');
+    if (!formData.description) newErrors.description = t('hostDebate.validation.descriptionRequired', 'Description is required');
+    if (!formData.category) newErrors.category = t('hostDebate.validation.categoryRequired', 'Category is required');
+    if (!formData.location) newErrors.location = t('hostDebate.validation.locationRequired', 'Location is required');
+    if (new Date(formData.startDate) < new Date()) newErrors.startDate = t('hostDebate.validation.startDatePast', 'Start date must be in the future');
+    if (formData.duration < 30) newErrors.duration = t('hostDebate.validation.durationMin', 'Duration must be at least 30 minutes');
 
     if (formData.format === 'tournament') {
       const startDateTime = new Date(formData.startDate);
@@ -85,17 +87,17 @@ const HostDebate = () => {
       const minHours = 48;
       
       if (startDateTime - now < minHours * 60 * 60 * 1000) {
-        newErrors.startDate = 'Tournament debates must be scheduled at least 48 hours in advance';
+        newErrors.startDate = t('hostDebate.validation.tournamentStartDateMin', 'Tournament debates must be scheduled at least 48 hours in advance');
       }
       const registrationDeadline = new Date(formData.registrationDeadline);
       if (registrationDeadline >= startDateTime) {
-        newErrors.registrationDeadline = 'Registration deadline must be before the tournament start date';
+        newErrors.registrationDeadline = t('hostDebate.validation.registrationDeadlineBeforeStart', 'Registration deadline must be before the tournament start date');
       }
       if (registrationDeadline < now) {
-        newErrors.registrationDeadline = 'Registration deadline must be in the future';
+        newErrors.registrationDeadline = t('hostDebate.validation.registrationDeadlinePast', 'Registration deadline must be in the future');
       }
       if (startDateTime - registrationDeadline < 24 * 60 * 60 * 1000) {
-        newErrors.registrationDeadline = 'Registration must close at least 24 hours before tournament start';
+        newErrors.registrationDeadline = t('hostDebate.validation.registrationDeadlineMinBeforeStart', 'Registration must close at least 24 hours before tournament start');
       }
     }
 
@@ -131,7 +133,7 @@ const HostDebate = () => {
     } catch (error) {
       console.error('Error creating debate:', error);
       setErrors({ 
-        submit: error.response?.data?.message || 'Failed to create debate. Please try again.' 
+        submit: error.response?.data?.message || t('hostDebate.error.submitFailed', 'Failed to create debate. Please try again.')
       });
     }
   };
@@ -166,7 +168,7 @@ const HostDebate = () => {
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 4, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
         <Typography variant="h4" sx={{ mb: 4, color: 'primary.main' }}>
-          Host a Debate
+          {t('hostDebate.pageTitle', 'Host a Debate')}
         </Typography>
 
         <form onSubmit={handleSubmit}>
@@ -175,7 +177,7 @@ const HostDebate = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Debate Title"
+                label={t('hostDebate.form.titleLabel', 'Debate Title')}
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
@@ -189,7 +191,7 @@ const HostDebate = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Description"
+                label={t('hostDebate.form.descriptionLabel', 'Description')}
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
@@ -204,7 +206,7 @@ const HostDebate = () => {
             {/* Category and Difficulty */}
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth error={!!errors.category}>
-                <InputLabel>Category</InputLabel>
+                <InputLabel>{t('hostDebate.form.categoryLabel', 'Category')}</InputLabel>
                 <Select
                   name="category"
                   value={formData.category}
@@ -222,15 +224,15 @@ const HostDebate = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Difficulty</InputLabel>
+                <InputLabel>{t('hostDebate.form.difficultyLabel', 'Difficulty')}</InputLabel>
                 <Select
                   name="difficulty"
                   value={formData.difficulty}
                   onChange={handleChange}
                 >
-                  <MenuItem value="beginner">Beginner</MenuItem>
-                  <MenuItem value="intermediate">Intermediate</MenuItem>
-                  <MenuItem value="advanced">Advanced</MenuItem>
+                  <MenuItem value="beginner">{t('hostDebate.difficulty.beginner', 'Beginner')}</MenuItem>
+                  <MenuItem value="intermediate">{t('hostDebate.difficulty.intermediate', 'Intermediate')}</MenuItem>
+                  <MenuItem value="advanced">{t('hostDebate.difficulty.advanced', 'Advanced')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -239,7 +241,7 @@ const HostDebate = () => {
             <Grid item xs={12}>
               <FormControl component="fieldset">
                 <Typography variant="subtitle1" gutterBottom>
-                  Debate Format
+                  {t('hostDebate.form.formatLabel', 'Debate Format')}
                 </Typography>
                 <RadioGroup
                   row
@@ -250,12 +252,12 @@ const HostDebate = () => {
                   <FormControlLabel 
                     value="standard" 
                     control={<Radio />} 
-                    label="Standard Debate" 
+                    label={t('hostDebate.format.standard', 'Standard Debate')}
                   />
                   <FormControlLabel 
                     value="tournament" 
                     control={<Radio />} 
-                    label="Tournament" 
+                    label={t('hostDebate.format.tournament', 'Tournament')}
                   />
                 </RadioGroup>
               </FormControl>
@@ -267,7 +269,7 @@ const HostDebate = () => {
                 <Grid item xs={12}>
                   <FormControl component="fieldset">
                     <Typography variant="subtitle1" gutterBottom>
-                      Tournament Mode
+                      {t('hostDebate.form.tournamentModeLabel', 'Tournament Mode')}
                     </Typography>
                     <RadioGroup
                       row
@@ -278,12 +280,12 @@ const HostDebate = () => {
                       <FormControlLabel 
                         value="solo" 
                         control={<Radio />} 
-                        label="Solo (32 individual participants)" 
+                        label={t('hostDebate.tournamentMode.soloLabel', 'Solo (32 individual participants)')}
                       />
                       <FormControlLabel 
                         value="duo" 
                         control={<Radio />} 
-                        label="Duo (16 teams of 2)" 
+                        label={t('hostDebate.tournamentMode.duoLabel', 'Duo (16 teams of 2)')}
                       />
                     </RadioGroup>
                   </FormControl>
@@ -294,7 +296,7 @@ const HostDebate = () => {
                   <TextField
                     fullWidth
                     type="number"
-                    label="Tournament Participants"
+                    label={t('hostDebate.form.tournamentParticipantsLabel', 'Tournament Participants')}
                     value={32}
                     InputProps={{
                       startAdornment: (
@@ -304,7 +306,7 @@ const HostDebate = () => {
                       ),
                       readOnly: true,
                     }}
-                    helperText={formData.mode === 'solo' ? '32 individual participants' : '16 teams of 2 (32 total)'}
+                    helperText={formData.mode === 'solo' ? t('hostDebate.form.tournamentParticipantsHelperSolo', '32 individual participants') : t('hostDebate.form.tournamentParticipantsHelperDuo', '16 teams of 2 (32 total)')}
                   />
                 </Grid>
 
@@ -312,7 +314,7 @@ const HostDebate = () => {
                   <TextField
                     fullWidth
                     type="number"
-                    label="Required Judges"
+                    label={t('hostDebate.form.requiredJudgesLabel', 'Required Judges')}
                     value={8}
                     InputProps={{
                       startAdornment: (
@@ -322,14 +324,14 @@ const HostDebate = () => {
                       ),
                       readOnly: true,
                     }}
-                    helperText="8 judges required for tournament format"
+                    helperText={t('hostDebate.form.requiredJudgesHelperTournament', '8 judges required for tournament format')}
                   />
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
                   <LocalizationProvider dateAdapter={AdapterDateFns}>
                     <DateTimePicker
-                      label="Registration Deadline"
+                      label={t('hostDebate.form.registrationDeadlineLabel', 'Registration Deadline')}
                       value={formData.registrationDeadline}
                       onChange={(newValue) => {
                         handleChange({
@@ -341,7 +343,7 @@ const HostDebate = () => {
                           {...params}
                           fullWidth
                           error={!!errors.registrationDeadline}
-                          helperText={errors.registrationDeadline || 'Must be at least 24 hours before start time'}
+                          helperText={errors.registrationDeadline || t('hostDebate.form.registrationDeadlineHelper', 'Must be at least 24 hours before start time')}
                         />
                       )}
                       disablePast={true}
@@ -358,7 +360,7 @@ const HostDebate = () => {
                   <TextField
                     fullWidth
                     type="number"
-                    label="Maximum Participants"
+                    label={t('hostDebate.form.maxParticipantsLabel', 'Maximum Participants')}
                     name="maxParticipants"
                     value={formData.maxParticipants}
                     onChange={handleChange}
@@ -378,7 +380,7 @@ const HostDebate = () => {
                   <TextField
                     fullWidth
                     type="number"
-                    label="Required Judges"
+                    label={t('hostDebate.form.requiredJudgesLabel', 'Required Judges')}
                     name="requiredJudges"
                     value={formData.requiredJudges}
                     onChange={handleChange}
@@ -400,7 +402,7 @@ const HostDebate = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Location"
+                label={t('hostDebate.form.locationLabel', 'Location')}
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
@@ -421,7 +423,7 @@ const HostDebate = () => {
             <Grid item xs={12} sm={6}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DateTimePicker
-                  label="Start Date & Time"
+                  label={t('hostDebate.form.startDateTimeLabel', 'Start Date & Time')}
                   value={formData.startDate}
                   onChange={(newValue) => {
                     handleChange({
@@ -445,7 +447,7 @@ const HostDebate = () => {
               <TextField
                 fullWidth
                 type="number"
-                label="Duration (minutes)"
+                label={t('hostDebate.form.durationLabel', 'Duration (minutes)')}
                 name="duration"
                 value={formData.duration}
                 onChange={handleChange}
@@ -472,9 +474,9 @@ const HostDebate = () => {
 
             <Grid item xs={12}>
               <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-                {formData.format === 'tournament' ? 
-                  '* Tournament format requires 32 debaters and 8 judges. The tournament will begin once all positions are filled.' :
-                  '* Standard debates can have up to 6 participants including judges.'}
+                {formData.format === 'tournament' ?
+                  t('hostDebate.info.tournamentFormat', '* Tournament format requires 32 debaters and 8 judges. The tournament will begin once all positions are filled.') :
+                  t('hostDebate.info.standardFormat', '* Standard debates can have up to 6 participants including judges.')}
               </Typography>
             </Grid>
 
@@ -487,7 +489,7 @@ const HostDebate = () => {
                 size="large"
                 fullWidth
               >
-                Create Debate
+                {t('hostDebate.button.createDebate', 'Create Debate')}
               </Button>
             </Grid>
           </Grid>
@@ -497,21 +499,21 @@ const HostDebate = () => {
         open={openConfirmDialog}
         onClose={() => setOpenConfirmDialog(false)}
       >
-        <DialogTitle>Confirm Tournament Creation</DialogTitle>
+        <DialogTitle>{t('hostDebate.dialog.confirmTournamentTitle', 'Confirm Tournament Creation')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            You are about to create a tournament debate that requires:
+            {t('hostDebate.dialog.confirmTournamentIntro', 'You are about to create a tournament debate that requires:')}
             <Box component="ul" sx={{ mt: 1 }}>
-              <li>32 debaters {formData.mode === 'duo' && '(16 teams of 2)'}</li>
-              <li>8 judges</li>
-              <li>Minimum 48 hours notice</li>
-              <li>All participants must be available for multiple rounds</li>
+              <li>{t('hostDebate.dialog.confirmTournamentReqDebaters', '32 debaters')} {formData.mode === 'duo' && t('hostDebate.dialog.confirmTournamentReqDebatersDuo', '(16 teams of 2)')}</li>
+              <li>{t('hostDebate.dialog.confirmTournamentReqJudges', '8 judges')}</li>
+              <li>{t('hostDebate.dialog.confirmTournamentReqNotice', 'Minimum 48 hours notice')}</li>
+              <li>{t('hostDebate.dialog.confirmTournamentReqAvailability', 'All participants must be available for multiple rounds')}</li>
             </Box>
-            Are you sure you want to proceed?
+            {t('hostDebate.dialog.confirmTournamentConfirmation', 'Are you sure you want to proceed?')}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenConfirmDialog(false)}>Cancel</Button>
+          <Button onClick={() => setOpenConfirmDialog(false)}>{t('hostDebate.button.cancel', 'Cancel')}</Button>
           <Button 
             onClick={() => {
               setOpenConfirmDialog(false);
@@ -520,7 +522,7 @@ const HostDebate = () => {
             color="primary" 
             variant="contained"
           >
-            Create Tournament
+            {t('hostDebate.button.createTournament', 'Create Tournament')}
           </Button>
         </DialogActions>
       </Dialog>
