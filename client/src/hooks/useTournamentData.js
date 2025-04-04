@@ -38,6 +38,7 @@ export const useTournamentData = () => {
     const tournamentEntrants = data.participants?.filter(p => p.role !== 'judge') || [];
     const tournamentJudges = data.participants?.filter(p => p.role === 'judge') || [];
 
+    console.log('[useTournamentData] Processing entrants:', JSON.stringify(tournamentEntrants, null, 2)); // Added logging
     setEntrants(tournamentEntrants.map(e => ({
       id: e._id,
       name: e.name || formatDebaterName(e.username),

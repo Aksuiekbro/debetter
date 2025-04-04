@@ -389,6 +389,13 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                         >
                           {t('myDebates.card.viewFullEvaluationButton', 'View Full Evaluation')}
                         </Button>
+                        <Button
+                          size="small"
+                          color="secondary" // Use a different color to distinguish
+                          onClick={() => navigate(`/feedback/${debate._id}/${posting._id}`)}
+                        >
+                          {t('myDebates.card.viewFeedbackButton', 'View Feedback')}
+                        </Button>
                       </CardActions>
                     </Card>
                   </Grid>

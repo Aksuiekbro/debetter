@@ -189,6 +189,7 @@ const TournamentManagement = () => {
         <BracketTab
           tournamentRounds={dataManager.tournament?.tournamentRounds || []}
           entrants={dataManager.entrants} // Pass entrants data
+          teams={dataManager.teams} // Pass teams data
           loading={dataManager.loading}
           onInitializeBracket={async () => {
             try {

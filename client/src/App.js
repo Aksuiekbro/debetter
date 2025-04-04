@@ -20,6 +20,8 @@ import TeamRegistrationForm from './components/TeamRegistrationForm';
 import PostingDetails from './components/PostingDetails';
 import LandingPage from './components/LandingPage';
 import CreateTournamentForm from './components/CreateTournamentForm';
+import DebaterFeedbackDisplay from './components/DebaterFeedbackDisplay';
+import NotificationSettings from './components/NotificationSettings'; // Import NotificationSettings
 
 const theme = createTheme({
   palette: {
@@ -77,12 +79,22 @@ function App() {
               <Route path="/tournaments/:id" element={<TournamentDetail />} />
               <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
               <Route path="/create-tournament" element={<CreateTournamentForm />} />
-              <Route path="/judge-panel" element={<JudgePanel />} />
+              <Route
+                path="/judge-panel"
+                element={
+                  ['judge', 'admin'].includes(localStorage.getItem('userRole'))
+                  ? <JudgePanel />
+                  : <Navigate to="/home" replace />
+                }
+              />
               <Route path="/tabulation" element={<ApfTabulation />} />
               <Route path="/debates/:id/evaluate" element={<ApfJudgeEvaluation />} />
               <Route path="/debates/:id/register-team" element={<TeamRegistrationForm />} />
               <Route path="/debates/:id/postings/:postingId" element={<PostingDetails />} />
-            </Route>
+              <Route path="/feedback/:debateId/:postingId" element={<DebaterFeedbackDisplay />} />
+              {/* Add Notification Settings Route */}
+              <Route path="/settings/notifications" element={<NotificationSettings />} />
+           </Route>
           </Routes>
         </div>
       </Router>

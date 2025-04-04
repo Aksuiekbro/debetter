@@ -5,12 +5,13 @@ import { Box, Typography, Alert, Dialog, DialogTitle, DialogContent, DialogActio
 // --- Data Transformation Function ---
 // This function needs to convert the backend's tournamentRounds structure
 // into the format expected by react-brackets.
-const transformDataForBracket = (backendRounds, entrants = []) => { // Add entrants parameter
+const transformDataForBracket = (backendRounds, teams = []) => { // Use teams parameter
   if (!backendRounds || !Array.isArray(backendRounds) || backendRounds.length === 0) {
     return [];
   }
   console.log('[TournamentGrid] Processing backendRounds:', JSON.stringify(backendRounds, null, 2));
 
+  console.log('[TournamentGrid] Using teams:', JSON.stringify(teams, null, 2)); // Log teams
   // Assumption: backendRounds is an array of rounds,
   // each round has a 'matches' array.
   // Assumption: each match has team1, team2 (with _id and name), winner (_id), matchNumber.
@@ -20,33 +21,41 @@ const transformDataForBracket = (backendRounds, entrants = []) => { // Add entra
   return backendRounds.map((round, roundIndex) => ({
     title: `Round ${round.roundNumber || roundIndex + 1}`,
     seeds: round.matches.map((match) => {
-      // --- Find entrant names using the provided entrants list ---
-      const team1IdStr = match.team1?.toString();
-      const team2IdStr = match.team2?.toString();
-      const team1User = entrants.find(e => e.id === team1IdStr);
-      const team2User = entrants.find(e => e.id === team2IdStr);
-      const team1Name = team1User?.name || 'TBD';
-      const team2Name = team2User?.name || 'TBD';
+      // --- Find team names using the provided teams list ---
+      const team1IdStr = match.team1?.toString(); // These are Team IDs
+      const team2IdStr = match.team2?.toString(); // These are Team IDs
+
+      // Find team objects using the Team IDs from the match
+      const team1Data = teams.find(t => t.id?.toString() === team1IdStr); // Compare with team.id
+      const team2Data = teams.find(t => t.id?.toString() === team2IdStr); // Compare with team.id
+
+      // Get the name from the found team object, default to 'TBD'
+      const team1Name = team1Data?.name || 'TBD'; // Use team.name
+      const team2Name = team2Data?.name || 'TBD'; // Use team.name
+
+      // Log the lookup results
+      console.log(`[TournamentGrid] Team Lookup - TeamID1: ${team1IdStr}, Found: ${team1Data ? team1Data.name : 'Not Found'}`); // Log team name
+      console.log(`[TournamentGrid] Team Lookup - TeamID2: ${team2IdStr}, Found: ${team2Data ? team2Data.name : 'Not Found'}`); // Log team name
       // --- End name lookup ---
 
       // Determine winner name (if available) - use the looked-up names
       let winnerName = null;
       if (match.winner) {
-          const winnerIdStr = match.winner.toString();
-          if (winnerIdStr === team1IdStr) winnerName = team1Name;
-          else if (winnerIdStr === team2IdStr) winnerName = team2Name;
+          const winnerTeamIdStr = match.winner.toString(); // This is a Team ID
+          if (winnerTeamIdStr === team1IdStr) winnerName = team1Name;
+          else if (winnerTeamIdStr === team2IdStr) winnerName = team2Name;
       }
 
-      console.log(`[TournamentGrid] Processing Match ID ${match._id}:`,
-        `Team1 ID: ${team1IdStr}, Team2 ID: ${team2IdStr}`,
-        `Found Name 1: ${team1Name}`,
-        `Found Name 2: ${team2Name}`
-      );
+      // console.log(`[TournamentGrid] Processing Match ID ${match._id}:`, // Keep this log minimal now
+      //   `Team1 ID: ${team1IdStr}, Team2 ID: ${team2IdStr}`,
+      //   `Found Name 1: ${team1Name}`,
+      //   `Found Name 2: ${team2Name}`
+      // ); // Reduced logging
       return {
         id: match._id || `r${roundIndex}-m${match.matchNumber}`, // Unique ID for the match/seed
         date: match.scheduledTime ? new Date(match.scheduledTime).toLocaleString() : undefined, // Optional date
         teams: [
-          // Use the looked-up names and original IDs
+          // Use the looked-up names and original Team IDs
           { id: team1IdStr || 'tbd1', name: team1Name },
           { id: team2IdStr || 'tbd2', name: team2Name }
         ],
@@ -62,13 +71,15 @@ const transformDataForBracket = (backendRounds, entrants = []) => { // Add entra
 };
 
 
-const TournamentGrid = ({ rounds, entrants = [] }) => { // Add entrants prop
+const TournamentGrid = ({ rounds, entrants = [], teams = [] }) => { // Add entrants prop back, keep teams if needed elsewhere
   // State for Match Details Dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
 
   // Transform the incoming rounds data
-  const formattedRounds = transformDataForBracket(rounds, entrants); // Pass entrants to transformer
+  const formattedRounds = transformDataForBracket(rounds, teams); // Pass teams to transformer
+  console.log('[TournamentGrid] Received teams prop:', JSON.stringify(teams, null, 2)); // Added logging for teams prop
+  console.log('[TournamentGrid] Final formattedRounds being passed to <Bracket>:', JSON.stringify(formattedRounds, null, 2)); // Added logging
 
   if (formattedRounds.length === 0) {
     return (

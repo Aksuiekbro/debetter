@@ -25,19 +25,19 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
 import { useTranslation } from 'react-i18next';
 
-// Add the function to get display name for role
-const getRoleDisplayName = (role) => {
-  const roleMap = {
-    'user': t('profile.role.debater', 'Debater'),
-    'debater': t('profile.role.debater', 'Debater'),
-    'judge': t('profile.role.judge', 'Judge'),
-    'organizer': t('profile.role.organizer', 'Organizer')
-  };
-  return roleMap[role] || role;
-};
-
 const Profile = () => {
   const { t } = useTranslation();
+
+  // Function to get display name for role
+  const getRoleDisplayName = (role) => {
+    const roleMap = {
+      'user': t('profile.role.debater', 'Debater'),
+      'debater': t('profile.role.debater', 'Debater'),
+      'judge': t('profile.role.judge', 'Judge'),
+      'organizer': t('profile.role.organizer', 'Organizer')
+    };
+    return roleMap[role] || role;
+  };
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState(0);
   const [openEditDialog, setOpenEditDialog] = useState(false);

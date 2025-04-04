@@ -12,6 +12,8 @@
     "profile": "Profile",
     "my_debates": "My Debates",
     "logout": "Logout"
+,
+    "notification_settings": "Notification Settings"
   },
   "home": {
     "hero": {
@@ -503,66 +505,54 @@
       "organizer": "Organizer"
     },
     "error": {
-      "updateFailed": "Failed to update profile",
-      "loginToAddFriend": "Please log in to add friends",
-      "friendRequestFailed": "Failed to send friend request",
-      "fetchFailed": "Failed to fetch profile"
+      "fetch": "Failed to fetch profile",
+      "update": "Failed to update profile",
+      "updateSuccess": "Profile updated successfully"
     },
-    "alert": {
-      "friendRequestSent": "Friend request sent successfully!"
-    },
+    "title": "Profile",
+    "usernameLabel": "Username",
+    "emailLabel": "Email",
     "button": {
-      "retry": "Retry",
-      "editInfo": "Edit info & settings",
-      "addFriend": "Add friend",
-      "addNewDebate": "Add new debate"
+      "edit": "Edit Profile",
+      "save": "Save Changes",
+      "cancel": "Cancel",
+      "saving": "Saving..."
     },
-    "interests": {
-      "placeholder": "Add some interests to show what topics you like"
-    },
-    "bio": {
-      "placeholder": "Add your bio to let others know about you"
-    },
+    "joinedLabel": "Joined:",
+    "lastActiveLabel": "Last Active:",
+    "roleLabel": "Role:",
     "stats": {
-      "debates": "DEBATES",
-      "wins": "WINS",
-      "ongoing": "ONGOING",
-      "judged": "JUDGED"
+      "title": "Your Statistics",
+      "debatesParticipated": "Debates Participated",
+      "winRate": "Win Rate",
+      "averageScore": "Average Score",
+      "tournamentsWon": "Tournaments Won"
     },
     "tabs": {
-      "debatesPlaceholder": "Your debates will appear here",
-      "winsPlaceholder": "Your winning debates will appear here",
-      "ongoingPlaceholder": "Your ongoing debates will appear here",
-      "judgedPlaceholder": "Debates you've judged will appear here"
+      "overview": "Overview",
+      "settings": "Settings",
+      "activity": "Activity Log"
     },
     "editDialog": {
       "title": "Edit Profile",
-      "bioLabel": "Bio",
-      "interestsLabel": "Interests",
-      "addInterestLabel": "Add new interest",
-      "addButton": "Add",
-      "cancelButton": "Cancel",
-      "saveButton": "Save"
+      "usernameLabel": "Username",
+      "emailLabel": "Email",
+      "passwordLabel": "New Password (optional)",
+      "confirmPasswordLabel": "Confirm New Password"
     }
   },
   "myDebates": {
     "title": "My Debates",
-    "loading": "Loading debates...",
-    "error": "Error loading debates: {{error}}",
-    "errorAssignments": "Error loading judge assignments: {{error}}",
+    "fetchError": "Failed to fetch your debates. Please try again later.",
+    "noDebates": "You haven't participated in or judged any debates yet.",
     "tabs": {
-      "participated": "Participated",
-      "created": "Created",
-      "judging": "Judge Assignments"
+      "participated": "Participated Debates",
+      "judged": "Judged Debates",
+      "organized": "Organized Debates"
     },
-    "judgePanelButtonPending": "Judge Panel ({{count}} pending)",
-    "judgePanelButton": "Judge Panel",
-    "noParticipatedDebates": "You haven't joined any debates yet. Browse available debates to participate.",
-    "noCreatedDebates": "You haven't created any debates yet. Click the button below to host a new debate.",
-    "noDebates": "No debates found.",
-    "hostNewDebateButton": "Host a New Debate",
+    "loading": "Loading your debates...",
     "loadingAssignments": "Loading judge assignments...",
-    "loadingAssignmentsPlaceholder": "Loading assignments...",
+    "errorLoadingAssignments": "Failed to load judge assignments.",
     "status": {
       "upcoming": "Upcoming",
       "inprogress": "In Progress",
@@ -590,14 +580,14 @@
       "viewEvaluationButton": "View Evaluation",
       "evaluateButton": "Evaluate",
       "feedbackTitle": "Your Debate Feedback & Evaluations",
-      "leaderRole": "Leader",
-      "speakerRole": "Speaker",
       "gameLabel": "Game:",
       "winnerChip": "Winner",
       "completedChip": "Completed",
       "yourTeamLabel": "Your Team:",
       "teamPlaceholder": "Team",
       "roleLabel": "Role:",
+      "leaderRole": "Leader",
+      "speakerRole": "Speaker",
       "opponentLabel": "Opponent:",
       "teamScoreTitle": "Team Score",
       "pointsSuffix": " points",
@@ -621,115 +611,90 @@
       "evaluateGameButton": "Evaluate Game",
       "viewDetailsButton": "View Details",
       "manageTournamentButton": "Manage Tournament",
-      "viewPostingDetailsButton": "View Posting Details"
+      "viewPostingDetailsButton": "View Posting Details",
+      "viewFeedbackButton": "View Feedback"
     }
   },
   "judgePanel": {
     "title": "Judge Panel",
     "loadError": "Failed to load your assigned games. Please try again later.",
     "missingDataError": "Missing required evaluation data. Please try again.",
-    "submitError": "Failed to submit evaluation: {{message}}",
+    "submitError": "Failed to submit evaluation. Please try again.",
     "submitSuccess": "Evaluation submitted successfully!",
-    "tabPending": "Pending ({{count}})",
-    "tabCompleted": "Completed ({{count}})",
-    "pendingSubtitle": "Your assigned debates requiring evaluation",
-    "noPending": "You have no pending debates to evaluate",
-    "completedSubtitle": "Your completed evaluations",
-    "noCompleted": "You have no completed evaluations"
+    "noAssignments": "You have no pending judge assignments.",
+    "selectGamePrompt": "Select a game to evaluate:",
+    "gameDetailsTitle": "Game Details",
+    "team1Label": "Team 1 (Gov):",
+    "team2Label": "Team 2 (Opp):",
+    "themeLabel": "Theme:",
+    "locationLabel": "Location:",
+    "judgesLabel": "Judges:",
+    "evaluationFormTitle": "Evaluation Form",
+    "submitButton": "Submit Evaluation",
+    "submittingButton": "Submitting...",
+    "alreadyEvaluated": "This game has already been evaluated.",
+    "viewEvaluationButton": "View Your Evaluation"
   },
   "apfEvaluation": {
     "title": "APF Debate Evaluation",
-    "teamsLabel": "Teams:",
-    "locationLabel": "Location:",
-    "timeLabel": "Time:",
+    "loading": "Loading evaluation details...",
+    "errorLoading": "Failed to load evaluation details.",
+    "errorSubmitting": "Failed to submit evaluation.",
+    "successSubmitting": "Evaluation submitted successfully!",
+    "gameDetailsTitle": "Game Details",
+    "team1Label": "Team 1 (Gov):",
+    "team2Label": "Team 2 (Opp):",
     "themeLabel": "Theme:",
-    "stopRecordingButton": "Stop Recording",
-    "startRecordingButton": "Start",
-    "recordingInProgress": "Recording in progress... Audio will be transcribed automatically.",
-    "tabTranscription": "Debate Transcription",
-    "tabSpeakerEval": "Speaker Evaluation",
-    "tabTeamAssessment": "Team Assessment ({{team1}} vs {{team2}})",
-    "transcriptionTitle": "Speech Transcription",
-    "roleLeaderGov": "Leader Gov",
-    "roleSpeakerGov": "Speaker Gov",
-    "roleLeaderOpp": "Leader Opp",
-    "roleSpeakerOpp": "Speaker Opp",
-    "roleUnknownSpeaker": "Unknown Speaker",
-    "roleLeader": "Leader",
-    "roleSpeaker": "Speaker",
-    "roleUnknownRole": "Unknown Role",
-    "teamGov": "(Government)",
-    "teamOpp": "(Opposition)",
-    "noTranscription": "No speech transcribed yet...",
-    "criteriaHeader": "Criteria",
-    "roleLeaderGovTime": "Leader Gov (14 min)",
-    "roleLeaderOppTime": "Leader Opp (14 min)",
-    "roleSpeakerGovTime": "Speaker Gov (14 min)",
-    "roleSpeakerOppTime": "Speaker Opp (14 min)",
-    "criteriaContentArgs": "Content & Arguments",
-    "criteriaStyleDelivery": "Style & Delivery",
-    "criteriaStrategy": "Strategy",
-    "criteriaTotalScore": "Total Score",
-    "criteriaLeaderClarity": "Clarity of definition/framing",
-    "criteriaLeaderConstruction": "Argument construction",
-    "criteriaLeaderResponsiveness": "Responsiveness to opponent",
-    "criteriaLeaderStrategic": "Strategic positioning",
-    "criteriaLeaderDelivery": "Delivery and oratory",
-    "criteriaSpeakerRefutation": "Refutation/rebuilding",
-    "criteriaSpeakerAnalysis": "New analysis/depth",
-    "criteriaSpeakerEngagement": "Engagement and structure",
-    "criteriaSpeakerTimeMgmt": "Time management & structure",
-    "criteriaSpeakerFraming": "Framing and clarity",
-    "speakerFeedbackLabel": "Overall Speaker Feedback",
-    "speakerFeedbackPlaceholder": "Enter feedback for this speaker...",
-    "totalPointsLabel": "Total Points:",
-    "govTeamSubheader": "Government Team",
-    "oppTeamSubheader": "Opposition Team",
-    "teamCriteriaTitle": "Team Criteria",
-    "criteriaTeamArgStrength": "Argument strength",
-    "criteriaTeamRefutation": "Refutation/Clash",
-    "criteriaTeamWeighting": "Weighting and impact",
-    "criteriaTeamCohesion": "Team cohesion",
-    "criteriaTeamStructure": "Structure and organization",
-    "criteriaTeamDelivery": "Delivery",
-    "criteriaTeamVisuals": "Visuals/body language",
-    "criteriaTeamRules": "Rule obedience",
-    "speechComponentsTitle": "Speech Components",
-    "criteriaSpeechConstructive": "Constructive speech",
-    "criteriaSpeechRebuttal": "Rebuttal speech",
-    "criteriaSpeechCrossExam": "Cross examination",
-    "criteriaSpeechEvidence": "Use of evidence",
-    "winnerSelectionTitle": "Winner Selection",
-    "cancelButton": "Cancel",
+    "locationLabel": "Location:",
+    "judgesLabel": "Judges:",
+    "evaluationFormTitle": "Evaluation Form",
+    "team1ScoreLabel": "Team 1 Score",
+    "team2ScoreLabel": "Team 2 Score",
+    "team1CommentsLabel": "Team 1 Comments",
+    "team2CommentsLabel": "Team 2 Comments",
+    "overallCommentsLabel": "Overall Comments",
+    "winnerLabel": "Winner",
+    "selectWinnerPrompt": "Select the winning team",
+    "individualScoresTitle": "Individual Scores (Optional)",
+    "addScoreButton": "Add Individual Score",
+    "roleLabel": "Role (e.g., Leader, Speaker)",
+    "matterLabel": "Matter (out of 30)",
+    "methodLabel": "Method (out of 30)",
+    "mannerLabel": "Manner (out of 30)",
+    "totalScoreLabel": "Total Score:",
     "submitButton": "Submit Evaluation",
-    "confirmDialogTitle": "Confirm Evaluation",
-    "confirmDialogText": "Are you sure you want to submit this evaluation? You won't be able to modify it afterwards.",
-    "confirmDialogWinnerLabel": "Winner:",
-    "confirmDialogCancelButton": "Cancel",
-    "confirmDialogSubmitButton": "Confirm & Submit",
-    "selectWinnerAlert": "Please select a winning team before submitting"
-  }
-,
+    "submittingButton": "Submitting...",
+    "alreadyEvaluatedMessage": "This game has already been evaluated.",
+    "viewEvaluationButton": "View Evaluation Details",
+    "evaluationDetailsTitle": "Evaluation Details",
+    "evaluatedByLabel": "Evaluated by:",
+    "evaluationDateLabel": "Evaluation Date:",
+    "winnerDisplayLabel": "Winner:",
+    "team1ScoreDisplay": "Team 1 Score: {{score}}",
+    "team2ScoreDisplay": "Team 2 Score: {{score}}",
+    "team1CommentsDisplay": "Team 1 Comments:",
+    "team2CommentsDisplay": "Team 2 Comments:",
+    "overallCommentsDisplay": "Overall Comments:",
+    "individualScoresDisplayTitle": "Individual Scores",
+    "noIndividualScores": "No individual scores were recorded.",
+    "individualScoreItem": "{{role}}: Matter {{matter}}, Method {{method}}, Manner {{manner}} (Total: {{total}})",
+    "backToJudgePanelButton": "Back to Judge Panel"
+  },
   "hostDebate": {
-    "pageTitle": "Host a Debate",
+    "title": "Host a New Debate",
     "form": {
       "titleLabel": "Debate Title",
       "descriptionLabel": "Description",
       "categoryLabel": "Category",
       "difficultyLabel": "Difficulty",
-      "formatLabel": "Debate Format",
+      "formatLabel": "Format",
       "tournamentModeLabel": "Tournament Mode",
-      "tournamentParticipantsLabel": "Tournament Participants",
-      "tournamentParticipantsHelperSolo": "32 individual participants",
-      "tournamentParticipantsHelperDuo": "16 teams of 2 (32 total)",
-      "requiredJudgesLabel": "Required Judges",
-      "requiredJudgesHelperTournament": "8 judges required for tournament format",
+      "maxParticipantsLabel": "Max Participants",
+      "startDateLabel": "Start Date & Time",
       "registrationDeadlineLabel": "Registration Deadline",
-      "registrationDeadlineHelper": "Must be at least 24 hours before start time",
-      "maxParticipantsLabel": "Maximum Participants",
-      "locationLabel": "Location",
-      "startDateTimeLabel": "Start Date & Time",
-      "durationLabel": "Duration (minutes)"
+      "rulesLabel": "Rules/Guidelines",
+      "isPublicLabel": "Public Debate (Visible to all users)",
+      "isTournamentLabel": "This is a Tournament"
     },
     "difficulty": {
       "beginner": "Beginner",
@@ -737,48 +702,76 @@
       "advanced": "Advanced"
     },
     "format": {
-      "standard": "Standard Debate",
-      "tournament": "Tournament"
+      "apf": "APF (Asian Parliamentary Format)",
+      "bpf": "BPF (British Parliamentary Format)",
+      "custom": "Custom"
     },
     "tournamentMode": {
-      "soloLabel": "Solo (32 individual participants)",
-      "duoLabel": "Duo (16 teams of 2)"
+      "single_elimination": "Single Elimination",
+      "round_robin": "Round Robin",
+      "swiss": "Swiss System"
     },
     "info": {
-      "tournamentFormat": "* Tournament format requires 32 debaters and 8 judges. The tournament will begin once all positions are filled.",
-      "standardFormat": "* Standard debates can have up to 6 participants including judges."
+      "tournamentParticipants": "Tournaments require a fixed number of participants (e.g., 32 debaters, 8 judges). Set Max Participants accordingly.",
+      "publicDebate": "Public debates are listed for all users to join. Private debates require invitations (feature coming soon)."
     },
     "button": {
-      "createDebate": "Create Debate",
-      "cancel": "Cancel",
-      "confirmCreate": "Confirm & Create",
-      "createTournament": "Create Tournament"
+      "host": "Host Debate",
+      "hosting": "Hosting...",
+      "success": "Debate Hosted Successfully!",
+      "error": "Failed to Host Debate"
     },
     "dialog": {
-      "confirmTournamentTitle": "Confirm Tournament Creation",
-      "confirmTournamentText": "Creating a tournament debate requires specific settings: 32 participants and 8 judges. This cannot be changed after creation. Are you sure you want to proceed?",
-      "confirmTournamentIntro": "You are about to create a tournament debate that requires:",
-      "confirmTournamentReqDebaters": "32 debaters",
-      "confirmTournamentReqDebatersDuo": "(16 teams of 2)",
-      "confirmTournamentReqJudges": "8 judges",
-      "confirmTournamentReqNotice": "Minimum 48 hours notice",
-      "confirmTournamentReqAvailability": "All participants must be available for multiple rounds",
-      "confirmTournamentConfirmation": "Are you sure you want to proceed?"
+      "title": "Confirm Debate Hosting",
+      "message": "Are you sure you want to host this debate with the provided details?",
+      "cancel": "Cancel",
+      "confirm": "Confirm & Host"
     },
     "validation": {
       "titleRequired": "Title is required",
       "descriptionRequired": "Description is required",
       "categoryRequired": "Category is required",
-      "locationRequired": "Location is required",
-      "startDatePast": "Start date must be in the future",
-      "durationMin": "Duration must be at least 30 minutes",
-      "tournamentStartDateMin": "Tournament debates must be scheduled at least 48 hours in advance",
-      "registrationDeadlineBeforeStart": "Registration deadline must be before the tournament start date",
-      "registrationDeadlinePast": "Registration deadline must be in the future",
-      "registrationDeadlineMinBeforeStart": "Registration must close at least 24 hours before tournament start"
+      "difficultyRequired": "Difficulty is required",
+      "formatRequired": "Format is required",
+      "startDateRequired": "Start date is required",
+      "registrationDeadlineRequired": "Registration deadline is required",
+      "maxParticipantsRequired": "Max participants is required",
+      "maxParticipantsNumber": "Max participants must be a number",
+      "maxParticipantsMin": "Max participants must be at least 2"
     },
     "error": {
-      "submitFailed": "Failed to create debate. Please try again."
+      "generic": "An unexpected error occurred. Please try again."
     }
+  },
+  "notificationCenter": {
+    "title": "Notifications",
+    "markAllRead": "Mark All Read",
+    "markReadTooltip": "Mark as Read",
+    "noNotifications": "No new notifications",
+    "ariaLabel": "Show notifications"
+  },
+  "notificationTypes": {
+    "friend_request_sent": "Friend Request Sent",
+    "friend_request_accepted": "Friend Request Accepted",
+    "game_assignment": "Game Assigned",
+    "evaluation_submitted": "Evaluation Submitted",
+    "system_alert": "System Alert",
+    "new_message": "New Message",
+    "evaluation_request": "Evaluation Request",
+    "system_notice": "System Notice"
+  },
+  "notificationSettings": {
+    "title": "Notification Settings",
+    "fetchError": "Failed to load settings. Please try again.",
+    "saveSuccess": "Settings saved successfully.",
+    "saveError": "Failed to save settings. Please try again.",
+    "saveButton": "Save Settings",
+    "friend_request_sent": "Receive notification for sent friend requests",
+    "friend_request_accepted": "Receive notification for accepted friend requests",
+    "game_assignment": "Receive notification for game assignments",
+    "evaluation_submitted": "Receive notification for submitted evaluations",
+    "system_alert": "Receive notification for system alerts",
+    "new_message": "Receive notification for new messages"
   }
+
 }
