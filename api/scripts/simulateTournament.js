@@ -99,8 +99,8 @@ const generateBrackets = (teams) => {
   for (let i = 0; i < perfectBracketSize; i += 2) {
     // Create a match object
     const match = {
-      team1: i < numTeams ? shuffledTeams[i] : null,
-      team2: i + 1 < numTeams ? shuffledTeams[i + 1] : null,
+      team1: i < numTeams ? shuffledTeams[i]._id : null, // Use Team ID
+      team2: i + 1 < numTeams ? shuffledTeams[i + 1]._id : null, // Use Team ID
       winner: null,
       completed: false,
       scores: { team1: 0, team2: 0 }
@@ -108,10 +108,10 @@ const generateBrackets = (teams) => {
     
     // If one team is missing, the other team advances automatically
     if (match.team1 && !match.team2) {
-      match.winner = match.team1;
+      match.winner = match.team1; // Winner is still the ID here
       match.completed = true;
     } else if (!match.team1 && match.team2) {
-      match.winner = match.team2;
+      match.winner = match.team2; // Winner is still the ID here
       match.completed = true;
     }
     
@@ -173,19 +173,16 @@ const createPostings = (tournament, judges, headJudgeId) => {
     }
 
     postings.push({
-      team1: match.team1,
-      team2: match.team2,
+      round: 1, // Add round number
+      matchNumber: i, // Add match number (index)
+      team1: match.team1, // Team ID from bracket
+      team2: match.team2, // Team ID from bracket
       location: `Room ${i + 1}`,
       judges: assignedJudges, // Use the array with Head Judge included
       theme: getDebateTheme(),
-      status: 'completed', // Since we're simulating a completed tournament
-      createdAt: TOURNAMENT_DATE,
-      winner: Math.random() > 0.5 ? match.team1 : match.team2, // Randomly select winner
-      evaluation: {
-        team1Score: Math.floor(Math.random() * 30) + 70, // Random score between 70-100
-        team2Score: Math.floor(Math.random() * 30) + 70,
-        comments: "Great debate by both teams."
-      }
+      status: 'scheduled', // Set status to scheduled
+      createdAt: TOURNAMENT_DATE // Keep creation timestamp
+      // Remove winner and evaluation for initial setup
     });
   }
   

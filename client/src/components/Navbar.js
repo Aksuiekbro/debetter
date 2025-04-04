@@ -20,6 +20,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './ui/LanguageSwitcher'; // Import the new component
+import NotificationCenter from './NotificationCenter'; // Import NotificationCenter
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -67,7 +68,7 @@ const Navbar = () => {
   const { t, i18n } = useTranslation();
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   const [anchorEl, setAnchorEl] = useState(null);
-  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const userRole = localStorage.getItem('userRole');
 
   useEffect(() => {
     const checkAuth = () => {
@@ -88,17 +89,11 @@ const Navbar = () => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleNotificationClick = (event) => {
-    setNotificationAnchorEl(event.currentTarget);
-  };
 
   const handleClose = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationClose = () => {
-    setNotificationAnchorEl(null);
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -157,6 +152,14 @@ const Navbar = () => {
               >
                 {t('navbar.create_tournament', 'Create Tournament')}
               </Button>
+              { (userRole === 'judge' || userRole === 'admin') && (
+                <Button
+                  color="inherit"
+                  onClick={() => navigate('/judge-panel')}
+                >
+                  {t('navbar.judge_panel', 'Judge Panel')} {/* Added translation key */}
+                </Button>
+              )}
             </>
           )}
         </Box>
@@ -203,33 +206,8 @@ const Navbar = () => {
           </Box>
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Notifications */}
-            <IconButton 
-              color="inherit"
-              onClick={handleNotificationClick}
-            >
-              <Badge badgeContent={3} color="secondary">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-            <Menu
-              anchorEl={notificationAnchorEl}
-              open={Boolean(notificationAnchorEl)}
-              onClose={handleNotificationClose}
-              PaperProps={{
-                sx: { width: 320 }
-              }}
-            >
-              <MenuItem onClick={handleNotificationClose}>
-                New debate invitation received
-              </MenuItem>
-              <MenuItem onClick={handleNotificationClose}>
-                Your debate starts in 1 hour
-              </MenuItem>
-              <MenuItem onClick={handleNotificationClose}>
-                New comment on your debate
-              </MenuItem>
-            </Menu>
+            {/* Notification Center Component */}
+            <NotificationCenter />
 
             {/* User Avatar */}
             <IconButton 
@@ -261,8 +239,14 @@ const Navbar = () => {
                 navigate('/my-debates');
               }}>
                 {t('navbar.my_debates')}
-              </MenuItem>
-              <Divider />
+             </MenuItem>
+             <MenuItem onClick={() => {
+               handleClose();
+               navigate('/settings/notifications');
+             }}>
+               {t('navbar.notification_settings', 'Notification Settings')}
+             </MenuItem>
+             <Divider />
               <MenuItem onClick={handleLogout}>
                 {t('navbar.logout')}
               </MenuItem>

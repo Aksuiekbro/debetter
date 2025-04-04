@@ -557,3 +557,114 @@ exports.getApfEvaluation = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Get debater-specific feedback for a completed posting
+exports.getDebaterFeedback = async (req, res) => {
+  try {
+    const { debateId, postingId } = req.params;
+    const userId = req.user._id;
+
+    console.log(`Fetching feedback for user ${userId}, debate ${debateId}, posting ${postingId}`);
+
+    // 1. Fetch Debate with populated teams and members
+    const debate = await Debate.findById(debateId).populate({
+      path: 'teams',
+      populate: {
+        path: 'members.userId',
+        model: 'User',
+        select: 'username _id' // Select necessary fields
+      }
+    });
+
+    if (!debate) {
+      console.log(`Debate not found: ${debateId}`);
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+
+    // 2. Find the specific posting
+    const posting = debate.postings.find(p => p._id.toString() === postingId);
+
+    if (!posting) {
+      console.log(`Posting not found: ${postingId} in debate ${debateId}`);
+      return res.status(404).json({ message: 'Posting not found' });
+    }
+
+    // 3. Check if posting is completed
+    if (posting.status !== 'completed') {
+      console.log(`Posting ${postingId} is not completed (status: ${posting.status})`);
+      return res.status(400).json({ message: 'Feedback is not available until the posting is completed' });
+    }
+
+    // 4. Identify user's team and role for this posting
+    let userTeam = null;
+    let userRole = null;
+    let teamSide = null; // 'gov' or 'opp'
+
+    for (const team of debate.teams) {
+      const member = team.members.find(m => m.userId && m.userId._id.toString() === userId.toString());
+      if (member) {
+        // Check if this team participated in this specific posting
+        if (posting.team1.toString() === team._id.toString()) {
+          userTeam = team;
+          userRole = member.role; // 'leader' or 'speaker'
+          teamSide = 'gov'; // Team 1 is Government
+          break;
+        } else if (posting.team2.toString() === team._id.toString()) {
+          userTeam = team;
+          userRole = member.role; // 'leader' or 'speaker'
+          teamSide = 'opp'; // Team 2 is Opposition
+          break;
+        }
+      }
+    }
+
+    if (!userTeam || !userRole) {
+      console.log(`User ${userId} not found as a participant in posting ${postingId}`);
+      return res.status(403).json({ message: 'You did not participate in this specific debate posting' });
+    }
+
+    console.log(`User ${userId} identified as ${userRole} on team ${userTeam.name} (${teamSide})`);
+
+    // 5. Determine the speaker key
+    let speakerKey = null;
+    if (teamSide === 'gov') {
+      speakerKey = userRole === 'leader' ? 'leader_gov' : 'speaker_gov';
+    } else { // teamSide === 'opp'
+      speakerKey = userRole === 'leader' ? 'leader_opp' : 'speaker_opp';
+    }
+
+    console.log(`Determined speaker key: ${speakerKey}`);
+
+    // 6. Fetch the Evaluation using the ID from the posting
+    if (!posting.evaluation || !posting.evaluation.evaluationId) {
+        console.log(`Posting ${postingId} is completed but missing evaluation reference.`);
+        return res.status(404).json({ message: 'Evaluation data not found for this posting' });
+    }
+
+    const evaluation = await ApfEvaluation.findById(posting.evaluation.evaluationId);
+
+    if (!evaluation) {
+        console.log(`Evaluation not found with ID: ${posting.evaluation.evaluationId}`);
+        return res.status(404).json({ message: 'Evaluation data could not be retrieved' });
+    }
+
+    // 7. Extract scores and feedback
+    if (!evaluation.speakerScores || !evaluation.speakerScores[speakerKey]) {
+        console.log(`Speaker scores missing or key ${speakerKey} not found in evaluation ${evaluation._id}`);
+        return res.status(404).json({ message: 'Specific scores and feedback not found for your role in this evaluation' });
+    }
+
+    const feedbackData = evaluation.speakerScores[speakerKey];
+
+    // 8. Return the data
+    res.json({
+      scores: feedbackData.criteriaRatings || {}, // Ensure scores object exists
+      feedback: feedbackData.feedback || '', // Ensure feedback string exists
+      judgeId: evaluation.judgeId // Include judge ID for reference
+    });
+
+  } catch (error) {
+    console.error(`Error fetching debater feedback for user ${req.user?._id}, posting ${req.params?.postingId}:`, error);
+    res.status(500).json({ message: 'An error occurred while fetching your feedback', error: error.message });
+  }
+};

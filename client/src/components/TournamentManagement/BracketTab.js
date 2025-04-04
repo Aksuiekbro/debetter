@@ -14,6 +14,7 @@ import TournamentGrid from '../TournamentGrid';
 const BracketTab = ({
   tournamentRounds = [],
   entrants = [], // Add entrants prop
+  teams = [], // Add teams prop
   loading = false,
   onInitializeBracket,
   initializing = false
@@ -56,7 +57,7 @@ const BracketTab = ({
 
       {!initializing && !loading && tournamentRounds?.length > 0 && (
         <Paper sx={{ p: 2, overflowX: 'auto' }}>
-          <TournamentGrid rounds={tournamentRounds} entrants={entrants} /> {/* Pass entrants down */}
+          <TournamentGrid rounds={tournamentRounds} entrants={entrants} teams={teams} /> {/* Pass entrants and teams down */}
         </Paper>
       )}
     </Box>
