@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import {
   Container,
   Typography,
@@ -17,6 +18,7 @@ import { getAuthHeaders } from '../utils/auth';
 const TournamentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation(); // Initialize useTranslation
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,7 +40,7 @@ const TournamentDetail = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching tournament details:', error);
-        setError('Failed to load tournament details. Please try again later.');
+        setError(t('tournamentDetail.errorFailed', 'Failed to load tournament details. Please try again later.'));
         setLoading(false);
       }
     };
@@ -66,7 +68,7 @@ const TournamentDetail = () => {
           sx={{ mt: 2 }}
           onClick={() => navigate('/tournaments')}
         >
-          Back to Tournaments
+          {t('tournamentDetail.backButton', 'Back to Tournaments')}
         </Button>
       </Container>
     );
@@ -76,7 +78,7 @@ const TournamentDetail = () => {
     return (
       <Container sx={{ mt: 4, textAlign: 'center' }}>
         <Typography variant="h4">
-          Tournament not found
+          {t('tournamentDetail.errorNotFound', 'Tournament not found')}
         </Typography>
         <Button 
           variant="contained" 
@@ -84,7 +86,7 @@ const TournamentDetail = () => {
           sx={{ mt: 2 }}
           onClick={() => navigate('/tournaments')}
         >
-          Back to Tournaments
+          {t('tournamentDetail.backButton', 'Back to Tournaments')}
         </Button>
       </Container>
     );
@@ -113,7 +115,7 @@ const TournamentDetail = () => {
             {tournament.name}
           </Typography>
           <Chip 
-            label={tournament.status?.replace('_', ' ') || 'Unknown'}
+            label={tournament.status ? t(`tournamentDetail.status.${tournament.status}`, tournament.status.replace('_', ' ')) : t('tournamentDetail.statusUnknown', 'Unknown')}
             color={getStatusColor(tournament.status)}
             sx={{ mt: 1 }}
           />
@@ -123,13 +125,13 @@ const TournamentDetail = () => {
           color="primary"
           onClick={() => navigate('/tournaments')}
         >
-          Back to Tournaments
+          {t('tournamentDetail.backButton', 'Back to Tournaments')}
         </Button>
       </Box>
 
       <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h6" gutterBottom>
-          Description
+          {t('tournamentDetail.descriptionLabel', 'Description')}
         </Typography>
         <Typography paragraph>
           {tournament.description}
@@ -138,7 +140,7 @@ const TournamentDetail = () => {
         <Grid container spacing={3} sx={{ mt: 2 }}>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1" fontWeight="bold">
-              Location
+              {t('tournamentDetail.locationLabel', 'Location')}
             </Typography>
             <Typography>
               {tournament.location}
@@ -146,7 +148,7 @@ const TournamentDetail = () => {
           </Grid>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1" fontWeight="bold">
-              Dates
+              {t('tournamentDetail.datesLabel', 'Dates')}
             </Typography>
             <Typography>
               {formatDate(tournament.startDate)} - {formatDate(tournament.endDate)}
@@ -158,7 +160,7 @@ const TournamentDetail = () => {
       <Divider sx={{ my: 4 }} />
 
       <Typography variant="h5" gutterBottom>
-        Teams
+        {t('tournamentDetail.teamsLabel', 'Teams')}
       </Typography>
       <Grid container spacing={2}>
         {tournament.teams && tournament.teams.map((team) => (
@@ -175,7 +177,7 @@ const TournamentDetail = () => {
       {tournament.winner && (
         <Paper sx={{ p: 3, mt: 4, bgcolor: 'success.light' }}>
           <Typography variant="h6" gutterBottom>
-            Tournament Winner
+            {t('tournamentDetail.winnerLabel', 'Tournament Winner')}
           </Typography>
           <Typography variant="h5" fontWeight="bold">
             {tournament.winner.name}

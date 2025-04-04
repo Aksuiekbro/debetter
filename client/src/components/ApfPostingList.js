@@ -47,10 +47,11 @@ import {
   NotificationsActive as NotifyIcon
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 // Helper functions
-const formatDate = (dateString) => {
-  if (!dateString) return 'Not scheduled';
+const formatDate = (dateString, t) => { // Added 't' as an argument
+  if (!dateString) return t('apfPostingList.statusNotScheduled', 'Not scheduled');
   
   const date = new Date(dateString);
   return date.toLocaleString();
@@ -58,8 +59,9 @@ const formatDate = (dateString) => {
 
 // Status chip renderer
 const StatusChip = ({ status }) => {
+  const { t } = useTranslation();
   let chipProps = {
-    label: 'Unknown',
+    label: t('apfPostingList.statusUnknown', 'Unknown'),
     color: 'default',
     icon: <ScheduleIcon />
   };
@@ -67,28 +69,28 @@ const StatusChip = ({ status }) => {
   switch(status) {
     case 'scheduled':
       chipProps = {
-        label: 'Scheduled',
+        label: t('apfPostingList.statusScheduled', 'Scheduled'),
         color: 'primary',
         icon: <ScheduleIcon />
       };
       break;
     case 'in_progress':
       chipProps = {
-        label: 'In Progress',
+        label: t('apfPostingList.statusInProgress', 'In Progress'),
         color: 'warning',
         icon: <InProgressIcon />
       };
       break;
     case 'completed':
       chipProps = {
-        label: 'Completed',
+        label: t('apfPostingList.statusCompleted', 'Completed'),
         color: 'success',
         icon: <CheckCircleIcon />
       };
       break;
     case 'cancelled':
       chipProps = {
-        label: 'Cancelled',
+        label: t('apfPostingList.statusCancelled', 'Cancelled'),
         color: 'error',
         icon: <CancelIcon />
       };
@@ -109,6 +111,7 @@ const ApfPostingList = ({
   onDelete = () => {}
 }) => {
   // State for filtering and search
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filteredPostings, setFilteredPostings] = useState(postings);
@@ -222,7 +225,7 @@ const ApfPostingList = ({
   // Group postings by batch
   const groupedPostings = {};
   filteredPostings.forEach(posting => {
-    const batchName = posting.batchName || 'Ungrouped Games';
+    const batchName = posting.batchName || t('apfPostingList.batchUngrouped', 'Ungrouped Games');
     if (!groupedPostings[batchName]) {
       groupedPostings[batchName] = [];
     }
@@ -234,7 +237,7 @@ const ApfPostingList = ({
       {/* Search and filter toolbar */}
       <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
         <TextField
-          placeholder="Search games, teams, locations..."
+          placeholder={t('apfPostingList.searchPlaceholder', 'Search games, teams, locations...')}
           variant="outlined"
           size="small"
           value={searchTerm}
@@ -250,19 +253,19 @@ const ApfPostingList = ({
         />
         
         <FormControl variant="outlined" size="small" sx={{ minWidth: '150px' }}>
-          <InputLabel id="status-filter-label">Status</InputLabel>
+          <InputLabel id="status-filter-label">{t('apfPostingList.filterLabelStatus', 'Status')}</InputLabel>
           <Select
             labelId="status-filter-label"
             id="status-filter"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            label="Status"
+            label={t('apfPostingList.filterLabelStatus', 'Status')}
           >
-            <MenuItem value="all">All Statuses</MenuItem>
-            <MenuItem value="scheduled">Scheduled</MenuItem>
-            <MenuItem value="in_progress">In Progress</MenuItem>
-            <MenuItem value="completed">Completed</MenuItem>
-            <MenuItem value="cancelled">Cancelled</MenuItem>
+            <MenuItem value="all">{t('apfPostingList.filterStatusAll', 'All Statuses')}</MenuItem>
+            <MenuItem value="scheduled">{t('apfPostingList.statusScheduled', 'Scheduled')}</MenuItem>
+            <MenuItem value="in_progress">{t('apfPostingList.statusInProgress', 'In Progress')}</MenuItem>
+            <MenuItem value="completed">{t('apfPostingList.statusCompleted', 'Completed')}</MenuItem>
+            <MenuItem value="cancelled">{t('apfPostingList.statusCancelled', 'Cancelled')}</MenuItem>
           </Select>
         </FormControl>
       </Box>
@@ -276,13 +279,13 @@ const ApfPostingList = ({
         Object.entries(groupedPostings).map(([batchName, batchPostings]) => (
           <Box key={batchName} sx={{ mb: 4 }}>
             {/* Batch header (only show if it's a named batch) */}
-            {batchName !== 'Ungrouped Games' && (
+            {batchName !== t('apfPostingList.batchUngrouped', 'Ungrouped Games') && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <EventIcon color="primary" />
                   {batchName}
                   <Chip 
-                    label={`${batchPostings.length} Games`} 
+                    label={`${batchPostings.length} ${t('apfPostingList.gamesCountSuffix', 'Games')}`}
                     size="small" 
                     sx={{ ml: 1 }} 
                   />
@@ -307,7 +310,7 @@ const ApfPostingList = ({
                       {/* Game header with teams and status */}
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {posting.team1Name || posting.team1?.name || 'Team 1'} vs {posting.team2Name || posting.team2?.name || 'Team 2'}
+                          {posting.team1Name || posting.team1?.name || t('apfPostingList.defaultTeam1', 'Team 1')} {t('apfPostingList.teamSeparator', 'vs')} {posting.team2Name || posting.team2?.name || t('apfPostingList.defaultTeam2', 'Team 2')}
                         </Typography>
                         <Box>
                           <StatusChip status={posting.status} />
@@ -319,7 +322,7 @@ const ApfPostingList = ({
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <CalendarIcon fontSize="small" color="action" />
                           <Typography variant="body2">
-                            {formatDate(posting.scheduledTime)}
+                            {formatDate(posting.scheduledTime, t)} // Pass 't' here
                           </Typography>
                         </Box>
                         
@@ -330,14 +333,14 @@ const ApfPostingList = ({
                             <LocationIcon fontSize="small" color="action" />
                           )}
                           <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {posting.virtualLink ? 'Virtual Meeting' : posting.location || 'No location set'}
+                            {posting.virtualLink ? t('apfPostingList.locationVirtual', 'Virtual Meeting') : posting.location || t('apfPostingList.locationNotSet', 'No location set')}
                           </Typography>
                         </Box>
                         
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <PeopleIcon fontSize="small" color="action" />
                           <Typography variant="body2">
-                            {posting.judgeNames || `${posting.judges?.length || 0} Judges`}
+                            {posting.judgeNames || `${posting.judges?.length || 0} ${t('apfPostingList.judgesCountSuffix', 'Judges')}`}
                           </Typography>
                         </Box>
                         
@@ -350,8 +353,8 @@ const ApfPostingList = ({
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical'
                           }}>
-                            {posting.useCustomModel ? 'Custom Model' : (
-                              typeof posting.theme === 'string' ? posting.theme : posting.themeLabel || 'No theme set'
+                            {posting.useCustomModel ? t('apfPostingList.themeCustomModel', 'Custom Model') : (
+                              typeof posting.theme === 'string' ? posting.theme : posting.themeLabel || t('apfPostingList.themeNotSet', 'No theme set')
                             )}
                           </Typography>
                         </Box>
@@ -362,21 +365,21 @@ const ApfPostingList = ({
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
                           <NotifyIcon fontSize="small" color="success" />
                           <Typography variant="caption" color="text.secondary">
-                            Notifications sent {posting.notifications.sentAt ? 
-                              `on ${new Date(posting.notifications.sentAt).toLocaleDateString()}` : ''}
+                            {t('apfPostingList.notificationSentPrefix', 'Notifications sent')} {posting.notifications.sentAt ?
+                              `${t('apfPostingList.notificationSentDatePrefix', 'on')} ${new Date(posting.notifications.sentAt).toLocaleDateString()}` : ''}
                           </Typography>
                         </Box>
                       )}
                       
                       {/* Action buttons */}
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                        <Tooltip title="Change Status">
+                        <Tooltip title={t('apfPostingList.tooltipChangeStatus', 'Change Status')}>
                           <IconButton size="small" onClick={(e) => handleOpenStatusMenu(e, posting)}>
                             <ScheduleIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         
-                        <Tooltip title="Actions">
+                        <Tooltip title={t('apfPostingList.tooltipActions', 'Actions')}>
                           <IconButton size="small" onClick={(e) => handleOpenActionMenu(e, posting)}>
                             <MoreIcon fontSize="small" />
                           </IconButton>
@@ -391,7 +394,7 @@ const ApfPostingList = ({
         ))
       ) : (
         <Alert severity="info" sx={{ mt: 2 }}>
-          No games found matching your filters. Try adjusting your search or filter criteria.
+          {t('apfPostingList.alertNoGamesFound', 'No games found matching your filters. Try adjusting your search or filter criteria.')}
         </Alert>
       )}
       
@@ -403,19 +406,19 @@ const ApfPostingList = ({
       >
         <MenuItem onClick={() => handleStatusChange('scheduled')}>
           <ScheduleIcon fontSize="small" sx={{ mr: 1 }} />
-          Mark as Scheduled
+          {t('apfPostingList.menuMarkScheduled', 'Mark as Scheduled')}
         </MenuItem>
         <MenuItem onClick={() => handleStatusChange('in_progress')}>
           <InProgressIcon fontSize="small" sx={{ mr: 1 }} />
-          Mark as In Progress
+          {t('apfPostingList.menuMarkInProgress', 'Mark as In Progress')}
         </MenuItem>
         <MenuItem onClick={() => handleStatusChange('completed')}>
           <CheckCircleIcon fontSize="small" sx={{ mr: 1 }} />
-          Mark as Completed
+          {t('apfPostingList.menuMarkCompleted', 'Mark as Completed')}
         </MenuItem>
         <MenuItem onClick={() => handleStatusChange('cancelled')}>
           <CancelIcon fontSize="small" sx={{ mr: 1 }} />
-          Mark as Cancelled
+          {t('apfPostingList.menuMarkCancelled', 'Mark as Cancelled')}
         </MenuItem>
       </Menu>
       
@@ -427,46 +430,46 @@ const ApfPostingList = ({
       >
         <MenuItem onClick={handleEditPosting}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Edit Game
+          {t('apfPostingList.menuEditGame', 'Edit Game')}
         </MenuItem>
         <MenuItem onClick={() => handleOpenConfirmDialog('reminder')}>
           <SendIcon fontSize="small" sx={{ mr: 1 }} />
-          Send Reminder
+          {t('apfPostingList.menuSendReminder', 'Send Reminder')}
         </MenuItem>
         <Divider />
         <MenuItem onClick={() => handleOpenConfirmDialog('delete')} sx={{ color: 'error.main' }}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Delete Game
+          {t('apfPostingList.menuDeleteGame', 'Delete Game')}
         </MenuItem>
       </Menu>
       
       {/* Confirmation dialog */}
       <Dialog open={confirmDialogOpen} onClose={handleCloseConfirmDialog}>
         <DialogTitle>
-          {confirmAction === 'delete' ? 'Confirm Deletion' : 
-           confirmAction === 'reminder' ? 'Send Reminder' : 'Confirm Action'}
+          {confirmAction === 'delete' ? t('apfPostingList.dialogTitleConfirmDelete', 'Confirm Deletion') :
+           confirmAction === 'reminder' ? t('apfPostingList.menuSendReminder', 'Send Reminder') : t('apfPostingList.dialogTitleConfirmAction', 'Confirm Action')}
         </DialogTitle>
         <DialogContent>
           {confirmAction === 'delete' && (
             <Typography>
-              Are you sure you want to delete this game? This action cannot be undone.
+              {t('apfPostingList.dialogContentConfirmDelete', 'Are you sure you want to delete this game? This action cannot be undone.')}
             </Typography>
           )}
           {confirmAction === 'reminder' && (
             <Typography>
-              Send a reminder notification to all judges and team members about this game?
+              {t('apfPostingList.dialogContentSendReminder', 'Send a reminder notification to all judges and team members about this game?')}
             </Typography>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseConfirmDialog}>Cancel</Button>
+          <Button onClick={handleCloseConfirmDialog}>{t('apfPostingList.buttonCancel', 'Cancel')}</Button>
           <Button 
             onClick={handleConfirmAction} 
             color={confirmAction === 'delete' ? 'error' : 'primary'}
             variant="contained"
           >
-            {confirmAction === 'delete' ? 'Delete' : 
-             confirmAction === 'reminder' ? 'Send Reminder' : 'Confirm'}
+            {confirmAction === 'delete' ? t('apfPostingList.buttonDelete', 'Delete') :
+             confirmAction === 'reminder' ? t('apfPostingList.menuSendReminder', 'Send Reminder') : t('apfPostingList.buttonConfirm', 'Confirm')}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import {
   Box,
   Typography,
@@ -12,15 +13,17 @@ import TournamentGrid from '../TournamentGrid';
 
 const BracketTab = ({
   tournamentRounds = [],
+  entrants = [], // Add entrants prop
   loading = false,
   onInitializeBracket,
   initializing = false
 }) => {
+  const { t } = useTranslation(); // Initialize useTranslation
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
-          Tournament Bracket
+          {t('bracketTab.title', 'Tournament Bracket')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           {typeof onInitializeBracket === 'function' && (
@@ -31,7 +34,7 @@ const BracketTab = ({
               onClick={onInitializeBracket}
               disabled={initializing || loading}
             >
-              {tournamentRounds?.length > 0 ? 'Regenerate Bracket' : 'Initialize Bracket'}
+              {tournamentRounds?.length > 0 ? t('bracketTab.regenerateButton', 'Regenerate Bracket') : t('bracketTab.initializeButton', 'Initialize Bracket')}
             </Button>
           )}
         </Box>
@@ -46,14 +49,14 @@ const BracketTab = ({
       {!initializing && !loading && tournamentRounds?.length === 0 && (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Alert severity="info">
-            No tournament bracket has been initialized yet. Click the button above to create one.
+            {t('bracketTab.notInitializedAlert', 'No tournament bracket has been initialized yet. Click the button above to create one.')}
           </Alert>
         </Paper>
       )}
 
       {!initializing && !loading && tournamentRounds?.length > 0 && (
         <Paper sx={{ p: 2, overflowX: 'auto' }}>
-          <TournamentGrid rounds={tournamentRounds} />
+          <TournamentGrid rounds={tournamentRounds} entrants={entrants} /> {/* Pass entrants down */}
         </Paper>
       )}
     </Box>

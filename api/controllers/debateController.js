@@ -270,6 +270,30 @@ exports.getDebate = async (req, res) => {
   }
 };
 
+// Get details for a specific posting within a debate
+exports.getPostingDetails = async (req, res) => {
+  try {
+    const { id: debateId, postingId } = req.params;
+
+    // Use the postingService to fetch the details
+    // Assuming postingService has a method like getPostingDetailsById
+    const postingDetails = await postingService.getPostingById(debateId, postingId);
+
+    if (!postingDetails) {
+      return res.status(404).json({ message: 'Posting not found' });
+    }
+
+    res.json(postingDetails);
+  } catch (error) {
+    console.error('Get posting details error:', error);
+    if (error.message === 'Debate not found' || error.message === 'Posting not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message || 'Failed to get posting details' });
+  }
+};
+
+
 // Get user's debates (both created and participated)
 exports.getUserDebates = async (req, res) => {
   try {

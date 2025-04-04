@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -52,6 +53,7 @@ function TabPanel(props) {
 
 const TournamentManagement = () => {
   const navigate = useNavigate(); // Keep navigate if needed for other actions
+  const { t } = useTranslation(); // Initialize useTranslation
 
   // --- Initialize Hooks ---
   const uiManager = useTournamentUIManager();
@@ -106,18 +108,18 @@ const TournamentManagement = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
       <Typography variant="h4" sx={{ mb: 3 }}>
-        Tournament: {dataManager.tournament.title}
+        {t('tournamentManagement.title', 'Tournament: {{name}}', { name: dataManager.tournament.title })}
       </Typography>
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={uiManager.tabValue} onChange={uiManager.handleTabChange} aria-label="tournament management tabs">
-          <Tab label="Entrants" />
-          <Tab label="Teams" />
-          <Tab label="Judges" />
-          <Tab label="Posting" />
-          <Tab label="Standings" />
-          <Tab label="Bracket" />
+          <Tab label={t('tournamentManagement.tabs.entrants', 'Entrants')} />
+          <Tab label={t('tournamentManagement.tabs.teams', 'Teams')} />
+          <Tab label={t('tournamentManagement.tabs.judges', 'Judges')} />
+          <Tab label={t('tournamentManagement.tabs.posting', 'Posting')} />
+          <Tab label={t('tournamentManagement.tabs.standings', 'Standings')} />
+          <Tab label={t('tournamentManagement.tabs.bracket', 'Bracket')} />
         </Tabs>
       </Box>
 
@@ -186,6 +188,7 @@ const TournamentManagement = () => {
       <TabPanel value={uiManager.tabValue} index={5}>
         <BracketTab
           tournamentRounds={dataManager.tournament?.tournamentRounds || []}
+          entrants={dataManager.entrants} // Pass entrants data
           loading={dataManager.loading}
           onInitializeBracket={async () => {
             try {

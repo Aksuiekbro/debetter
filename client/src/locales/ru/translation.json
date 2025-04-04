@@ -1,0 +1,15 @@
+{
+  "greeting": "Привет",
+  "navbar": {
+    "home": "Главная",
+    "host_debate": "Начать Дебаты",
+    "join_debate": "Присоединиться к Дебатам",
+    "tournaments": "Турниры",
+    "my_debates": "Мои Дебаты",
+    "profile": "Профиль",
+    "logout": "Выйти",
+    "login": "Войти",
+    "register": "Регистрация",
+    "search_placeholder": "Поиск дебатов..."
+  }
+}

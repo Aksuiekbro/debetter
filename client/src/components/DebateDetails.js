@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { api } from '../config/api';
 import { getAuthHeaders, handleUnauthorized } from '../utils/auth';
 import {
@@ -31,6 +32,7 @@ import TournamentGrid from './TournamentGrid';
 const DebateDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation(); // Initialize useTranslation
   const [debate, setDebate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -101,7 +103,7 @@ const DebateDetails = () => {
       }
 
       if (!canJoinDebate()) {
-        alert(currentUser?.role === 'judge' ? 'Maximum judges reached' : 'This debate is full');
+        alert(currentUser?.role === 'judge' ? t('debateDetails.maxJudgesReachedAlert', 'Maximum judges reached') : t('debateDetails.debateFullAlert', 'This debate is full'));
         return;
       }
 
@@ -109,7 +111,7 @@ const DebateDetails = () => {
       setDebate(response.data);
     } catch (error) {
       console.error('Error joining debate:', error);
-      alert(error.response?.data?.message || 'Failed to join debate');
+      alert(error.response?.data?.message || t('debateDetails.joinFailedAlert', 'Failed to join debate'));
     } finally {
       setActionLoading(false);
     }
@@ -127,7 +129,7 @@ const DebateDetails = () => {
       setDebate(response.data);
     } catch (error) {
       console.error('Error leaving debate:', error);
-      alert(error.response?.data?.message || 'Failed to leave debate');
+      alert(error.response?.data?.message || t('debateDetails.leaveFailedAlert', 'Failed to leave debate'));
     } finally {
       setActionLoading(false);
     }
@@ -177,13 +179,13 @@ const DebateDetails = () => {
         <Stack direction="row" spacing={1}>
           <Chip 
             icon={<GroupsIcon />} 
-            label={`Debaters: ${counts.debaters}/32`}
+            label={t('debateDetails.debatersCountChip', 'Debaters: {{count}}/32', { count: counts.debaters })}
             color="primary"
             variant="outlined"
           />
           <Chip 
             icon={<GavelIcon />} 
-            label={`Judges: ${counts.judges}/8`}
+            label={t('debateDetails.judgesCountChip', 'Judges: {{count}}/8', { count: counts.judges })}
             color="secondary"
             variant="outlined"
           />
@@ -195,7 +197,7 @@ const DebateDetails = () => {
       <Box display="inline-block">
         <Chip 
           icon={<GroupsIcon />} 
-          label={`Participants: ${debate.participants.length}/${debate.maxParticipants}`}
+          label={t('debateDetails.participantsCountChip', 'Participants: {{current}}/{{max}}', { current: debate.participants.length, max: debate.maxParticipants })}
           color="primary"
           variant="outlined"
         />
@@ -212,7 +214,7 @@ const DebateDetails = () => {
     return (
       <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
         <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
-          {debate.format === 'tournament' ? 'Tournament Participants' : 'Participants'}
+          {debate.format === 'tournament' ? t('debateDetails.tournamentParticipantsTitle', 'Tournament Participants') : t('debateDetails.participantsTitle', 'Participants')}
         </Typography>
 
         <Box sx={{ mb: 2 }}>
@@ -220,11 +222,11 @@ const DebateDetails = () => {
             <>
               <Typography component="div" variant="body2" color="primary" gutterBottom>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <span>Debaters:</span>
+                  <span>{t('debateDetails.debatersLabel', 'Debaters:')}</span>
                   <strong>{debaters.length}/32</strong>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Judges:</span>
+                  <span>{t('debateDetails.judgesLabel', 'Judges:')}</span>
                   <strong>{judges.length}/8</strong>
                 </Box>
               </Typography>
@@ -232,7 +234,7 @@ const DebateDetails = () => {
           ) : (
             <Typography component="div" variant="body2" color="primary" gutterBottom>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Total Participants:</span>
+                <span>{t('debateDetails.totalParticipantsLabel', 'Total Participants:')}</span>
                 <strong>{debate.participants.length}/{debate.maxParticipants}</strong>
               </Box>
             </Typography>
@@ -244,7 +246,7 @@ const DebateDetails = () => {
         {debate.format === 'tournament' && (
           <>
             <Typography variant="subtitle2" color="primary" gutterBottom>
-              Judges
+              {t('debateDetails.judgesSectionTitle', 'Judges')}
             </Typography>
             <List dense>
               {judges.map((judge) => (
@@ -252,13 +254,13 @@ const DebateDetails = () => {
                   <ListItemAvatar>
                     <Avatar><GavelIcon /></Avatar>
                   </ListItemAvatar>
-                  <ListItemText primary={judge.username} secondary="Judge" />
+                  <ListItemText primary={judge.username} secondary={t('debateDetails.judgeRole', 'Judge')} />
                 </ListItem>
               ))}
             </List>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle2" color="primary" gutterBottom>
-              Debaters
+              {t('debateDetails.debatersSectionTitle', 'Debaters')}
             </Typography>
           </>
         )}
@@ -273,7 +275,7 @@ const DebateDetails = () => {
               </ListItemAvatar>
               <ListItemText 
                 primary={participant.username}
-                secondary={debate.format !== 'tournament' && participant.role === 'judge' ? 'Judge' : 'Debater'}
+                secondary={debate.format !== 'tournament' && participant.role === 'judge' ? t('debateDetails.judgeRole', 'Judge') : t('debateDetails.debaterRole', 'Debater')}
               />
             </ListItem>
           ))}
@@ -285,7 +287,7 @@ const DebateDetails = () => {
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography>Loading debate details...</Typography>
+        <Typography>{t('debateDetails.loadingMessage', 'Loading debate details...')}</Typography>
       </Container>
     );
   }
@@ -293,7 +295,7 @@ const DebateDetails = () => {
   if (!debate) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography>Debate not found</Typography>
+        <Typography>{t('debateDetails.notFoundMessage', 'Debate not found')}</Typography>
       </Container>
     );
   }
@@ -320,13 +322,13 @@ const DebateDetails = () => {
             <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
               <Chip 
                 icon={<AccessTimeIcon />} 
-                label={`Status: ${debate.status}`}
+                label={`${t('debateDetails.statusLabel', 'Status:')} ${debate.status}`}
                 color="primary"
                 variant="outlined"
               />
               <Chip 
                 icon={<GradeIcon />} 
-                label={`Difficulty: ${debate.difficulty}`}
+                label={`${t('debateDetails.difficultyLabel', 'Difficulty:')} ${debate.difficulty}`}
                 color="primary"
                 variant="outlined"
               />
@@ -339,13 +341,13 @@ const DebateDetails = () => {
 
             <Box sx={{ mb: 4 }}>
               <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
-                Details
+                {t('debateDetails.detailsTitle', 'Details')}
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="body2" component="span">
-                      <strong>Category:</strong>
+                      <strong>{t('debateDetails.categoryLabel', 'Category:')}</strong>
                     </Typography>
                     <Typography variant="body2" component="span">
                       {debate.category}
@@ -355,7 +357,7 @@ const DebateDetails = () => {
                 <Grid item xs={12} sm={6}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="body2" component="span">
-                      <strong>Start Date:</strong>
+                      <strong>{t('debateDetails.startDateLabel', 'Start Date:')}</strong>
                     </Typography>
                     <Typography variant="body2" component="span">
                       {new Date(debate.startDate).toLocaleDateString()}
@@ -369,13 +371,13 @@ const DebateDetails = () => {
             {debate.format === 'tournament' && (
               <Box sx={{ mt: 4, mb: 4 }}>
                 <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
-                  Tournament Bracket
+                  {t('debateDetails.tournamentBracketTitle', 'Tournament Bracket')}
                 </Typography>
                 {debate.tournamentRounds && debate.tournamentRounds.length > 0 ? (
                   <TournamentGrid rounds={debate.tournamentRounds} />
                 ) : (
                   <Typography variant="body2" color="textSecondary">
-                    Tournament bracket will be generated once all participants have joined.
+                    {t('debateDetails.bracketGenerationMessage', 'Tournament bracket will be generated once all participants have joined.')}
                   </Typography>
                 )}
               </Box>
@@ -393,7 +395,7 @@ const DebateDetails = () => {
                     fullWidth
                     sx={{ mb: 2 }}
                   >
-                    Register Your Team
+                    {t('debateDetails.registerTeamButton', 'Register Your Team')}
                   </Button>
                 )}
                 
@@ -405,9 +407,9 @@ const DebateDetails = () => {
                     fullWidth
                     disabled={actionLoading || (debate.format === 'tournament' && currentUser?.role === 'judge' && debate.creator._id === currentUser._id)}
                   >
-                    {actionLoading ? 'Processing...' : 
-                     (debate.format === 'tournament' && currentUser?.role === 'judge' && debate.creator._id === currentUser._id) ? 
-                     'Tournament Judges Cannot Leave Their Own Debates' : 'Leave This Debate'}
+                    {actionLoading ? t('debateDetails.processingButton', 'Processing...') :
+                     (debate.format === 'tournament' && currentUser?.role === 'judge' && debate.creator._id === currentUser._id) ?
+                     t('debateDetails.judgeCannotLeaveOwnDebateButton', 'Tournament Judges Cannot Leave Their Own Debates') : t('debateDetails.leaveDebateButton', 'Leave This Debate')}
                   </Button>
                 ) : (
                   canJoinDebate() && (
@@ -418,19 +420,19 @@ const DebateDetails = () => {
                       fullWidth
                       disabled={actionLoading}
                     >
-                      {actionLoading ? 'Processing...' : 
-                       debate.format === 'tournament' ? 
-                       `Join as ${currentUser?.role === 'judge' ? 'Judge' : 'Debater'}` : 
-                       'Join This Debate'}
+                      {actionLoading ? t('debateDetails.processingButton', 'Processing...') :
+                       debate.format === 'tournament' ?
+                       (currentUser?.role === 'judge' ? t('debateDetails.joinAsJudgeButton', 'Join as Judge') : t('debateDetails.joinAsDebaterButton', 'Join as Debater')) :
+                       t('debateDetails.joinDebateButton', 'Join This Debate')}
                     </Button>
                   )
                 )}
                 
                 {debate.format === 'tournament' && !canJoinDebate() && (
                   <Typography variant="body2" color="error" sx={{ mt: 1, textAlign: 'center' }}>
-                    {currentUser?.role === 'judge' ? 
-                      'Maximum number of judges reached' : 
-                      'Maximum number of debaters reached'}
+                    {currentUser?.role === 'judge' ?
+                      t('debateDetails.maxJudgesReachedMessage', 'Maximum number of judges reached') :
+                      t('debateDetails.maxDebatersReachedMessage', 'Maximum number of debaters reached')}
                   </Typography>
                 )}
               </Box>
@@ -444,27 +446,27 @@ const DebateDetails = () => {
             {debate.format === 'tournament' && debate.status !== 'completed' && (
               <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
                 <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
-                  Tournament Status
+                  {t('debateDetails.tournamentStatusTitle', 'Tournament Status')}
                 </Typography>
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Required Participants
+                      {t('debateDetails.requiredParticipantsTitle', 'Required Participants')}
                     </Typography>
                     <Typography variant="body1">
-                      • Debaters: {debate.participants.filter(p => p.role !== 'judge').length}/32
+                      {t('debateDetails.requiredDebatersCount', '• Debaters: {{count}}/32', { count: debate.participants.filter(p => p.role !== 'judge').length })}
                     </Typography>
                     <Typography variant="body1">
-                      • Judges: {debate.participants.filter(p => p.role === 'judge').length}/8
+                      {t('debateDetails.requiredJudgesCount', '• Judges: {{count}}/8', { count: debate.participants.filter(p => p.role === 'judge').length })}
                     </Typography>
                   </Box>
                   <Box>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Status: {debate.status.charAt(0).toUpperCase() + debate.status.slice(1)}
+                      {t('debateDetails.statusLabel', 'Status:')} {debate.status.charAt(0).toUpperCase() + debate.status.slice(1)}
                     </Typography>
                     {debate.status === 'upcoming' && (
                       <Typography variant="body2" color="textSecondary">
-                        Tournament will begin once all required participants have joined.
+                        {t('debateDetails.tournamentStartMessage', 'Tournament will begin once all required participants have joined.')}
                       </Typography>
                     )}
                   </Box>
@@ -473,10 +475,10 @@ const DebateDetails = () => {
                   {isTournamentOpenForRegistration() && (
                     <Box>
                       <Typography variant="subtitle2" color="primary">
-                        Registration Open
+                        {t('debateDetails.registrationOpenTitle', 'Registration Open')}
                       </Typography>
                       <Typography variant="body2">
-                        Deadline: {new Date(debate.registrationDeadline).toLocaleString()}
+                        {t('debateDetails.deadlineLabel', 'Deadline:')} {new Date(debate.registrationDeadline).toLocaleString()}
                       </Typography>
                       <Button 
                         variant="outlined"
@@ -486,7 +488,7 @@ const DebateDetails = () => {
                         onClick={handleRegisterTeam}
                         sx={{ mt: 1 }}
                       >
-                        Register Team
+                        {t('debateDetails.registerTeamButton', 'Register Team')}
                       </Button>
                     </Box>
                   )}

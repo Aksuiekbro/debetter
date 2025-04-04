@@ -1,6 +1,7 @@
 const ApfEvaluation = require('../models/ApfEvaluation');
 const Debate = require('../models/Debate');
 const User = require('../models/User');
+const tournamentService = require('../services/tournamentService'); // Import TournamentService
 
 // Get APF tabulation/standings
 exports.getApfTabulation = async (req, res) => {
@@ -238,6 +239,27 @@ exports.submitApfEvaluation = async (req, res) => {
         }
         
         await debate.save();
+
+        // --- Try to advance winner in bracket ---
+        if (relevantPosting && relevantPosting.round != null && relevantPosting.matchNumber != null) {
+          console.log(`[submitApfEvaluation] Posting has round/match info. Attempting to advance winner in bracket...`);
+          try {
+            await tournamentService.advanceWinnerInBracket(
+              debateId,
+              relevantPosting.round,
+              relevantPosting.matchNumber,
+              winningTeamId // Pass the winning team ID
+            );
+            console.log(`[submitApfEvaluation] Bracket advancement successful for Round ${relevantPosting.round}, Match ${relevantPosting.matchNumber}.`);
+          } catch (bracketError) {
+            console.error(`[submitApfEvaluation] Error advancing winner in bracket for Round ${relevantPosting.round}, Match ${relevantPosting.matchNumber}:`, bracketError);
+            // Decide if this error should affect the response to the client.
+            // For now, we'll just log it and continue, as the evaluation was saved.
+          }
+        } else {
+            console.log(`[submitApfEvaluation] Posting ${relevantPosting?._id} missing round/match info, skipping bracket advancement.`);
+        }
+        // --- End bracket advancement ---
       } else {
         console.log('Could not find posting with ID:', req.body.gameId);
         console.log('Available posting IDs:', debate.postings.map(p => p._id.toString()));

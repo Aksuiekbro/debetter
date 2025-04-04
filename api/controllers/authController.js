@@ -18,7 +18,7 @@ exports.register = async (req, res) => {
     const rawRole = req.body.role;
     console.log('Raw role captured:', rawRole);
     
-    const { username, email, password } = req.body;
+    const { username, email, password, judgeRole } = req.body; // Destructure judgeRole as well
     
     if (!username || !email || !password) {
       console.log('Missing required fields');
@@ -36,12 +36,20 @@ exports.register = async (req, res) => {
     console.log('Using direct role value:', userRole);
     
     // Create user with exactly the role that was received
-    const user = await User.create({
+    // Prepare data for user creation
+    const userData = {
       username,
       email,
       password,
       role: userRole // Use the exact role from the request
-    });
+    };
+
+    // Conditionally add judgeRole if the role is 'judge'
+    if (userRole === 'judge') {
+      userData.judgeRole = judgeRole;
+    }
+
+    const user = await User.create(userData);
 
     console.log('FINAL USER OBJECT:', {
       _id: user._id,

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -23,6 +24,7 @@ const JudgesTab = ({
   onEditJudge, // Corresponds to handleOpenJudgeDialog(true, judge)
   onDeleteJudge, // Corresponds to handleDeleteJudge(id)
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearchChange = (event) => {
@@ -40,12 +42,12 @@ const JudgesTab = ({
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
-          Tournament Judges ({judges.length})
+          {t('judgesTab.title', { count: judges.length, defaultValue: `Tournament Judges (${judges.length})` })}
         </Typography>
         {/* Optional Search Field */}
         <TextField
             size="small"
-            placeholder="Search judges..."
+            placeholder={t('judgesTab.searchPlaceholder', { defaultValue: 'Search judges...' })}
             value={searchTerm}
             onChange={handleSearchChange}
             sx={{ width: 250, mr: 2 }} // Add margin if needed
@@ -56,7 +58,7 @@ const JudgesTab = ({
           startIcon={<AddIcon />}
           onClick={onAddJudge}
         >
-          Add Judge
+          {t('judgesTab.addJudgeButton', { defaultValue: 'Add Judge' })}
         </Button>
       </Box>
 
@@ -64,10 +66,10 @@ const JudgesTab = ({
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>{t('judgesTab.headerName', { defaultValue: 'Name' })}</TableCell>
+              <TableCell>{t('judgesTab.headerRole', { defaultValue: 'Role' })}</TableCell>
+              <TableCell>{t('judgesTab.headerEmail', { defaultValue: 'Email' })}</TableCell>
+              <TableCell align="right">{t('judgesTab.headerActions', { defaultValue: 'Actions' })}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -95,7 +97,7 @@ const JudgesTab = ({
             {filteredJudges.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
-                  {judges.length > 0 ? 'No judges match search' : 'No judges found'}
+                  {judges.length > 0 ? t('judgesTab.noMatch', { defaultValue: 'No judges match search' }) : t('judgesTab.noJudges', { defaultValue: 'No judges found' })}
                 </TableCell>
               </TableRow>
             )}

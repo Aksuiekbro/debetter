@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Card,
   CardContent,
@@ -110,6 +111,7 @@ const EnhancedApfPostingCard = ({
   onConfirm = () => {},
   onBatchCreate = () => {}
 }) => {
+  const { t } = useTranslation();
   // Local state
   const [useCustomModel, setUseCustomModel] = useState(currentCardData.useCustomModel || false);
   const [locationMode, setLocationMode] = useState(currentCardData.virtualLink ? 'virtual' : 'physical');
@@ -233,7 +235,7 @@ const EnhancedApfPostingCard = ({
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1">
-          Game {index + 1}: {game.team1?.name} vs {game.team2?.name}
+          {t('apfPostingCard.batchGameTitle', { index: index + 1, team1: game.team1?.name, team2: game.team2?.name }, `Game ${index + 1}: ${game.team1?.name} vs ${game.team2?.name}`)}
         </Typography>
         <Box>
           <IconButton size="small" onClick={() => duplicateGame(game)}>
@@ -249,16 +251,16 @@ const EnhancedApfPostingCard = ({
         <Chip 
           size="small" 
           icon={<CalendarIcon />} 
-          label={game.scheduledTime ? new Date(game.scheduledTime).toLocaleString() : 'Not scheduled'} 
+          label={game.scheduledTime ? new Date(game.scheduledTime).toLocaleString() : t('apfPostingCard.notScheduled', 'Not scheduled')}
         />
         <Chip 
           size="small" 
           icon={game.virtualLink ? <VideoIcon /> : <LocationIcon />} 
-          label={game.virtualLink || game.location || 'No location'} 
+          label={game.virtualLink || game.location || t('apfPostingCard.noLocation', 'No location')}
         />
         <Chip 
           size="small" 
-          label={`${game.judges.length} Judges`} 
+          label={t('apfPostingCard.judgesCount', { count: game.judges.length }, `${game.judges.length} Judges`)}
         />
       </Stack>
     </Paper>
@@ -268,16 +270,16 @@ const EnhancedApfPostingCard = ({
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardContent>
         <Typography variant="h6" gutterBottom>
-          {batchMode ? "Create Multiple APF Games" : "New APF Game Posting"}
+          {batchMode ? t('apfPostingCard.createMultipleTitle', 'Create Multiple APF Games') : t('apfPostingCard.newPostingTitle', 'New APF Game Posting')}
         </Typography>
         
         {/* Tabs for different sections */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="posting tabs">
-            <Tab label="Basic Info" />
-            <Tab label="Teams & Judges" />
-            <Tab label="Theme & Details" />
-            <Tab label="Schedule & Notifications" />
+            <Tab label={t('apfPostingCard.tabBasicInfo', 'Basic Info')} />
+            <Tab label={t('apfPostingCard.tabTeamsJudges', 'Teams & Judges')} />
+            <Tab label={t('apfPostingCard.tabThemeDetails', 'Theme & Details')} />
+            <Tab label={t('apfPostingCard.tabScheduleNotifications', 'Schedule & Notifications')} />
           </Tabs>
         </Box>
         
@@ -287,7 +289,7 @@ const EnhancedApfPostingCard = ({
             {/* Location settings with toggle */}
             <Grid item xs={12}>
               <Typography variant="subtitle2" gutterBottom>
-                Location Settings
+                {t('apfPostingCard.locationSettingsTitle', 'Location Settings')}
               </Typography>
               <ToggleButtonGroup
                 value={locationMode}
@@ -299,23 +301,23 @@ const EnhancedApfPostingCard = ({
               >
                 <ToggleButton value="physical" aria-label="physical location">
                   <LocationIcon sx={{ mr: 1 }} />
-                  Physical Location
+                  {t('apfPostingCard.physicalLocationButton', 'Physical Location')}
                 </ToggleButton>
                 <ToggleButton value="virtual" aria-label="virtual meeting">
                   <VideoIcon sx={{ mr: 1 }} />
-                  Virtual Meeting
+                  {t('apfPostingCard.virtualMeetingButton', 'Virtual Meeting')}
                 </ToggleButton>
               </ToggleButtonGroup>
               
               {locationMode === 'physical' ? (
                 <TextField
                   name="location"
-                  label="Location (Room/Building)"
+                  label={t('apfPostingCard.locationLabel', 'Location (Room/Building)')}
                   variant="outlined"
                   fullWidth
                   value={currentCardData.location || ''}
                   onChange={handleTextFieldChange}
-                  placeholder="e.g., Room 101, Main Building"
+                  placeholder={t('apfPostingCard.locationPlaceholder', 'e.g., Room 101, Main Building')}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -327,12 +329,12 @@ const EnhancedApfPostingCard = ({
               ) : (
                 <TextField
                   name="virtualLink"
-                  label="Virtual Meeting Link"
+                  label={t('apfPostingCard.virtualLinkLabel', 'Virtual Meeting Link')}
                   variant="outlined"
                   fullWidth
                   value={currentCardData.virtualLink || ''}
                   onChange={handleTextFieldChange}
-                  placeholder="e.g., https://zoom.us/j/123456789"
+                  placeholder={t('apfPostingCard.virtualLinkPlaceholder', 'e.g., https://zoom.us/j/123456789')}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -347,17 +349,17 @@ const EnhancedApfPostingCard = ({
             {/* Status selection */}
             <Grid item xs={12}>
               <FormControl fullWidth variant="outlined">
-                <InputLabel id="status-label">Game Status</InputLabel>
+                <InputLabel id="status-label">{t('apfPostingCard.statusLabel', 'Game Status')}</InputLabel>
                 <Select
                   labelId="status-label"
                   name="status"
                   value={currentCardData.status || 'scheduled'}
-                  label="Game Status"
+                  label={t('apfPostingCard.statusLabel', 'Game Status')}
                   onChange={handleTextFieldChange}
                 >
-                  <MenuItem value="scheduled">Scheduled</MenuItem>
-                  <MenuItem value="in_progress">In Progress</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="scheduled">{t('apfPostingCard.statusScheduled', 'Scheduled')}</MenuItem>
+                  <MenuItem value="in_progress">{t('apfPostingCard.statusInProgress', 'In Progress')}</MenuItem>
+                  <MenuItem value="completed">{t('apfPostingCard.statusCompleted', 'Completed')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -376,7 +378,7 @@ const EnhancedApfPostingCard = ({
                 onChange={(event, newValue) => handleAutocompleteChange('team1', newValue)}
                 isOptionEqualToValue={(option, value) => option.id === value?.id}
                 renderInput={(params) => (
-                  <TextField {...params} label="Team 1 (Gov)" variant="outlined" fullWidth />
+                  <TextField {...params} label={t('apfPostingCard.team1Label', 'Team 1 (Gov)')} variant="outlined" fullWidth />
                 )}
               />
             </Grid>
@@ -390,7 +392,7 @@ const EnhancedApfPostingCard = ({
                 onChange={(event, newValue) => handleAutocompleteChange('team2', newValue)}
                 isOptionEqualToValue={(option, value) => option.id === value?.id}
                 renderInput={(params) => (
-                  <TextField {...params} label="Team 2 (Opp)" variant="outlined" fullWidth />
+                  <TextField {...params} label={t('apfPostingCard.team2Label', 'Team 2 (Opp)')} variant="outlined" fullWidth />
                 )}
                 disabled={!currentCardData.team1}
               />
@@ -399,7 +401,7 @@ const EnhancedApfPostingCard = ({
             {/* Judge Assignment with Drag and Drop */}
             <Grid item xs={12}>
               <Typography variant="subtitle2" gutterBottom>
-                Assigned Judges (Drag to reorder priority)
+                {t('apfPostingCard.assignedJudgesTitle', 'Assigned Judges (Drag to reorder priority)')}
               </Typography>
               
               <Box sx={{ display: 'flex', mb: 2 }}>
@@ -412,7 +414,7 @@ const EnhancedApfPostingCard = ({
                   onChange={(event, newValue) => handleMultiAutocompleteChange('judges', newValue)}
                   isOptionEqualToValue={(option, value) => option.id === value?.id}
                   renderInput={(params) => (
-                    <TextField {...params} label="Select Judges" variant="outlined" fullWidth />
+                    <TextField {...params} label={t('apfPostingCard.selectJudgesLabel', 'Select Judges')} variant="outlined" fullWidth />
                   )}
                 />
               </Box>
@@ -448,12 +450,12 @@ const EnhancedApfPostingCard = ({
                                       {index === 0 ? '👑 ' : ''}{judge.name}
                                     </Typography>
                                     <Typography variant="caption" color="textSecondary">
-                                      {judge.role || 'Judge'} • {judge.email || 'No email'}
+                                      {judge.role || t('apfPostingCard.judgeRole', 'Judge')} • {judge.email || t('apfPostingCard.noEmail', 'No email')}
                                     </Typography>
                                   </Box>
                                   <Chip 
                                     size="small" 
-                                    label={index === 0 ? "Head Judge" : `Judge ${index + 1}`} 
+                                    label={index === 0 ? t('apfPostingCard.headJudgeLabel', 'Head Judge') : t('apfPostingCard.judgeLabel', { index: index + 1 }, `Judge ${index + 1}`)}
                                     color={index === 0 ? "primary" : "default"}
                                     variant={index === 0 ? "filled" : "outlined"}
                                   />
@@ -468,7 +470,7 @@ const EnhancedApfPostingCard = ({
                   </DragDropContext>
                   
                   <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
-                    Drag judges to reorder. The first judge will be designated as the Head Judge.
+                    {t('apfPostingCard.dragJudgesHint', 'Drag judges to reorder. The first judge will be designated as the Head Judge.')}
                   </Typography>
                 </Paper>
               )}
@@ -489,7 +491,7 @@ const EnhancedApfPostingCard = ({
                     color="primary"
                   />
                 }
-                label="Use Custom Debate Model"
+                label={t('apfPostingCard.useCustomModelLabel', 'Use Custom Debate Model')}
               />
             </Grid>
 
@@ -498,7 +500,7 @@ const EnhancedApfPostingCard = ({
               <Grid item xs={12}>
                 <Box sx={{ mb: 1 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                    Select from predefined themes or create your own debate topic
+                    {t('apfPostingCard.themeSelectionHint', 'Select from predefined themes or create your own debate topic')}
                   </Typography>
                 </Box>
                 <Autocomplete
@@ -510,11 +512,11 @@ const EnhancedApfPostingCard = ({
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Theme / Motion"
+                      label={t('apfPostingCard.themeMotionLabel', 'Theme / Motion')}
                       variant="outlined"
                       fullWidth
-                      helperText="Select from list or type your own custom topic"
-                      placeholder="Enter any topic you want to debate..."
+                      helperText={t('apfPostingCard.themeHelperText', 'Select from list or type your own custom topic')}
+                      placeholder={t('apfPostingCard.themePlaceholder', 'Enter any topic you want to debate...')}
                     />
                   )}
                   onInputChange={(event, newInputValue) => {
@@ -532,7 +534,7 @@ const EnhancedApfPostingCard = ({
                 {/* Quick select theme chips */}
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
-                    Quick Select:
+                    {t('apfPostingCard.quickSelectLabel', 'Quick Select:')}
                   </Typography>
                   <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                     {predefinedThemes.slice(0, 3).map((theme) => (
@@ -552,23 +554,22 @@ const EnhancedApfPostingCard = ({
               <Grid item xs={12}>
                 <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper' }}>
                   <Typography variant="subtitle2" gutterBottom>
-                    Custom Debate Model
+                    {t('apfPostingCard.customModelTitle', 'Custom Debate Model')}
                   </Typography>
                   <TextField
                     name="customModel"
-                    label="Enter your custom debate model"
+                    label={t('apfPostingCard.customModelInputLabel', 'Enter your custom debate model')}
                     variant="outlined"
                     fullWidth
                     multiline
                     rows={6}
                     value={currentCardData.customModel || ''}
                     onChange={handleTextFieldChange}
-                    placeholder="Enter full text for your custom debate model. This will be presented to the teams and judges."
+                    placeholder={t('apfPostingCard.customModelPlaceholder', 'Enter full text for your custom debate model. This will be presented to the teams and judges.')}
                     sx={{ mb: 1 }}
                   />
                   <Typography variant="caption" color="text.secondary">
-                    Use this area to specify a complete debate model with all rules, formats, and requirements. 
-                    Teams and judges will see this exact text.
+                    {t('apfPostingCard.customModelHint', 'Use this area to specify a complete debate model with all rules, formats, and requirements. Teams and judges will see this exact text.')}
                   </Typography>
                 </Paper>
               </Grid>
@@ -583,7 +584,7 @@ const EnhancedApfPostingCard = ({
             <Grid item xs={12}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DateTimePicker
-                  label="Schedule Date & Time"
+                  label={t('apfPostingCard.scheduleDateTimeLabel', 'Schedule Date & Time')}
                   value={currentCardData.scheduledTime}
                   onChange={handleDateTimeChange}
                   ampm={false}
@@ -591,7 +592,7 @@ const EnhancedApfPostingCard = ({
                 />
               </LocalizationProvider>
               <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
-                Set when this debate will take place. Notifications will be sent to participants.
+                {t('apfPostingCard.scheduleHint', 'Set when this debate will take place. Notifications will be sent to participants.')}
               </Typography>
             </Grid>
             
@@ -605,10 +606,10 @@ const EnhancedApfPostingCard = ({
                     color="primary"
                   />
                 }
-                label="Send notification to participants"
+                label={t('apfPostingCard.sendNotificationLabel', 'Send notification to participants')}
               />
               <Typography variant="caption" sx={{ display: 'block', ml: 3, color: 'text.secondary' }}>
-                Judges and team members will receive an email notification about this game assignment
+                {t('apfPostingCard.notificationHint', 'Judges and team members will receive an email notification about this game assignment')}
               </Typography>
             </Grid>
             
@@ -617,12 +618,12 @@ const EnhancedApfPostingCard = ({
               <Grid item xs={12}>
                 <TextField
                   name="batchName"
-                  label="Batch Name (e.g., 'Round 1')"
+                  label={t('apfPostingCard.batchNameLabel', "Batch Name (e.g., 'Round 1')")}
                   variant="outlined"
                   fullWidth
                   value={currentCardData.batchName}
                   onChange={handleTextFieldChange}
-                  placeholder="Enter a name to identify this group of games"
+                  placeholder={t('apfPostingCard.batchNamePlaceholder', 'Enter a name to identify this group of games')}
                 />
               </Grid>
             )}
@@ -634,7 +635,7 @@ const EnhancedApfPostingCard = ({
           <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="subtitle1">
-                Batch Creation Queue ({batchGames.length} games)
+                {t('apfPostingCard.batchQueueTitle', { count: batchGames.length }, `Batch Creation Queue (${batchGames.length} games)`)}
               </Typography>
               <Button
                 variant="outlined"
@@ -649,7 +650,7 @@ const EnhancedApfPostingCard = ({
                   (useCustomModel ? !currentCardData.customModel : !currentCardData.theme)
                 }
               >
-                Add to Batch
+                {t('apfPostingCard.addToBatchButton', 'Add to Batch')}
               </Button>
             </Box>
             
@@ -659,7 +660,7 @@ const EnhancedApfPostingCard = ({
               </Box>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                Add games to the batch by filling in the details and clicking "Add to Batch"
+                {t('apfPostingCard.batchEmptyHint', 'Add games to the batch by filling in the details and clicking "Add to Batch"')}
               </Typography>
             )}
             
@@ -671,7 +672,7 @@ const EnhancedApfPostingCard = ({
                   startIcon={<SaveIcon />}
                   onClick={handleOpenBatchDialog}
                 >
-                  Save Batch ({batchGames.length} games)
+                  {t('apfPostingCard.saveBatchButton', { count: batchGames.length }, `Save Batch (${batchGames.length} games)`)}
                 </Button>
               </Box>
             )}
@@ -687,14 +688,14 @@ const EnhancedApfPostingCard = ({
             onClick={() => setTabValue(tabValue - 1)}
             variant="text"
           >
-            Previous
+            {t('apfPostingCard.previousButton', 'Previous')}
           </Button>
           <Button
             disabled={tabValue === 3}
             onClick={() => setTabValue(tabValue + 1)}
             variant="text"
           >
-            Next
+            {t('apfPostingCard.nextButton', 'Next')}
           </Button>
         </Box>
         
@@ -710,23 +711,22 @@ const EnhancedApfPostingCard = ({
             (useCustomModel ? !currentCardData.customModel : !currentCardData.theme)
           }
         >
-          Confirm & Post Game
+          {t('apfPostingCard.confirmPostButton', 'Confirm & Post Game')}
         </Button>
       </CardActions>
       
       {/* Batch Confirmation Dialog */}
       <Dialog open={batchDialogOpen} onClose={handleCloseBatchDialog}>
-        <DialogTitle>Confirm Batch Creation</DialogTitle>
+        <DialogTitle>{t('apfPostingCard.confirmBatchTitle', 'Confirm Batch Creation')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            You are about to create {batchGames.length} APF debate games. 
-            Please provide a name for this batch (e.g., "Round 1"):
+            {t('apfPostingCard.confirmBatchText', { count: batchGames.length }, `You are about to create ${batchGames.length} APF debate games. Please provide a name for this batch (e.g., "Round 1"):`)}
           </DialogContentText>
           <TextField
             autoFocus
             margin="dense"
             id="batchName"
-            label="Batch Name"
+            label={t('apfPostingCard.batchNameDialogLabel', 'Batch Name')}
             type="text"
             fullWidth
             variant="outlined"
@@ -737,15 +737,14 @@ const EnhancedApfPostingCard = ({
           
           <Box sx={{ mt: 2 }}>
             <Alert severity="info">
-              Notifications will be sent to all participants if enabled. Debates will be scheduled
-              according to the times you've specified.
+              {t('apfPostingCard.confirmBatchAlert', 'Notifications will be sent to all participants if enabled. Debates will be scheduled according to the times you\'ve specified.')}
             </Alert>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseBatchDialog}>Cancel</Button>
+          <Button onClick={handleCloseBatchDialog}>{t('apfPostingCard.cancelButton', 'Cancel')}</Button>
           <Button onClick={handleSubmitBatch} color="primary" variant="contained">
-            Create {batchGames.length} Games
+            {t('apfPostingCard.createBatchGamesButton', { count: batchGames.length }, `Create ${batchGames.length} Games`)}
           </Button>
         </DialogActions>
       </Dialog>

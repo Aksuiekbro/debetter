@@ -18,6 +18,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './ui/LanguageSwitcher'; // Import the new component
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -62,6 +64,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
@@ -117,19 +120,19 @@ const Navbar = () => {
             onClick={() => navigate('/home')}
             sx={{ fontWeight: 'bold' }}
           >
-            DeBetter
+            {t('navbar.home')} {/* Assuming DeBetter is the home/brand */}
           </Button>
           <Button 
             color="inherit"
             onClick={() => navigate('/host-debate')}
           >
-            Host a Debate
+            {t('navbar.host_debate', 'Host a Debate')} {/* Added default value */}
           </Button>
           <Button 
             color="inherit"
             onClick={() => navigate('/debates')}
           >
-            Join a Debate
+            {t('navbar.join_debate', 'Join a Debate')} {/* Added default value */}
           </Button>
           {isAuthenticated && (
             <>
@@ -145,10 +148,22 @@ const Navbar = () => {
                 color="inherit"
                 onClick={() => navigate('/tournaments')}
               >
-                Tournaments
+                {t('navbar.tournaments')}
+              </Button>
+              <Button
+                color="inherit"
+                onClick={() => navigate('/create-tournament')}
+                data-testid="create-tournament-nav-button" // Add test ID
+              >
+                {t('navbar.create_tournament', 'Create Tournament')}
               </Button>
             </>
           )}
+        </Box>
+
+        {/* Language Switcher Component */}
+        <Box sx={{ marginRight: 2 }}> {/* Keep margin for spacing */}
+          <LanguageSwitcher />
         </Box>
 
         {/* Right side */}
@@ -157,7 +172,7 @@ const Navbar = () => {
             <SearchIcon />
           </SearchIconWrapper>
           <StyledInputBase
-            placeholder="Search debates..."
+            placeholder={t('navbar.search_placeholder', 'Search debates...')}
             inputProps={{ 'aria-label': 'search' }}
           />
         </Search>
@@ -169,7 +184,7 @@ const Navbar = () => {
               color="inherit"
               onClick={() => navigate('/login')}
             >
-              Login
+              {t('navbar.login')}
             </Button>
             <Button 
               variant="outlined" 
@@ -183,7 +198,7 @@ const Navbar = () => {
                 }
               }}
             >
-              Sign Up
+              {t('navbar.register')}
             </Button>
           </Box>
         ) : (
@@ -239,17 +254,17 @@ const Navbar = () => {
                 handleClose();
                 navigate('/profile');
               }}>
-                Profile
+                {t('navbar.profile')}
               </MenuItem>
               <MenuItem onClick={() => {
                 handleClose();
                 navigate('/my-debates');
               }}>
-                My Debates
+                {t('navbar.my_debates')}
               </MenuItem>
               <Divider />
               <MenuItem onClick={handleLogout}>
-                Logout
+                {t('navbar.logout')}
               </MenuItem>
             </Menu>
           </Box>

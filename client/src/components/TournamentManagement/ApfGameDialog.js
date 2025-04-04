@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogActions,
@@ -16,7 +17,7 @@ import {
   Autocomplete, // Using Autocomplete for theme with freeSolo option
   Box
 } from '@mui/material';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'; // Assuming you use @mui/x-date-pickers
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 // Mock theme options - replace with actual data source if available
 const mockThemeOptions = [
@@ -37,6 +38,7 @@ const ApfGameDialog = ({
   judges = [], // List of available judges
   loading = false // Loading state from useApfPostingManagement
 }) => {
+  const { t } = useTranslation();
 
   // Helper to get judge IDs for the Select value
   const getSelectedJudgeIds = () => {
@@ -47,17 +49,17 @@ const ApfGameDialog = ({
   return (
     // Using maxWidth="md" for more space
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{isEditing ? 'Edit APF Game' : 'Create APF Game'}</DialogTitle>
+      <DialogTitle>{isEditing ? t('apfGameDialog.editTitle', 'Edit APF Game') : t('apfGameDialog.createTitle', 'Create APF Game')}</DialogTitle>
       <DialogContent>
         {/* Team Selection */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 }}>
           <FormControl fullWidth variant="outlined" disabled={loading}>
-            <InputLabel id="team1-label">Team 1 (Gov)</InputLabel>
+            <InputLabel id="team1-label">{t('apfGameDialog.team1Label', 'Team 1 (Gov)')}</InputLabel>
             <Select
               labelId="team1-label"
               name="team1" // Matches key in gameData
               value={gameData.team1?.id || ''} // Use team object's ID
-              label="Team 1 (Gov)"
+              label={t('apfGameDialog.team1Label', 'Team 1 (Gov)')}
               onChange={(e) => onFormChange('team1', e.target.value)} // Pass ID
             >
               {teams.map((team) => (
@@ -68,12 +70,12 @@ const ApfGameDialog = ({
             </Select>
           </FormControl>
           <FormControl fullWidth variant="outlined" disabled={loading}>
-            <InputLabel id="team2-label">Team 2 (Opp)</InputLabel>
+            <InputLabel id="team2-label">{t('apfGameDialog.team2Label', 'Team 2 (Opp)')}</InputLabel>
             <Select
               labelId="team2-label"
               name="team2" // Matches key in gameData
               value={gameData.team2?.id || ''} // Use team object's ID
-              label="Team 2 (Opp)"
+              label={t('apfGameDialog.team2Label', 'Team 2 (Opp)')}
               onChange={(e) => onFormChange('team2', e.target.value)} // Pass ID
             >
               {teams.map((team) => (
@@ -87,19 +89,19 @@ const ApfGameDialog = ({
 
         {/* Judge Selection */}
         <FormControl fullWidth variant="outlined" sx={{ mb: 2 }} disabled={loading}>
-          <InputLabel id="judges-label">Judges</InputLabel>
+          <InputLabel id="judges-label">{t('apfGameDialog.judgesLabel', 'Judges')}</InputLabel>
           <Select
             labelId="judges-label"
             name="judges" // Matches key in gameData
             multiple
             value={getSelectedJudgeIds()} // Expects array of IDs
             onChange={(e) => onFormChange('judges', e.target.value)} // Pass array of IDs
-            label="Judges"
+            label={t('apfGameDialog.judgesLabel', 'Judges')}
             renderValue={(selectedIds) => {
               // Map selected IDs back to names for display
               return selectedIds.map(id => {
                 const judge = judges.find(j => j.id === id);
-                return judge ? judge.name : 'Unknown';
+                return judge ? judge.name : t('apfGameDialog.unknownJudge', 'Unknown');
               }).join(', ');
             }}
           >
@@ -117,7 +119,7 @@ const ApfGameDialog = ({
             <TextField
                 margin="dense"
                 name="location"
-                label="Location (Room)"
+                label={t('apfGameDialog.locationLabel', 'Location (Room)')}
                 type="text"
                 fullWidth
                 variant="outlined"
@@ -128,7 +130,7 @@ const ApfGameDialog = ({
              <TextField
                 margin="dense"
                 name="virtualLink"
-                label="Virtual Meeting Link"
+                label={t('apfGameDialog.virtualLinkLabel', 'Virtual Meeting Link')}
                 type="url"
                 fullWidth
                 variant="outlined"
@@ -157,7 +159,7 @@ const ApfGameDialog = ({
             renderInput={(params) => (
                 <TextField
                 {...params}
-                label="Theme"
+                label={t('apfGameDialog.themeLabel', 'Theme')}
                 variant="outlined"
                 margin="dense"
                 fullWidth
@@ -175,7 +177,7 @@ const ApfGameDialog = ({
               disabled={loading}
             />
           }
-          label="Use Custom Model Instead of Theme"
+          label={t('apfGameDialog.useCustomModelLabel', 'Use Custom Model Instead of Theme')}
           sx={{ mb: 1, display: 'block' }}
         />
 
@@ -183,7 +185,7 @@ const ApfGameDialog = ({
           <TextField
             margin="dense"
             name="customModel"
-            label="Custom Model / Resolution"
+            label={t('apfGameDialog.customModelLabel', 'Custom Model / Resolution')}
             multiline
             rows={3}
             fullWidth
@@ -198,7 +200,7 @@ const ApfGameDialog = ({
         {/* Scheduled Time */}
         {/* Ensure LocalizationProvider is set up in your App.js or index.js */}
         <DateTimePicker
-            label="Scheduled Time"
+            label={t('apfGameDialog.scheduledTimeLabel', 'Scheduled Time')}
             value={gameData.scheduledTime ? new Date(gameData.scheduledTime) : null}
             onChange={(newValue) => onFormChange('scheduledTime', newValue)}
             renderInput={(params) => <TextField {...params} fullWidth margin="dense" sx={{ mb: 2 }} />}
@@ -214,15 +216,15 @@ const ApfGameDialog = ({
                 disabled={loading}
                 />
             }
-            label="Notify Participants on Creation/Update"
+            label={t('apfGameDialog.notifyLabel', 'Notify Participants on Creation/Update')}
             sx={{ mb: 2, display: 'block' }}
         />
 
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button onClick={onClose} disabled={loading}>{t('apfGameDialog.cancelButton', 'Cancel')}</Button>
         <Button onClick={onSubmit} color="primary" disabled={loading}>
-          {loading ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Game' : 'Create Game')}
+          {loading ? (isEditing ? t('apfGameDialog.updatingButton', 'Updating...') : t('apfGameDialog.creatingButton', 'Creating...')) : (isEditing ? t('apfGameDialog.updateButton', 'Update Game') : t('apfGameDialog.createButton', 'Create Game'))}
         </Button>
       </DialogActions>
     </Dialog>

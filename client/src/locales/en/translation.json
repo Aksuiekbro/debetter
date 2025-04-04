@@ -1,0 +1,15 @@
+{
+  "greeting": "Hello",
+  "navbar": {
+    "home": "Home",
+    "host_debate": "Host a Debate",
+    "join_debate": "Join a Debate",
+    "tournaments": "Tournaments",
+    "my_debates": "My Debates",
+    "profile": "Profile",
+    "logout": "Logout",
+    "login": "Login",
+    "register": "Register",
+    "search_placeholder": "Search debates..."
+  }
+}

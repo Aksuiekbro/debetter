@@ -23,19 +23,21 @@ import AddIcon from '@mui/icons-material/Add';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
+import { useTranslation } from 'react-i18next';
 
 // Add the function to get display name for role
 const getRoleDisplayName = (role) => {
   const roleMap = {
-    'user': 'Debater',
-    'debater': 'Debater',
-    'judge': 'Judge',
-    'organizer': 'Organizer'
+    'user': t('profile.role.debater', 'Debater'),
+    'debater': t('profile.role.debater', 'Debater'),
+    'judge': t('profile.role.judge', 'Judge'),
+    'organizer': t('profile.role.organizer', 'Organizer')
   };
   return roleMap[role] || role;
 };
 
 const Profile = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState(0);
   const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -90,7 +92,7 @@ const Profile = () => {
       handleCloseEditDialog();
     } catch (err) {
       console.error('Profile update error:', err.response?.data || err.message);
-      setError(err.response?.data?.message || 'Failed to update profile');
+      setError(err.response?.data?.message || t('profile.error.updateFailed', 'Failed to update profile'));
     }
   };
 
@@ -115,7 +117,7 @@ const Profile = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setError('Please log in to add friends');
+        setError(t('profile.error.loginToAddFriend', 'Please log in to add friends'));
         return;
       }
 
@@ -126,9 +128,9 @@ const Profile = () => {
         }
       });
 
-      if (!response.ok) throw new Error('Failed to send friend request');
+      if (!response.ok) throw new Error(t('profile.error.friendRequestFailed', 'Failed to send friend request'));
       // Show success message
-      alert('Friend request sent successfully!');
+      alert(t('profile.alert.friendRequestSent', 'Friend request sent successfully!'));
     } catch (err) {
       setError(err.message);
       console.error('Friend request error:', err);
@@ -148,7 +150,7 @@ const Profile = () => {
         }));
       } catch (err) {
         console.error('Profile fetch error:', err.response?.data || err.message);
-        setError(err.response?.data?.message || 'Failed to fetch profile');
+        setError(err.response?.data?.message || t('profile.error.fetchFailed', 'Failed to fetch profile'));
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
           navigate('/login');
@@ -175,7 +177,7 @@ const Profile = () => {
         <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
           <Typography color="error">{error}</Typography>
           <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
-            Retry
+            {t('profile.button.retry', 'Retry')}
           </Button>
         </Paper>
       </Container>
@@ -206,7 +208,7 @@ const Profile = () => {
               fullWidth
               sx={{ mb: 2 }}
             >
-              Edit info & settings
+              {t('profile.button.editInfo', 'Edit info & settings')}
             </Button>
             <Button
               variant="outlined"
@@ -215,7 +217,7 @@ const Profile = () => {
               fullWidth
               sx={{ mb: 2 }}
             >
-              Add friend
+              {t('profile.button.addFriend', 'Add friend')}
             </Button>
             <Button
               variant="contained"
@@ -223,7 +225,7 @@ const Profile = () => {
               onClick={() => navigate('/host-debate')}
               fullWidth
             >
-              Add new debate
+              {t('profile.button.addNewDebate', 'Add new debate')}
             </Button>
           </Grid>
 
@@ -253,7 +255,7 @@ const Profile = () => {
               ))}
               {profileData.interests.length === 0 && (
                 <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  Add some interests to show what topics you like
+                  {t('profile.interests.placeholder', 'Add some interests to show what topics you like')}
                 </Typography>
               )}
             </Box>
@@ -266,7 +268,7 @@ const Profile = () => {
                 fontStyle: profileData.bio ? 'normal' : 'italic'
               }}
             >
-              {profileData.bio || "Add your bio to let others know about you"}
+              {profileData.bio || t('profile.bio.placeholder', "Add your bio to let others know about you")}
             </Typography>
           </Grid>
         </Grid>
@@ -293,7 +295,7 @@ const Profile = () => {
                     {profileData.metrics.debates}
                   </Typography>
                   <Typography variant="caption">
-                    DEBATES
+                    {t('profile.stats.debates', 'DEBATES')}
                   </Typography>
                 </Box>
               }
@@ -305,7 +307,7 @@ const Profile = () => {
                     {profileData.metrics.wins}
                   </Typography>
                   <Typography variant="caption">
-                    WINS
+                    {t('profile.stats.wins', 'WINS')}
                   </Typography>
                 </Box>
               }
@@ -317,7 +319,7 @@ const Profile = () => {
                     {profileData.metrics.ongoing}
                   </Typography>
                   <Typography variant="caption">
-                    ONGOING
+                    {t('profile.stats.ongoing', 'ONGOING')}
                   </Typography>
                 </Box>
               }
@@ -329,7 +331,7 @@ const Profile = () => {
                     {profileData.metrics.judged}
                   </Typography>
                   <Typography variant="caption">
-                    JUDGED
+                    {t('profile.stats.judged', 'JUDGED')}
                   </Typography>
                 </Box>
               }
@@ -340,27 +342,27 @@ const Profile = () => {
         {/* Tab Content */}
         <Box sx={{ p: 3 }}>
           {currentTab === 0 && (
-            <Typography>Your debates will appear here</Typography>
+            <Typography>{t('profile.tabs.debatesPlaceholder', 'Your debates will appear here')}</Typography>
           )}
           {currentTab === 1 && (
-            <Typography>Your winning debates will appear here</Typography>
+            <Typography>{t('profile.tabs.winsPlaceholder', 'Your winning debates will appear here')}</Typography>
           )}
           {currentTab === 2 && (
-            <Typography>Your ongoing debates will appear here</Typography>
+            <Typography>{t('profile.tabs.ongoingPlaceholder', 'Your ongoing debates will appear here')}</Typography>
           )}
           {currentTab === 3 && (
-            <Typography>Debates you've judged will appear here</Typography>
+            <Typography>{t('profile.tabs.judgedPlaceholder', "Debates you've judged will appear here")}</Typography>
           )}
         </Box>
       </Paper>
 
       {/* Edit Profile Dialog */}
       <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Profile</DialogTitle>
+        <DialogTitle>{t('profile.editDialog.title', 'Edit Profile')}</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
-            label="Bio"
+            label={t('profile.editDialog.bioLabel', 'Bio')}
             multiline
             rows={4}
             value={editForm.bio}
@@ -368,11 +370,11 @@ const Profile = () => {
             sx={{ mt: 2, mb: 3 }}
           />
           
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>Interests</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('profile.editDialog.interestsLabel', 'Interests')}</Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <TextField
               fullWidth
-              label="Add new interest"
+              label={t('profile.editDialog.addInterestLabel', 'Add new interest')}
               value={editForm.newInterest}
               onChange={(e) => setEditForm(prev => ({ ...prev, newInterest: e.target.value }))}
             />
@@ -381,7 +383,7 @@ const Profile = () => {
               onClick={handleAddInterest}
               startIcon={<AddIcon />}
             >
-              Add
+              {t('profile.editDialog.addButton', 'Add')}
             </Button>
           </Box>
           
@@ -397,8 +399,8 @@ const Profile = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Cancel</Button>
-          <Button onClick={handleSaveProfile} variant="contained">Save</Button>
+          <Button onClick={handleCloseEditDialog}>{t('profile.editDialog.cancelButton', 'Cancel')}</Button>
+          <Button onClick={handleSaveProfile} variant="contained">{t('profile.editDialog.saveButton', 'Save')}</Button>
         </DialogActions>
       </Dialog>
     </Container>

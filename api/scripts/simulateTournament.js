@@ -152,7 +152,7 @@ const generateBrackets = (teams) => {
 };
 
 // Create postings for the tournament
-const createPostings = (tournament, judges) => {
+const createPostings = (tournament, judges, headJudgeId) => {
   const postings = [];
   const teams = tournament.teams;
   
@@ -163,15 +163,20 @@ const createPostings = (tournament, judges) => {
     // Skip matches without teams
     if (!match.team1 || !match.team2) continue;
     
-    // Assign 1-3 judges per match
-    const numJudges = Math.min(3, judges.length);
-    const matchJudges = shuffleArray([...judges]).slice(0, numJudges);
-    
+    // Assign judges, ensuring Head Judge is included
+    const otherJudges = judges.filter(j => !j._id.equals(headJudgeId)); // Exclude head judge from random pool
+    const shuffledOtherJudges = shuffleArray([...otherJudges]);
+    const numOtherJudgesToAssign = Math.min(2, shuffledOtherJudges.length); // Assign up to 2 other judges
+    const assignedJudges = [headJudgeId]; // Start with Head Judge
+    for(let k = 0; k < numOtherJudgesToAssign; k++) {
+        assignedJudges.push(shuffledOtherJudges[k]._id);
+    }
+
     postings.push({
       team1: match.team1,
       team2: match.team2,
       location: `Room ${i + 1}`,
-      judges: matchJudges.map(j => j._id),
+      judges: assignedJudges, // Use the array with Head Judge included
       theme: getDebateTheme(),
       status: 'completed', // Since we're simulating a completed tournament
       createdAt: TOURNAMENT_DATE,
@@ -296,6 +301,15 @@ const main = async () => {
     const judges = tournament.participants.filter(p => p.role === 'judge');
     
     console.log(`Found ${debaters.length} debaters and ${judges.length} judges`);
+
+    // Find the Head Judge (assuming username 'judge_aibek' identifies them)
+    const headJudge = judges.find(j => j.username === 'judge_aibek');
+    if (!headJudge) {
+        console.error('Head Judge (judge_aibek) not found among participants!');
+        process.exit(1);
+    }
+    const headJudgeId = headJudge._id;
+    console.log(`Found Head Judge ID: ${headJudgeId}`);
     
     // Create teams
     const teams = createTeams(debaters);
@@ -305,18 +319,23 @@ const main = async () => {
     const tournamentRounds = generateBrackets(teams);
     console.log(`Generated ${tournamentRounds.length} tournament rounds`);
     
-    // Simulate tournament results
-    const simulatedRounds = simulateTournamentResults(tournamentRounds, teams);
-    console.log('Simulated tournament results');
+    // // Simulate tournament results (REMOVED FOR SETUP)
+    // const simulatedRounds = simulateTournamentResults(tournamentRounds, teams);
+    // console.log('Simulated tournament results');
     
-    // Update team stats based on results
-    const updatedTeams = updateTeamStats(teams, simulatedRounds);
-    console.log('Updated team statistics');
+    // // Update team stats based on results (REMOVED FOR SETUP)
+    // const updatedTeams = updateTeamStats(teams, simulatedRounds);
+    // console.log('Updated team statistics');
+
+    // Use original teams and rounds for setup
+    const updatedTeams = teams;
+    const simulatedRounds = tournamentRounds;
     
     // Create postings
     const postings = createPostings(
-      { teams: updatedTeams, tournamentRounds: simulatedRounds }, 
-      judges
+      { teams: updatedTeams, tournamentRounds: simulatedRounds },
+      judges,
+      headJudgeId // Pass headJudgeId
     );
     console.log(`Created ${postings.length} postings`);
     
@@ -324,10 +343,10 @@ const main = async () => {
     tournament.teams = updatedTeams;
     tournament.tournamentRounds = simulatedRounds;
     tournament.postings = postings;
-    tournament.status = 'completed';
-    tournament.startDate = TOURNAMENT_DATE;
-    tournament.startedAt = TOURNAMENT_DATE;
-    tournament.endedAt = new Date(new Date(TOURNAMENT_DATE).setHours(18, 0, 0)); // End at 6 PM
+    // tournament.status = 'completed'; // Keep status as set by createTournament script (likely 'upcoming')
+    // tournament.startDate = TOURNAMENT_DATE; // Keep original dates
+    // tournament.startedAt = TOURNAMENT_DATE;
+    // tournament.endedAt = new Date(new Date(TOURNAMENT_DATE).setHours(18, 0, 0)); // Don't set end date yet
     
     // Save the updated tournament
     await tournament.save();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Typography,
@@ -15,6 +16,7 @@ import { api } from '../config/api';
 import { getAuthHeaders } from '../utils/auth';
 
 const Tournaments = () => {
+  const { t } = useTranslation();
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,7 +46,7 @@ const Tournaments = () => {
         setError(null);
       } catch (error) {
         console.error('Error fetching tournaments:', error);
-        setError('Failed to load tournaments. Please try again later.');
+        setError(t('tournamentsList.errorLoading', 'Failed to load tournaments. Please try again later.'));
         setLoading(false);
       }
     };
@@ -73,7 +75,7 @@ const Tournaments = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Typography variant="h4" sx={{ mb: 3 }}>
-        Tournaments
+        {t('tournamentsList.title', 'Tournaments')}
       </Typography>
       
       <Box sx={{
@@ -92,7 +94,7 @@ const Tournaments = () => {
                 {new Date(tournament.createdAt).toLocaleDateString()}
               </Typography>
               <Typography variant="body2">
-                Participants: {tournament.participants?.length || 0}
+                {t('tournamentsList.participantsLabel', 'Participants: ')}{tournament.participants?.length || 0}
               </Typography>
             </CardContent>
             <CardActions>
@@ -102,7 +104,7 @@ const Tournaments = () => {
                 variant="contained"
                 fullWidth
               >
-                Manage Tournament
+                {t('tournamentsList.manageButton', 'Manage Tournament')}
               </Button>
             </CardActions>
           </Card>
