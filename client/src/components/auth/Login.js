@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Paper,
@@ -12,6 +13,7 @@ import { api } from '../../config/api';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -42,7 +44,7 @@ const Login = () => {
       navigate('/home');
     } catch (error) {
       console.error('Login error:', error);
-      const errorMessage = error.response?.data?.message || 'Login failed. Please check your connection and try again.';
+      const errorMessage = error.response?.data?.message || t('login.genericError', 'Login failed. Please check your connection and try again.');
       setError(errorMessage);
     }
   };
@@ -51,7 +53,7 @@ const Login = () => {
     <Container maxWidth="sm">
       <Paper elevation={3} sx={{ p: 4, mt: 8, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
         <Typography variant="h4" align="center" gutterBottom sx={{ color: 'primary.main' }}>
-          Login to DeBetter
+          {t('login.title', 'Login to DeBetter')}
         </Typography>
         {error && (
           <Typography color="error" align="center" sx={{ mb: 2 }}>
@@ -61,7 +63,7 @@ const Login = () => {
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
-            label="Email"
+            label={t('login.emailLabel', 'Email')}
             name="email"
             type="email"
             value={formData.email}
@@ -69,12 +71,12 @@ const Login = () => {
             margin="normal"
             required
             inputProps={{
-              'aria-label': 'email'
+              'aria-label': 'email', 'data-testid': 'login-email-input'
             }}
           />
           <TextField
             fullWidth
-            label="Password"
+            label={t('login.passwordLabel', 'Password')}
             name="password"
             type="password"
             value={formData.password}
@@ -82,7 +84,7 @@ const Login = () => {
             margin="normal"
             required
             inputProps={{
-              'aria-label': 'password'
+              'aria-label': 'password', 'data-testid': 'login-password-input'
             }}
           />
           <Button 
@@ -92,11 +94,11 @@ const Login = () => {
             sx={{ mt: 3, mb: 2 }}
             data-testid="login-submit"
           >
-            Login
+            {t('login.submitButton', 'Login')}
           </Button>
           <Box textAlign="center">
             <Link to="/register" style={{ color: 'primary.main' }}>
-              Don't have an account? Register
+              {t('login.registerLink', "Don't have an account? Register")}
             </Link>
           </Box>
         </form>

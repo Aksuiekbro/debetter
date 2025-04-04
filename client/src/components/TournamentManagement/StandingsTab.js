@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -19,6 +20,8 @@ const StandingsTab = ({
   loading // Optional: pass loading state if standings refresh is slow
 }) => {
 
+  const { t } = useTranslation();
+
   // Sort teams by wins (primary) and points (secondary) for display
   const sortedTeams = [...teams].sort((a, b) => {
     if (b.wins !== a.wins) return (b.wins || 0) - (a.wins || 0);
@@ -28,14 +31,14 @@ const StandingsTab = ({
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Tournament Standings</Typography>
+        <Typography variant="h6">{t('standingsTab.title', 'Tournament Standings')}</Typography>
         <Button
           variant="outlined"
           onClick={onRefreshStandings}
           startIcon={<RefreshIcon />}
           disabled={loading} // Disable button while refreshing
         >
-          Refresh Standings
+          {t('standingsTab.refreshButton', 'Refresh Standings')}
         </Button>
       </Box>
 
@@ -43,11 +46,11 @@ const StandingsTab = ({
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Rank</TableCell>
-              <TableCell>Team</TableCell>
-              <TableCell align="right">Wins</TableCell>
-              <TableCell align="right">Losses</TableCell>
-              <TableCell align="right">Points</TableCell>
+              <TableCell>{t('standingsTab.headerRank', 'Rank')}</TableCell>
+              <TableCell>{t('standingsTab.headerTeam', 'Team')}</TableCell>
+              <TableCell align="right">{t('standingsTab.headerWins', 'Wins')}</TableCell>
+              <TableCell align="right">{t('standingsTab.headerLosses', 'Losses')}</TableCell>
+              <TableCell align="right">{t('standingsTab.headerPoints', 'Points')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -62,7 +65,7 @@ const StandingsTab = ({
             ))}
             {sortedTeams.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">No teams available</TableCell>
+                <TableCell colSpan={5} align="center">{t('standingsTab.noTeams', 'No teams available')}</TableCell>
               </TableRow>
             )}
           </TableBody>

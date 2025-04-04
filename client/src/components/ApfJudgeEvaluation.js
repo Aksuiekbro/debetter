@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Paper,
   Typography,
@@ -39,6 +40,7 @@ const ApfJudgeEvaluation = ({
   onClose, 
   onSubmitEvaluation 
 }) => {
+  const { t } = useTranslation();
   // Debug log to see the game object structure
   console.log('ApfJudgeEvaluation - game object:', game);
   console.log('Team1 data:', game.team1);
@@ -123,7 +125,7 @@ const ApfJudgeEvaluation = ({
   const handleSubmitEvaluation = () => {
     // Check if a winner has been selected
     if (!winningTeam) {
-      alert('Please select a winning team before submitting');
+      alert(t('apfEvaluation.selectWinnerAlert', 'Please select a winning team before submitting'));
       return;
     }
 
@@ -173,56 +175,56 @@ const ApfJudgeEvaluation = ({
 
   // Columns for APF debate roles
   const columns = [
-    { id: 'criteria', label: 'Criteria' },
-    { id: 'leader_gov', label: 'Leader Gov (14 min)', align: 'center' },
-    { id: 'leader_opp', label: 'Leader Opp (14 min)', align: 'center' },
-    { id: 'speaker_gov', label: 'Speaker Gov (14 min)', align: 'center' },
-    { id: 'speaker_opp', label: 'Speaker Opp (14 min)', align: 'center' }
+    { id: 'criteria', label: t('apfEvaluation.criteriaHeader', 'Criteria') }, // Added key for table header
+    { id: 'leader_gov', label: t('apfEvaluation.roleLeaderGovTime', 'Leader Gov (14 min)'), align: 'center' }, // Added key
+    { id: 'leader_opp', label: t('apfEvaluation.roleLeaderOppTime', 'Leader Opp (14 min)'), align: 'center' }, // Added key
+    { id: 'speaker_gov', label: t('apfEvaluation.roleSpeakerGovTime', 'Speaker Gov (14 min)'), align: 'center' }, // Added key
+    { id: 'speaker_opp', label: t('apfEvaluation.roleSpeakerOppTime', 'Speaker Opp (14 min)'), align: 'center' } // Added key
   ];
 
   // Example criteria rows for the evaluation table
   const rows = [
-    { id: 'content', criteria: 'Content & Arguments', scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } },
-    { id: 'style', criteria: 'Style & Delivery', scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } },
-    { id: 'strategy', criteria: 'Strategy', scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } },
-    { id: 'total', criteria: 'Total Score', scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } },
+    { id: 'content', criteria: t('apfEvaluation.criteriaContentArgs', 'Content & Arguments'), scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } }, // Added key
+    { id: 'style', criteria: t('apfEvaluation.criteriaStyleDelivery', 'Style & Delivery'), scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } }, // Added key
+    { id: 'strategy', criteria: t('apfEvaluation.criteriaStrategy', 'Strategy'), scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } }, // Added key
+    { id: 'total', criteria: t('apfEvaluation.criteriaTotalScore', 'Total Score'), scores: { leader_gov: '', leader_opp: '', speaker_gov: '', speaker_opp: '' } }, // Added key
   ];
 
   // Speaker evaluation criteria based on roles
   const leaderCriteria = [
-    { id: 'clarity', label: 'Clarity of definition/framing' },
-    { id: 'construction', label: 'Argument construction' },
-    { id: 'responsiveness', label: 'Responsiveness to opponent' },
-    { id: 'strategic', label: 'Strategic positioning' },
-    { id: 'delivery', label: 'Delivery and oratory' }
+    { id: 'clarity', label: t('apfEvaluation.criteriaLeaderClarity', 'Clarity of definition/framing') },
+    { id: 'construction', label: t('apfEvaluation.criteriaLeaderConstruction', 'Argument construction') },
+    { id: 'responsiveness', label: t('apfEvaluation.criteriaLeaderResponsiveness', 'Responsiveness to opponent') },
+    { id: 'strategic', label: t('apfEvaluation.criteriaLeaderStrategic', 'Strategic positioning') },
+    { id: 'delivery', label: t('apfEvaluation.criteriaLeaderDelivery', 'Delivery and oratory') }
   ];
 
   const speakerCriteria = [
-    { id: 'refutation', label: 'Refutation/rebuilding' },
-    { id: 'analysis', label: 'New analysis/depth' },
-    { id: 'engagement', label: 'Engagement and structure' },
-    { id: 'timeManagement', label: 'Time management & structure' },
-    { id: 'framing', label: 'Framing and clarity' }
+    { id: 'refutation', label: t('apfEvaluation.criteriaSpeakerRefutation', 'Refutation/rebuilding') },
+    { id: 'analysis', label: t('apfEvaluation.criteriaSpeakerAnalysis', 'New analysis/depth') },
+    { id: 'engagement', label: t('apfEvaluation.criteriaSpeakerEngagement', 'Engagement and structure') },
+    { id: 'timeManagement', label: t('apfEvaluation.criteriaSpeakerTimeMgmt', 'Time management & structure') },
+    { id: 'framing', label: t('apfEvaluation.criteriaSpeakerFraming', 'Framing and clarity') }
   ];
 
   // Team evaluation criteria
   const teamCriteria = [
-    { id: 'argumentStrength', label: 'Argument strength' },
-    { id: 'refutation', label: 'Refutation/Clash' },
-    { id: 'weighting', label: 'Weighting and impact' },
-    { id: 'teamCohesion', label: 'Team cohesion' },
-    { id: 'structure', label: 'Structure and organization' },
-    { id: 'delivery', label: 'Delivery' },
-    { id: 'visual', label: 'Visuals/body language' },
-    { id: 'ruleObedience', label: 'Rule obedience' }
+    { id: 'argumentStrength', label: t('apfEvaluation.criteriaTeamArgStrength', 'Argument strength') },
+    { id: 'refutation', label: t('apfEvaluation.criteriaTeamRefutation', 'Refutation/Clash') },
+    { id: 'weighting', label: t('apfEvaluation.criteriaTeamWeighting', 'Weighting and impact') },
+    { id: 'teamCohesion', label: t('apfEvaluation.criteriaTeamCohesion', 'Team cohesion') },
+    { id: 'structure', label: t('apfEvaluation.criteriaTeamStructure', 'Structure and organization') },
+    { id: 'delivery', label: t('apfEvaluation.criteriaTeamDelivery', 'Delivery') },
+    { id: 'visual', label: t('apfEvaluation.criteriaTeamVisuals', 'Visuals/body language') },
+    { id: 'ruleObedience', label: t('apfEvaluation.criteriaTeamRules', 'Rule obedience') }
   ];
 
   // Speech component criteria
   const speechComponentCriteria = [
-    { id: 'constructiveSpeech', label: 'Constructive speech' },
-    { id: 'rebuttalSpeech', label: 'Rebuttal speech' },
-    { id: 'crossExamination', label: 'Cross examination' },
-    { id: 'useOfEvidence', label: 'Use of evidence' }
+    { id: 'constructiveSpeech', label: t('apfEvaluation.criteriaSpeechConstructive', 'Constructive speech') },
+    { id: 'rebuttalSpeech', label: t('apfEvaluation.criteriaSpeechRebuttal', 'Rebuttal speech') },
+    { id: 'crossExamination', label: t('apfEvaluation.criteriaSpeechCrossExam', 'Cross examination') },
+    { id: 'useOfEvidence', label: t('apfEvaluation.criteriaSpeechEvidence', 'Use of evidence') }
   ];
 
   // Mock STT transcription data (would be replaced with actual STT data)
@@ -260,7 +262,7 @@ const ApfJudgeEvaluation = ({
     if (role === 'leader_gov') {
       // Team 1 leader
       const leader = game.team1.leader;
-      if (!leader) return 'Leader Gov';
+      if (!leader) return t('apfEvaluation.roleLeaderGov', 'Leader Gov');
       
       // Log the leader object to debug its structure
       console.log('Leader Gov object:', leader);
@@ -274,16 +276,16 @@ const ApfJudgeEvaluation = ({
         if (leader.name) return leader.name;
         
         // For UI display, we prioritize showing the actual person's name
-        return 'Leader Gov';
+        return t('apfEvaluation.roleLeaderGov', 'Leader Gov');
       }
       
-      return 'Leader Gov';
+      return t('apfEvaluation.roleLeaderGov', 'Leader Gov');
     }
     
     if (role === 'speaker_gov') {
       // Team 1 speaker
       const speaker = game.team1.speaker;
-      if (!speaker) return 'Speaker Gov';
+      if (!speaker) return t('apfEvaluation.roleSpeakerGov', 'Speaker Gov');
       
       // Log the speaker object to debug its structure
       console.log('Speaker Gov object:', speaker);
@@ -297,16 +299,16 @@ const ApfJudgeEvaluation = ({
         if (speaker.name) return speaker.name;
         
         // For UI display, we prioritize showing the actual person's name
-        return 'Speaker Gov';
+        return t('apfEvaluation.roleSpeakerGov', 'Speaker Gov');
       }
       
-      return 'Speaker Gov';
+      return t('apfEvaluation.roleSpeakerGov', 'Speaker Gov');
     }
     
     if (role === 'leader_opp') {
       // Team 2 leader
       const leader = game.team2.leader;
-      if (!leader) return 'Leader Opp';
+      if (!leader) return t('apfEvaluation.roleLeaderOpp', 'Leader Opp');
       
       // Log the leader object to debug its structure
       console.log('Leader Opp object:', leader);
@@ -320,16 +322,16 @@ const ApfJudgeEvaluation = ({
         if (leader.name) return leader.name;
         
         // For UI display, we prioritize showing the actual person's name
-        return 'Leader Opp';
+        return t('apfEvaluation.roleLeaderOpp', 'Leader Opp');
       }
       
-      return 'Leader Opp';
+      return t('apfEvaluation.roleLeaderOpp', 'Leader Opp');
     }
     
     if (role === 'speaker_opp') {
       // Team 2 speaker
       const speaker = game.team2.speaker;
-      if (!speaker) return 'Speaker Opp';
+      if (!speaker) return t('apfEvaluation.roleSpeakerOpp', 'Speaker Opp');
       
       // Log the speaker object to debug its structure
       console.log('Speaker Opp object:', speaker);
@@ -343,20 +345,20 @@ const ApfJudgeEvaluation = ({
         if (speaker.name) return speaker.name;
         
         // For UI display, we prioritize showing the actual person's name
-        return 'Speaker Opp';
+        return t('apfEvaluation.roleSpeakerOpp', 'Speaker Opp');
       }
       
-      return 'Speaker Opp';
+      return t('apfEvaluation.roleSpeakerOpp', 'Speaker Opp');
     }
     
-    return 'Unknown Speaker';
+    return t('apfEvaluation.roleUnknownSpeaker', 'Unknown Speaker');
   };
 
   // Helper function to get speaker role title
   const getSpeakerRole = (role) => {
-    if (role.includes('leader')) return 'Leader';
-    if (role.includes('speaker')) return 'Speaker';
-    return 'Unknown Role';
+    if (role.includes('leader')) return t('apfEvaluation.roleLeader', 'Leader');
+    if (role.includes('speaker')) return t('apfEvaluation.roleSpeaker', 'Speaker');
+    return t('apfEvaluation.roleUnknownRole', 'Unknown Role');
   };
 
   return (
@@ -370,7 +372,7 @@ const ApfJudgeEvaluation = ({
         </IconButton>
         
         <Typography variant="h5" align="center" gutterBottom sx={{ mb: 3, pt: 2 }}>
-          APF Debate Evaluation
+          {t('apfEvaluation.title', 'APF Debate Evaluation')}
         </Typography>
         
         <Card sx={{ mb: 3 }}>
@@ -378,18 +380,18 @@ const ApfJudgeEvaluation = ({
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle1">
-                  <strong>Teams:</strong> {game.team1.name} vs {game.team2.name}
+                  <strong>{t('apfEvaluation.teamsLabel', 'Teams:')}</strong> {game.team1.name} vs {game.team2.name}
                 </Typography>
                 <Typography variant="subtitle1">
-                  <strong>Location:</strong> {game.location}
+                  <strong>{t('apfEvaluation.locationLabel', 'Location:')}</strong> {game.location}
                 </Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle1">
-                  <strong>Time:</strong> {new Date(game.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <strong>{t('apfEvaluation.timeLabel', 'Time:')}</strong> {new Date(game.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Typography>
                 <Typography variant="subtitle1">
-                  <strong>Theme:</strong> {game.theme}
+                  <strong>{t('apfEvaluation.themeLabel', 'Theme:')}</strong> {game.theme}
                 </Typography>
               </Grid>
             </Grid>
@@ -404,13 +406,13 @@ const ApfJudgeEvaluation = ({
             onClick={recording ? handleStopRecording : handleStartRecording}
             sx={{ px: 4 }}
           >
-            {recording ? "Stop Recording" : "Start"}
+            {recording ? t('apfEvaluation.stopRecordingButton', 'Stop Recording') : t('apfEvaluation.startRecordingButton', 'Start')}
           </Button>
         </Box>
         
         {recording && (
           <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mb: 2 }}>
-            Recording in progress... Audio will be transcribed automatically.
+            {t('apfEvaluation.recordingInProgress', 'Recording in progress... Audio will be transcribed automatically.')}
           </Typography>
         )}
 
@@ -423,9 +425,9 @@ const ApfJudgeEvaluation = ({
             textColor="primary"
             aria-label="evaluation tabs"
           >
-            <Tab label="Debate Transcription" />
-            <Tab label="Speaker Evaluation" />
-            <Tab label={`Team Assessment (${game.team1.name} vs ${game.team2.name})`} />
+            <Tab label={t('apfEvaluation.tabTranscription', 'Debate Transcription')} />
+            <Tab label={t('apfEvaluation.tabSpeakerEval', 'Speaker Evaluation')} />
+            <Tab label={t('apfEvaluation.tabTeamAssessment', 'Team Assessment ({{team1}} vs {{team2}})', { team1: game.team1.name, team2: game.team2.name })} />
           </Tabs>
 
           {/* Evaluation Table Tab */}
@@ -433,17 +435,17 @@ const ApfJudgeEvaluation = ({
             {tabValue === 0 && (
               <>
                 <Card elevation={2} sx={{ mb: 4 }}>
-                  <CardHeader title="Speech Transcription" sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }} />
+                  <CardHeader title={t('apfEvaluation.transcriptionTitle', 'Speech Transcription')} sx={{ background: 'rgba(0, 0, 0, 0.03)', p: 2 }} />
                   <CardContent>
                     <Grid container spacing={2}>
                       {Object.entries(transcriptions).map(([speaker, text]) => (
                         <Grid item xs={12} key={speaker}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                            {getSpeakerName(speaker)} ({getSpeakerRole(speaker)} - {speaker.includes('gov') ? game.team1.name : game.team2.name}):
+                            {getSpeakerName(speaker)} ({getSpeakerRole(speaker)} - {speaker.includes('gov') ? `${game.team1.name} ${t('apfEvaluation.teamGov', '(Government)')}` : `${game.team2.name} ${t('apfEvaluation.teamOpp', '(Opposition)')}`}):
                           </Typography>
                           <Paper variant="outlined" sx={{ p: 2, minHeight: '60px', bgcolor: 'rgba(0, 0, 0, 0.01)' }}>
                             <Typography variant="body2">
-                              {text || 'No speech transcribed yet...'}
+                              {text || t('apfEvaluation.noTranscription', 'No speech transcribed yet...')}
                             </Typography>
                           </Paper>
                         </Grid>
@@ -464,7 +466,7 @@ const ApfJudgeEvaluation = ({
                     <Card sx={{ mb: 3 }}>
                       <CardHeader 
                         title={`${getSpeakerName(speakerRole)} - ${getSpeakerRole(speakerRole)}`}
-                        subheader={`${speakerRole.includes('gov') ? `${game.team1.name} (Government)` : `${game.team2.name} (Opposition)`}`}
+                        subheader={`${speakerRole.includes('gov') ? `${game.team1.name} ${t('apfEvaluation.teamGov', '(Government)')}` : `${game.team2.name} ${t('apfEvaluation.teamOpp', '(Opposition)')}`}`}
                         sx={{ background: speakerRole.includes('gov') ? 'rgba(63, 81, 181, 0.08)' : 'rgba(255, 82, 82, 0.08)', p: 2 }}
                       />
                       <CardContent>
@@ -473,7 +475,7 @@ const ApfJudgeEvaluation = ({
                             <Grid container alignItems="center" spacing={1}>
                               <Grid item xs={8}>
                                 <Typography variant="body2">
-                                  {criterion.label}
+                                  {t(criterion.label, criterion.label)} {/* Use label as key and default */}
                                 </Typography>
                               </Grid>
                               <Grid item xs={4}>
@@ -492,14 +494,14 @@ const ApfJudgeEvaluation = ({
                         ))}
                         
                         <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
-                          Overall Speaker Feedback
+                          {t('apfEvaluation.speakerFeedbackLabel', 'Overall Speaker Feedback')}
                         </Typography>
                         <TextField
                           fullWidth
                           multiline
                           rows={3}
                           variant="outlined"
-                          placeholder="Enter feedback for this speaker..."
+                          placeholder={t('apfEvaluation.speakerFeedbackPlaceholder', 'Enter feedback for this speaker...')}
                           value={speakerFeedback[speakerRole]}
                           onChange={(e) => setSpeckerFeedback(prev => ({
                             ...prev,
@@ -510,7 +512,7 @@ const ApfJudgeEvaluation = ({
                         
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                           <Typography variant="subtitle2">
-                            Total Points:
+                            {t('apfEvaluation.totalPointsLabel', 'Total Points:')}
                           </Typography>
                           <TextField
                             variant="outlined"
@@ -542,7 +544,7 @@ const ApfJudgeEvaluation = ({
                   <Card>
                     <CardHeader 
                       title={`${game.team1.name}`}
-                      subheader="Government Team" 
+                      subheader={t('apfEvaluation.govTeamSubheader', 'Government Team')}
                       sx={{ 
                         background: 'rgba(63, 81, 181, 0.08)', 
                         p: 2,
@@ -550,13 +552,13 @@ const ApfJudgeEvaluation = ({
                       }}
                     />
                     <CardContent>
-                      <Typography variant="subtitle2" gutterBottom>Team Criteria</Typography>
+                      <Typography variant="subtitle2" gutterBottom>{t('apfEvaluation.teamCriteriaTitle', 'Team Criteria')}</Typography>
                       {teamCriteria.map((item) => (
                         <Box key={item.id} sx={{ mb: 2 }}>
                           <Grid container alignItems="center" spacing={1}>
                             <Grid item xs={8}>
                               <Typography variant="body2">
-                                {item.label}
+                                {t(item.label, item.label)} {/* Use label as key and default */}
                               </Typography>
                             </Grid>
                             <Grid item xs={4}>
@@ -574,13 +576,13 @@ const ApfJudgeEvaluation = ({
                         </Box>
                       ))}
                       
-                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>Speech Components</Typography>
+                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>{t('apfEvaluation.speechComponentsTitle', 'Speech Components')}</Typography>
                       {speechComponentCriteria.map((item) => (
                         <Box key={item.id} sx={{ mb: 2 }}>
                           <Grid container alignItems="center" spacing={1}>
                             <Grid item xs={8}>
                               <Typography variant="body2">
-                                {item.label}
+                                {t(item.label, item.label)} {/* Use label as key and default */}
                               </Typography>
                             </Grid>
                             <Grid item xs={4}>
@@ -604,7 +606,7 @@ const ApfJudgeEvaluation = ({
                   <Card>
                     <CardHeader 
                       title={`${game.team2.name}`}
-                      subheader="Opposition Team"
+                      subheader={t('apfEvaluation.oppTeamSubheader', 'Opposition Team')}
                       sx={{ 
                         background: 'rgba(255, 82, 82, 0.08)', 
                         p: 2,
@@ -612,13 +614,13 @@ const ApfJudgeEvaluation = ({
                       }}
                     />
                     <CardContent>
-                      <Typography variant="subtitle2" gutterBottom>Team Criteria</Typography>
+                      <Typography variant="subtitle2" gutterBottom>{t('apfEvaluation.teamCriteriaTitle', 'Team Criteria')}</Typography>
                       {teamCriteria.map((item) => (
                         <Box key={item.id} sx={{ mb: 2 }}>
                           <Grid container alignItems="center" spacing={1}>
                             <Grid item xs={8}>
                               <Typography variant="body2">
-                                {item.label}
+                                {t(item.label, item.label)} {/* Use label as key and default */}
                               </Typography>
                             </Grid>
                             <Grid item xs={4}>
@@ -636,13 +638,13 @@ const ApfJudgeEvaluation = ({
                         </Box>
                       ))}
                       
-                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>Speech Components</Typography>
+                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>{t('apfEvaluation.speechComponentsTitle', 'Speech Components')}</Typography>
                       {speechComponentCriteria.map((item) => (
                         <Box key={item.id} sx={{ mb: 2 }}>
                           <Grid container alignItems="center" spacing={1}>
                             <Grid item xs={8}>
                               <Typography variant="body2">
-                                {item.label}
+                                {t(item.label, item.label)} {/* Use label as key and default */}
                               </Typography>
                             </Grid>
                             <Grid item xs={4}>
@@ -669,7 +671,7 @@ const ApfJudgeEvaluation = ({
         
         <Box sx={{ mt: 4 }}>
           <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-            Winner Selection
+            {t('apfEvaluation.winnerSelectionTitle', 'Winner Selection')}
           </Typography>
           <Card elevation={2}>
             <CardContent>
@@ -688,7 +690,7 @@ const ApfJudgeEvaluation = ({
                       borderRadius: 1,
                       fontWeight: winningTeam === game.team1.id ? 'bold' : 'normal'
                     }}>
-                      {game.team1.name} (Government)
+                      {`${game.team1.name} ${t('apfEvaluation.teamGov', '(Government)')}`}
                     </Box>
                   }
                   sx={{ mb: 1 }}
@@ -704,7 +706,7 @@ const ApfJudgeEvaluation = ({
                       borderRadius: 1,
                       fontWeight: winningTeam === game.team2.id ? 'bold' : 'normal'
                     }}>
-                      {game.team2.name} (Opposition)
+                      {`${game.team2.name} ${t('apfEvaluation.teamOpp', '(Opposition)')}`}
                     </Box>
                   }
                 />
@@ -719,7 +721,7 @@ const ApfJudgeEvaluation = ({
             color="secondary"
             onClick={onClose}
           >
-            Cancel
+            {t('apfEvaluation.cancelButton', 'Cancel')}
           </Button>
           <Button
             variant="contained"
@@ -727,7 +729,7 @@ const ApfJudgeEvaluation = ({
             onClick={() => setShowConfirmDialog(true)}
             disabled={!winningTeam}
           >
-            Submit Evaluation
+            {t('apfEvaluation.submitButton', 'Submit Evaluation')}
           </Button>
         </Box>
       </Paper>
@@ -737,22 +739,22 @@ const ApfJudgeEvaluation = ({
         open={showConfirmDialog}
         onClose={() => setShowConfirmDialog(false)}
       >
-        <DialogTitle>Confirm Evaluation</DialogTitle>
+        <DialogTitle>{t('apfEvaluation.confirmDialogTitle', 'Confirm Evaluation')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to submit this evaluation? You won't be able to modify it afterwards.
+            {t('apfEvaluation.confirmDialogText', "Are you sure you want to submit this evaluation? You won't be able to modify it afterwards.")}
             {winningTeam && (
               <>
                 <br /><br />
-                Winner: <strong>{winningTeam === game.team1.id ? game.team1.name : game.team2.name}</strong>
+                {t('apfEvaluation.confirmDialogWinnerLabel', 'Winner:')} <strong>{winningTeam === game.team1.id ? game.team1.name : game.team2.name}</strong>
               </>
             )}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
+          <Button onClick={() => setShowConfirmDialog(false)}>{t('apfEvaluation.confirmDialogCancelButton', 'Cancel')}</Button>
           <Button onClick={handleSubmitEvaluation} color="primary" variant="contained">
-            Confirm & Submit
+            {t('apfEvaluation.confirmDialogSubmitButton', 'Confirm & Submit')}
           </Button>
         </DialogActions>
       </Dialog>

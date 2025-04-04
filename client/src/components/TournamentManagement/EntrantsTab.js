@@ -14,6 +14,7 @@ import {
   TextField
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 
 // Assume EntrantDialog and DeleteConfirmationDialog will be created later
 // import EntrantDialog from './EntrantDialog';
@@ -26,6 +27,7 @@ const EntrantsTab = ({
   onDeleteEntrant, // Corresponds to handleDeleteEntrant(id)
   onGenerateTestData, // Function to trigger test data generation
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearchChange = (event) => {
@@ -42,12 +44,12 @@ const EntrantsTab = ({
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
-          Tournament Entrants ({entrants.length})
+          {t('entrantsTab.title', { count: entrants.length, defaultValue: `Tournament Entrants (${entrants.length})` })}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <TextField
             size="small"
-            placeholder="Search by name or email..."
+            placeholder={t('entrantsTab.searchPlaceholder', { defaultValue: 'Search by name or email...' })}
             value={searchTerm}
             onChange={handleSearchChange}
             sx={{ width: 250 }}
@@ -58,7 +60,7 @@ const EntrantsTab = ({
             startIcon={<AddIcon />}
             onClick={onAddEntrant} // Use the passed handler
           >
-            Add Entrant
+            {t('entrantsTab.addEntrantButton', { defaultValue: 'Add Entrant' })}
           </Button>
           {/* Keep Generate Test Data button if needed */}
           {onGenerateTestData && (
@@ -67,7 +69,7 @@ const EntrantsTab = ({
                color="secondary"
                onClick={onGenerateTestData}
              >
-               Generate Test Data
+               {t('entrantsTab.generateTestDataButton', { defaultValue: 'Generate Test Data' })}
              </Button>
            )}
         </Box>
@@ -77,10 +79,10 @@ const EntrantsTab = ({
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Enroll Date</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>{t('entrantsTab.headerName', { defaultValue: 'Name' })}</TableCell>
+              <TableCell>{t('entrantsTab.headerEnrollDate', { defaultValue: 'Enroll Date' })}</TableCell>
+              <TableCell>{t('entrantsTab.headerEmail', { defaultValue: 'Email' })}</TableCell>
+              <TableCell align="right">{t('entrantsTab.headerActions', { defaultValue: 'Actions' })}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -108,7 +110,7 @@ const EntrantsTab = ({
             {filteredEntrants.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
-                  {entrants.length > 0 ? 'No entrants match search' : 'No entrants found'}
+                  {entrants.length > 0 ? t('entrantsTab.noMatch', { defaultValue: 'No entrants match search' }) : t('entrantsTab.noEntrants', { defaultValue: 'No entrants found' }) }
                 </TableCell>
               </TableRow>
             )}

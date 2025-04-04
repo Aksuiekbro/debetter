@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Paper,
@@ -18,6 +19,7 @@ import { getAuthHeaders } from '../utils/auth';
 import { api } from '../config/api';
 
 const JudgePanel = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,7 @@ const JudgePanel = () => {
       setAssignedGames(games);
     } catch (error) {
       console.error('Error fetching assigned games:', error);
-      setError('Failed to load your assigned games. Please try again later.');
+      setError(t('judgePanel.loadError', 'Failed to load your assigned games. Please try again later.'));
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,7 @@ const JudgePanel = () => {
         console.error('Missing required data:', { debateId, gameId: evaluationData.gameId, winningTeamId: evaluationData.winningTeamId });
         setNotification({
           open: true,
-          message: 'Missing required evaluation data. Please try again.',
+          message: t('judgePanel.missingDataError', 'Missing required evaluation data. Please try again.'),
           severity: 'error'
         });
         return;
@@ -123,7 +125,7 @@ const JudgePanel = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit evaluation');
+        throw new Error(errorData.message || t('judgePanel.submitError', 'Failed to submit evaluation'));
       }
       
       // Update local state to reflect the evaluated status
@@ -138,7 +140,7 @@ const JudgePanel = () => {
       // Show success notification
       setNotification({
         open: true,
-        message: 'Evaluation submitted successfully!',
+        message: t('judgePanel.submitSuccess', 'Evaluation submitted successfully!'),
         severity: 'success'
       });
       
@@ -151,7 +153,7 @@ const JudgePanel = () => {
       console.error('Error submitting evaluation:', error);
       setNotification({
         open: true,
-        message: `Failed to submit evaluation: ${error.message}`,
+        message: t('judgePanel.submitError', 'Failed to submit evaluation: {{message}}', { message: error.message }),
         severity: 'error'
       });
     }
@@ -175,13 +177,13 @@ const JudgePanel = () => {
       ) : (
         <Paper elevation={3} sx={{ p: 3 }}>
           <Typography variant="h4" gutterBottom>
-            Judge Panel
+            {t('judgePanel.title', 'Judge Panel')}
           </Typography>
           
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
             <Tabs value={tabValue} onChange={handleTabChange}>
-              <Tab label={`Pending (${pendingGames.length})`} />
-              <Tab label={`Completed (${completedGames.length})`} />
+              <Tab label={t('judgePanel.tabPending', 'Pending ({{count}})', { count: pendingGames.length })} />
+              <Tab label={t('judgePanel.tabCompleted', 'Completed ({{count}})', { count: completedGames.length })} />
             </Tabs>
           </Box>
           
@@ -196,7 +198,7 @@ const JudgePanel = () => {
               {tabValue === 0 && (
                 <>
                   <Typography variant="subtitle1" gutterBottom>
-                    Your assigned debates requiring evaluation
+                    {t('judgePanel.pendingSubtitle', 'Your assigned debates requiring evaluation')}
                   </Typography>
                   <Grid container spacing={3}>
                     {pendingGames.length > 0 ? (
@@ -211,7 +213,7 @@ const JudgePanel = () => {
                     ) : (
                       <Grid item xs={12}>
                         <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-                          You have no pending debates to evaluate
+                          {t('judgePanel.noPending', 'You have no pending debates to evaluate')}
                         </Typography>
                       </Grid>
                     )}
@@ -222,7 +224,7 @@ const JudgePanel = () => {
               {tabValue === 1 && (
                 <>
                   <Typography variant="subtitle1" gutterBottom>
-                    Your completed evaluations
+                    {t('judgePanel.completedSubtitle', 'Your completed evaluations')}
                   </Typography>
                   <Grid container spacing={3}>
                     {completedGames.length > 0 ? (
@@ -237,7 +239,7 @@ const JudgePanel = () => {
                     ) : (
                       <Grid item xs={12}>
                         <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-                          You have no completed evaluations
+                          {t('judgePanel.noCompleted', 'You have no completed evaluations')}
                         </Typography>
                       </Grid>
                     )}

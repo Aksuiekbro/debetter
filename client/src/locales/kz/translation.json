@@ -1,0 +1,15 @@
+{
+  "greeting": "Сәлем",
+  "navbar": {
+    "home": "Басты бет",
+    "host_debate": "Дебат Бастау",
+    "join_debate": "Дебатқа Қосылу",
+    "tournaments": "Турнирлер",
+    "my_debates": "Менің Дебаттарым",
+    "profile": "Профиль",
+    "logout": "Шығу",
+    "login": "Кіру",
+    "register": "Тіркелу",
+    "search_placeholder": "Дебаттарды іздеу..."
+  }
+}
