@@ -11,5 +11,67 @@
     "login": "Кіру",
     "register": "Тіркелу",
     "search_placeholder": "Дебаттарды іздеу..."
+  },
+  "common": {
+    "notAvailable": "Жоқ"
+  },
+  "profile": {
+    "role": {
+      "debater": "Пікірсайысшы",
+      "judge": "Төреші",
+      "organizer": "Ұйымдастырушы"
+    },
+    "error": {
+      "updateFailed": "Профильді жаңарту мүмкін болмады",
+      "loginToAddFriend": "Достарды қосу үшін жүйеге кіріңіз",
+      "friendRequestFailed": "Достық сұранысын жіберу мүмкін болмады",
+      "fetchFailed": "Профильді жүктеу мүмкін болмады"
+    },
+    "alert": {
+      "friendRequestSent": "Достық сұранысы сәтті жіберілді!"
+    },
+    "button": {
+      "retry": "Қайталау",
+      "editInfo": "Ақпарат пен баптауларды өңдеу",
+      "addFriend": "Достарға қосу",
+      "addNewDebate": "Жаңа дебат қосу"
+    },
+    "interests": {
+      "placeholder": "Қандай тақырыптар ұнайтынын көрсету үшін қызығушылықтарыңызды қосыңыз"
+    },
+    "bio": {
+      "placeholder": "Басқалар сіз туралы білуі үшін өмірбаяныңызды қосыңыз"
+    },
+    "stats": {
+      "debates": "ДЕБАТТАР",
+      "wins": "ЖЕҢІСТЕР",
+      "ongoing": "ЖАЛҒАСУДА",
+      "judged": "ТӨРЕШІЛІК ЕТТІ"
+    },
+    "tabs": {
+      "debatesPlaceholder": "Сіздің дебаттарыңыз осында пайда болады",
+      "winsPlaceholder": "Сіздің жеңген дебаттарыңыз осында пайда болады",
+      "ongoingPlaceholder": "Сіздің жалғасып жатқан дебаттарыңыз осында пайда болады",
+      "judgedPlaceholder": "Сіз төрешілік еткен дебаттар осында пайда болады"
+    },
+    "editDialog": {
+      "title": "Профильді Өңдеу",
+      "bioLabel": "Өмірбаян",
+      "interestsLabel": "Қызығушылықтар",
+      "addInterestLabel": "Жаңа қызығушылық қосу",
+      "addButton": "Қосу",
+      "cancelButton": "Болдырмау",
+      "saveButton": "Сақтау"
+    },
+    "phoneLabel": "Телефон:",
+    "clubLabel": "Клуб:",
+    "experienceLabel": "Тәжірибе:",
+    "rankLabel": "Дәреже:",
+    "awardsLabel": "Марапаттар:",
+    "otherInfoLabel": "Басқа ақпарат:",
+    "judgeInfoTitle": "Төреші туралы ақпарат",
+    "awards": {
+      "placeholder": "Марапаттар көрсетілмеген"
+    }
   }
 }

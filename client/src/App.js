@@ -22,6 +22,8 @@ import LandingPage from './components/LandingPage';
 import CreateTournamentForm from './components/CreateTournamentForm';
 import DebaterFeedbackDisplay from './components/DebaterFeedbackDisplay';
 import NotificationSettings from './components/NotificationSettings'; // Import NotificationSettings
+import ActiveJudgeInterface from './components/ActiveJudgeInterface'; // Import the new interface
+import JudgeLeaderboard from './components/JudgeLeaderboard'; // Import JudgeLeaderboard
 
 const theme = createTheme({
   palette: {
@@ -78,6 +80,7 @@ function App() {
               <Route path="/tournaments" element={<Tournaments />} />
               <Route path="/tournaments/:id" element={<TournamentDetail />} />
               <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
+              <Route path="/tournaments/:id/judge-leaderboard" element={<JudgeLeaderboard />} />
               <Route path="/create-tournament" element={<CreateTournamentForm />} />
               <Route
                 path="/judge-panel"
@@ -94,6 +97,7 @@ function App() {
               <Route path="/feedback/:debateId/:postingId" element={<DebaterFeedbackDisplay />} />
               {/* Add Notification Settings Route */}
               <Route path="/settings/notifications" element={<NotificationSettings />} />
+              <Route path="/judge/:debateId/:postingId" element={<ActiveJudgeInterface />} />
            </Route>
           </Routes>
         </div>

@@ -4,116 +4,66 @@ const User = require('../models/User');
 const tournamentService = require('../services/tournamentService'); // Import TournamentService
 
 // Get APF tabulation/standings
+// Get APF tabulation/standings
 exports.getApfTabulation = async (req, res) => {
   try {
-    // Get tournament ID from request (if filtering for a specific tournament)
+    // Get tournament ID from request
     const { tournamentId } = req.query;
     const specificTournamentId = tournamentId || req.params.tournamentId;
-    
+
+    if (!specificTournamentId) {
+      return res.status(400).json({ message: 'Tournament ID is required' });
+    }
+
     console.log('Fetching APF tabulation for tournament:', specificTournamentId);
-    
-    // Build filter object based on the tournament ID
-    const filter = specificTournamentId ? { debateId: specificTournamentId } : {};
-    
-    console.log('Using filter:', filter);
-    
-    // Get all evaluations
-    const evaluations = await ApfEvaluation.find(filter)
-      .populate('winningTeam', 'name members')
-      .populate('debateId', 'title teams');
-    
-    console.log(`Found ${evaluations.length} evaluations for tabulation`);
-      
-    // Process results to get team standings
-    // Teams object to track wins and scores
-    const teamsMap = {};
-    
-    // Process each evaluation
-    evaluations.forEach(evaluation => {
-      if (!evaluation.winningTeam || !evaluation.winningTeam._id) {
-        console.log('Skipping evaluation without valid winning team:', evaluation._id);
-        return; // Skip evaluations without proper winning team data
-      }
-      
-      const winningTeamId = evaluation.winningTeam._id.toString();
-      console.log('Processing evaluation with winning team:', winningTeamId);
-      
-      if (!teamsMap[winningTeamId]) {
-        teamsMap[winningTeamId] = {
-          id: winningTeamId,
-          name: evaluation.winningTeam.name || 'Unknown Team',
-          wins: 0,
-          score: 0,
-          rank: 0
-        };
-      }
-      
-      // Increment wins for the winning team
-      teamsMap[winningTeamId].wins += 1;
-      
-      // Calculate scores based on the new scoring structures
-      let governmentScore = 0;
-      let oppositionScore = 0;
-      
-      // Try to get scores from the new detailed structure first
-      if (evaluation.speakerScores) {
-        // Add up all speaker scores from the detailed structure
-        const leaderGov = evaluation.speakerScores.leader_gov?.totalPoints || 0;
-        const speakerGov = evaluation.speakerScores.speaker_gov?.totalPoints || 0;
-        const leaderOpp = evaluation.speakerScores.leader_opp?.totalPoints || 0;
-        const speakerOpp = evaluation.speakerScores.speaker_opp?.totalPoints || 0;
-        
-        governmentScore = leaderGov + speakerGov;
-        oppositionScore = leaderOpp + speakerOpp;
-      } 
-      // Fall back to legacy scores if needed
-      else if (evaluation.scores) {
-        governmentScore = 
-          (evaluation.scores.leaderGovernment?.totalScore || 0) + 
-          (evaluation.scores.speakerGovernment?.totalScore || 0);
-        
-        oppositionScore = 
-          (evaluation.scores.leaderOpposition?.totalScore || 0) + 
-          (evaluation.scores.speakerOpposition?.totalScore || 0);
-      }
-      
-      // Determine if the winning team was government or opposition
-      let winningTeamScore = 0;
-      
-      if (evaluation.debateId && evaluation.debateId.teams && evaluation.debateId.teams.length > 0) {
-        // Find if winning team was government or opposition in this debate
-        const winningTeamWasGovernment = evaluation.debateId.teams.some(team => 
-          team.side === 'proposition' && team._id.toString() === winningTeamId
-        );
-        
-        winningTeamScore = winningTeamWasGovernment ? governmentScore : oppositionScore;
-        console.log(`Team ${winningTeamId} was ${winningTeamWasGovernment ? 'Government' : 'Opposition'}, adding ${winningTeamScore} points`);
-      } else {
-        // If we can't determine side, just add both scores (suboptimal fallback)
-        winningTeamScore = governmentScore + oppositionScore;
-        console.log(`Could not determine team side, adding total points: ${winningTeamScore}`);
-      }
-      
-      teamsMap[winningTeamId].score += winningTeamScore;
+
+    // Fetch the Debate document and populate the teams array
+    const debate = await Debate.findById(specificTournamentId).populate({
+        path: 'teams',
+        select: 'name wins points losses' // Select necessary fields
     });
-    
-    // Convert to array and sort by wins (primary) and score (secondary)
-    let standings = Object.values(teamsMap).sort((a, b) => {
+
+    if (!debate) {
+      console.log('Tournament (Debate) not found with ID:', specificTournamentId);
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+
+    if (!debate.teams || debate.teams.length === 0) {
+      console.log('No teams found in the tournament:', specificTournamentId);
+      // Return empty standings if no teams exist
+      return res.json([]);
+    }
+
+    console.log(`Found ${debate.teams.length} teams in tournament ${specificTournamentId}`);
+
+    // Map teams to the required standings format
+    let standings = debate.teams.map(team => ({
+      id: team._id,
+      name: team.name,
+      wins: team.wins || 0, // Default to 0 if undefined
+      points: team.points || 0, // Default to 0 if undefined
+      losses: team.losses || 0, // Include losses if available
+      rank: 0 // Initialize rank
+    }));
+
+    // Sort by wins (descending) and then points (descending)
+    standings.sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.score - a.score;
+      return b.points - a.points;
     });
-    
-    // Assign ranks
+
+    // Assign ranks based on the sorted order
     standings = standings.map((team, index) => ({
       ...team,
       rank: index + 1
     }));
-    
-    console.log(`Returning ${standings.length} teams in standings`);
+
+    console.log(`Returning ${standings.length} teams in standings for tournament ${specificTournamentId}`);
     res.json(standings);
+
   } catch (error) {
     console.error('Error getting APF tabulation:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error fetching tournament standings', error: error.message });
   }
 };
 
@@ -237,9 +187,42 @@ exports.submitApfEvaluation = async (req, res) => {
         } else {
           console.log('Could not find winning team object in tournament teams');
         }
-        
-        await debate.save();
 
+        // Find the losing team and update losses
+        const losingTeamObject = debate.teams?.find(team => team._id.toString() !== winningTeamId && (team._id.toString() === relevantPosting.team1.toString() || team._id.toString() === relevantPosting.team2.toString()));
+
+        if (losingTeamObject) {
+          losingTeamObject.losses = (losingTeamObject.losses || 0) + 1;
+          // Add 1 participation point for the losing team
+          losingTeamObject.points = (losingTeamObject.points || 0) + 1;
+          
+          console.log(`Updated losing team: ${losingTeamObject.name}, Losses: ${losingTeamObject.losses}, Points: ${losingTeamObject.points}`);
+        } else {
+           console.log('Could not find losing team object in tournament teams');
+        }
+          const losingTeamId = losingTeamObject ? losingTeamObject._id.toString() : null; // Define ID for later use
+
+        // Mark the teams array as modified before saving
+        debate.markModified('teams');
+        console.log('[BEFORE SAVE] Losing Team Object:', JSON.stringify(losingTeamObject));
+        try {
+            await debate.save();
+            console.log('[AFTER SAVE] debate.save() completed successfully.');
+            // Optionally fetch the losing team again AFTER save to confirm
+            if (losingTeamId) { // Check if losingTeamId was found earlier
+                const savedDebate = await Debate.findById(debateId);
+                const savedLosingTeam = savedDebate.teams.find(t => t._id.toString() === losingTeamId);
+                console.log('[AFTER SAVE] Losing Team Object from DB:', JSON.stringify(savedLosingTeam));
+            } else {
+                console.log('[AFTER SAVE] Skipping DB check for losing team as it was not identified earlier.');
+            }
+        } catch (saveError) {
+            console.error('[SAVE ERROR] Error during debate.save():', saveError);
+            // Decide how to handle save error - maybe rethrow or add to response?
+            // For now, just log and continue, but consider rethrowing or sending error response
+        }
+
+        console.log('[BEFORE SAVE] Attempting debate.save() after marking teams modified...');
         // --- Try to advance winner in bracket ---
         if (relevantPosting && relevantPosting.round != null && relevantPosting.matchNumber != null) {
           console.log(`[submitApfEvaluation] Posting has round/match info. Attempting to advance winner in bracket...`);
@@ -499,7 +482,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
           assignedGames.push({
             id: posting._id,
             tournamentId: tournament._id,
-            title: tournament.title,
+            title: tournament.title.replace('{{debateTitle}} - ', ''), // Clean up placeholder if present
             startTime: tournament.startDate,
             duration: tournament.duration || 60,
             location: posting.location || 'TBD',

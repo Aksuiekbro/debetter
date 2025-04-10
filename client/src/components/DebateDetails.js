@@ -46,22 +46,39 @@ const DebateDetails = () => {
       try {
         setLoading(true);
         const response = await api.client.get(`/api/debates/${id}`);
+        
+        if (!response.data) {
+          throw new Error('No data received from server');
+        }
+        
         const data = response.data;
         console.log('Received debate data:', data);
         
-        if (userRole === 'judge' && data.creator._id === userId && 
-            !data.participants.some(p => p._id === userId)) {
-          await handleJoinDebate();
+        // Only attempt to join if we have valid data and conditions are met
+        if (data && userRole === 'judge' && data.creator._id === userId && 
+            !data.participants.some(p => p._id === userId || p._id?.toString() === userId)) {
+          try {
+            await handleJoinDebate();
+          } catch (joinError) {
+            console.error('Error joining debate:', joinError);
+            // Still set the debate data even if join fails
+            setDebate(data);
+          }
         } else {
           setDebate(data);
         }
       } catch (error) {
         console.error('Error fetching debate details:', error);
+        // Set error state and show user-friendly message
+        alert(error.response?.data?.message || t('debateDetails.loadFailedAlert', 'Failed to load debate details. Please try again.'));
       } finally {
         setLoading(false);
       }
     };
-    fetchDebateDetails();
+    
+    if (id) {
+      fetchDebateDetails();
+    }
   }, [id, navigate, userId, userRole]);
 
   useEffect(() => {

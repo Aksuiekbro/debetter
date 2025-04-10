@@ -193,7 +193,6 @@ class TeamService {
     return { success: true, message: 'Team deleted successfully' };
   }
 
-  // TODO: Add method for deleting a team if needed
 }
 
 module.exports = new TeamService();

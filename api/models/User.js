@@ -31,6 +31,13 @@ const userSchema = new mongoose.Schema({
       return this.role === 'judge';
     }
   },
+  phoneNumber: { type: String, trim: true },
+  club: { type: String, trim: true },
+  experience: { type: String },
+  profilePhotoUrl: { type: String }, // URL from cloud storage
+  otherProfileInfo: { type: String },
+  awards: [{ type: String }], // Array of strings for awards
+  judgingStyle: { type: String, trim: true },
   isTestAccount: {
     type: Boolean,
     default: false

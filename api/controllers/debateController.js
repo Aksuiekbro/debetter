@@ -147,10 +147,9 @@ exports.createDebate = async (req, res) => {
         ...debateInput, // title, description, category, etc.
         creator: creator._id,
         status: 'upcoming',
-        participants: [{ // Creator automatically joins
-          _id: creator._id,
-          username: creator.username,
-          role: creator.role
+        participants: [{ // Creator automatically joins as Organizer
+          userId: creator._id,
+          tournamentRole: 'Organizer' // Assign a default role for the creator
         }],
         // Ensure fields not applicable to standard debates are undefined
         mode: undefined,
@@ -251,22 +250,46 @@ exports.leaveDebate = async (req, res) => {
 exports.getDebate = async (req, res) => {
   try {
     const debateId = req.params.id;
-    const debate = await debateService.getDebateById(debateId); // Use the service
-    // The service now handles population and adding counts if needed
-
-    // Service throws error if not found, but double-check just in case
-    if (!debate) {
-       return res.status(404).json({ message: 'Debate not found' });
+    
+    if (!debateId) {
+      return res.status(400).json({ message: 'Debate ID is required' });
     }
 
-    res.json(debate);
+    try {
+      const debate = await debateService.getDebateById(debateId);
+      
+      if (!debate) {
+        return res.status(404).json({ message: 'Debate not found' });
+      }
+
+      // Log the state of participants for debugging
+      console.log('CONTROLLER - Participants:', JSON.stringify({
+        count: debate.participants?.length || 0,
+        hasUserIds: debate.participants?.some(p => p.userId) || false,
+        format: debate.format,
+        counts: debate.counts
+      }, null, 2));
+
+      res.json(debate);
+    } catch (serviceError) {
+      console.error('Service error getting debate:', serviceError);
+      
+      if (serviceError.message === 'Invalid debate ID format') {
+        return res.status(400).json({ message: 'Invalid debate ID format' });
+      }
+      if (serviceError.message === 'Debate not found') {
+        return res.status(404).json({ message: 'Debate not found' });
+      }
+      
+      // For other service errors, return a 500
+      throw serviceError;
+    }
   } catch (error) {
-    console.error('Get debate error:', error);
-    // Handle specific errors from the service if needed
-    if (error.message === 'Debate not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message });
+    console.error('Error in getDebate controller:', error);
+    res.status(500).json({ 
+      message: 'Failed to get debate details',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -1106,6 +1129,54 @@ exports.generateTestData = async (req, res) => {
   }
 };
 
+// Update participant details within a tournament
+exports.updateParticipant = async (req, res) => {
+  try {
+    const { id: debateId, participantUserId } = req.params;
+    const updateData = req.body; // Contains fields like tournamentRole, teamId, etc.
+
+    // TODO: Add validation for updateData here if necessary
+
+    // Call the service function to update the participant
+    // Assuming the service function returns the updated debate or participant info
+    const updatedInfo = await tournamentService.updateParticipantDetails(debateId, participantUserId, updateData);
+
+    res.status(200).json({
+      message: 'Participant updated successfully',
+      data: updatedInfo // Send back updated info (e.g., updated participant object or full debate)
+    });
+
+  } catch (error) {
+    console.error('Error updating participant:', error);
+    if (error.message === 'Debate not found' || error.message === 'Participant not found' || error.message === 'User not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Handle other potential errors (e.g., validation errors from service)
+    res.status(500).json({ message: error.message || 'Failed to update participant' });
+  }
+};
+
+// Delete a participant from a tournament
+exports.deleteParticipant = async (req, res) => {
+  try {
+    const { id: debateId, participantUserId } = req.params;
+
+    // Call the service function to remove the participant
+    // Assuming the service function handles validation (e.g., participant exists)
+    await tournamentService.removeParticipantFromTournament(debateId, participantUserId);
+
+    res.status(200).json({ message: 'Participant removed successfully' });
+
+  } catch (error) {
+    console.error('Error deleting participant:', error);
+    if (error.message === 'Debate not found' || error.message === 'Participant not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Handle other potential errors (e.g., permissions if not handled by middleware/route)
+    res.status(500).json({ message: error.message || 'Failed to remove participant' });
+  }
+};
+
 // Create APF game posting
 exports.createApfPosting = async (req, res) => {
   try {
@@ -1400,5 +1471,384 @@ exports.randomizeTeams = async (req, res) => {
     }
     // Default to 500 for unexpected errors
     res.status(500).json({ message: error.message || 'Failed to randomize teams' });
+  }
+};
+
+// --- Tournament Map Controllers ---
+
+/**
+ * @desc    Upload or replace tournament map image
+ * @route   POST /api/debates/:id/map
+ * @access  Private (Organizer/Admin)
+ */
+exports.uploadMap = async (req, res) => {
+  try {
+    const debateId = req.params.id;
+    const userId = req.user._id; // From protect middleware
+
+    // Check if a file was uploaded by multer
+    if (!req.file) {
+      return res.status(400).json({ message: 'No map image file uploaded.' });
+    }
+
+    const fileBuffer = req.file.buffer;
+    const originalFileName = req.file.originalname;
+    const mimeType = req.file.mimetype;
+
+    // Call the service function
+    const mapUrl = await debateService.uploadTournamentMap(
+      debateId,
+      fileBuffer,
+      originalFileName,
+      mimeType,
+      userId.toString() // Ensure userId is passed as string
+    );
+
+    res.status(200).json({ 
+      message: 'Map uploaded successfully.',
+      mapImageUrl: mapUrl 
+    });
+
+  } catch (error) {
+    console.error('Error uploading tournament map:', error);
+    if (error.message === 'Debate not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message.includes('Not authorized') || error.message.includes('Invalid file type')) {
+      return res.status(403).json({ message: error.message }); // Or 400 for invalid file type
+    }
+    if (error.message === 'Map can only be uploaded for tournaments.') {
+        return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message || 'Failed to upload map.' });
+  }
+};
+
+/**
+ * @desc    Get tournament map image URL
+ * @route   GET /api/debates/:id/map
+ * @access  Private (Authenticated Users)
+ */
+exports.getMap = async (req, res) => {
+  try {
+    const debateId = req.params.id;
+
+    // Call the service function
+    const mapUrl = await debateService.getTournamentMapUrl(debateId);
+
+    // Service returns null if no map or if not a tournament, which is fine
+    res.status(200).json({ mapImageUrl: mapUrl }); 
+
+  } catch (error) {
+    console.error('Error getting tournament map URL:', error);
+    if (error.message === 'Debate not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message || 'Failed to get map URL.' });
+  }
+};
+
+/**
+ * @desc    Delete tournament map image
+ * @route   DELETE /api/debates/:id/map
+ * @access  Private (Organizer/Admin)
+ */
+exports.deleteMap = async (req, res) => {
+  try {
+    const debateId = req.params.id;
+    const userId = req.user._id; // From protect middleware
+
+    // Call the service function
+    await debateService.deleteTournamentMap(debateId, userId.toString());
+
+    res.status(200).json({ message: 'Map deleted successfully.' });
+
+  } catch (error) {
+    console.error('Error deleting tournament map:', error);
+    if (error.message === 'Debate not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message.includes('Not authorized')) {
+      return res.status(403).json({ message: error.message });
+    }
+     if (error.message === 'Map can only be deleted for tournaments.') {
+        return res.status(400).json({ message: error.message });
+    }
+    // Handle case where map didn't exist (service currently doesn't throw error for this)
+    // if (error.message === 'No map image exists to delete.') {
+    //   return res.status(404).json({ message: error.message });
+    // }
+    res.status(500).json({ message: error.message || 'Failed to delete map.' });
+  }
+};
+
+
+// Delete a team from a tournament
+exports.deleteTeam = async (req, res) => {
+  try {
+    const { id: tournamentId, teamId } = req.params;
+
+    // Validate IDs
+    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(teamId)) {
+      return res.status(400).json({ message: 'Invalid Tournament or Team ID format' });
+    }
+
+    // Call the service function to delete the team
+    await teamService.deleteTeam(tournamentId, teamId);
+
+    res.status(200).json({ message: 'Team successfully deleted from tournament' });
+
+  } catch (error) {
+    console.error('Error deleting team:', error);
+    // Handle specific errors from the service (e.g., not found)
+    if (error.message === 'Tournament not found' || error.message === 'Team not found in this tournament') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Generic server error
+    res.status(500).json({ message: error.message || 'Failed to delete team' });
+  }
+};
+
+// Upload recorded audio for a specific posting
+exports.uploadAudio = async (req, res) => {
+  try {
+    const { id: debateId, postingId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No audio file uploaded.' });
+    }
+
+    // Call placeholder service to get a dummy URL
+    // In a real scenario, this would upload to cloud storage and return the actual URL
+    const audioUrl = await postingService.saveAudioUrl(req.file.buffer); // Assuming service handles buffer
+
+    const debate = await Debate.findById(debateId);
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found.' });
+    }
+
+    const posting = debate.postings.id(postingId);
+    if (!posting) {
+      return res.status(404).json({ message: 'Posting not found within the debate.' });
+    }
+
+    posting.recordedAudioUrl = audioUrl;
+    debate.markModified('postings'); // Important when modifying nested arrays/objects
+    await debate.save();
+
+    res.status(200).json({ message: 'Audio URL successfully updated.', posting });
+
+  } catch (error) {
+    console.error('Error uploading audio:', error);
+    res.status(500).json({ message: error.message || 'Failed to upload audio.' });
+  }
+};
+
+// Upload ballot image for a specific posting
+exports.uploadBallot = async (req, res) => {
+  try {
+    const { id: debateId, postingId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No ballot image file uploaded.' });
+    }
+
+    // Call placeholder service to get a dummy URL
+    const imageUrl = await postingService.saveBallotUrl(req.file.buffer); // Assuming service handles buffer
+
+    const debate = await Debate.findById(debateId);
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found.' });
+    }
+
+    const posting = debate.postings.id(postingId);
+    if (!posting) {
+      return res.status(404).json({ message: 'Posting not found within the debate.' });
+    }
+
+    posting.ballotImageUrl = imageUrl;
+    debate.markModified('postings'); // Important when modifying nested arrays/objects
+    await debate.save();
+
+    res.status(200).json({ message: 'Ballot image URL successfully updated.', posting });
+
+  } catch (error) {
+    console.error('Error uploading ballot image:', error);
+    res.status(500).json({ message: error.message || 'Failed to upload ballot image.' });
+  }
+};
+
+
+// Get Judge Leaderboard for a Tournament
+exports.getJudgeLeaderboard = async (req, res) => {
+  try {
+    const tournamentId = req.params.id;
+
+    // Validate if tournamentId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
+      return res.status(400).json({ message: 'Invalid Tournament ID format' });
+    }
+
+    // Fetch the tournament and populate necessary user details for participants
+    const debate = await Debate.findById(tournamentId)
+      .populate({
+        path: 'participants.userId',
+        select: 'username judgeRole profilePhotoUrl' // Select fields from User model
+      })
+      .lean(); // Use lean for performance if we don't need Mongoose documents
+
+    // Check if the tournament exists
+    if (!debate) {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+
+    // Filter participants to include only judges
+    const judges = debate.participants.filter(p => p.tournamentRole === 'Judge' && p.userId); // Ensure userId is populated
+
+    // Define the rank order for sorting
+    const rankOrder = {
+      'Head Judge': 1,
+      'Judge': 2,
+      'Assistant Judge': 3
+    };
+
+    // Map judges to the desired leaderboard format and sort them
+    const leaderboard = judges
+      .map(p => ({
+        id: p.userId._id,
+        name: p.userId.username,
+        rank: p.userId.judgeRole || 'Judge', // Default to 'Judge' if judgeRole is missing
+        photo: p.userId.profilePhotoUrl || null // Handle missing photo URL
+      }))
+      .sort((a, b) => {
+        const rankA = rankOrder[a.rank] || 99; // Assign a high number for unknown ranks
+        const rankB = rankOrder[b.rank] || 99;
+        return rankA - rankB;
+      });
+
+    // Return the sorted leaderboard
+    res.json(leaderboard);
+
+  } catch (error) {
+    console.error('Error fetching judge leaderboard:', error);
+    res.status(500).json({ message: 'Failed to fetch judge leaderboard', error: error.message });
+  }
+};
+
+// Update a specific participant's details within a tournament
+exports.updateParticipant = async (req, res, next) => {
+  try {
+    const { id: tournamentId, participantUserId } = req.params;
+    const updateData = req.body; // e.g., { name, email } - adjust based on what can be updated
+    const requestingUserId = req.user.id; // Assuming organizer check is done by middleware
+
+    // Basic validation
+    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(participantUserId)) {
+      return res.status(400).json({ message: 'Invalid tournament or participant ID format' });
+    }
+    if (!updateData || Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: 'No update data provided' });
+    }
+
+    // Call the service function to update the participant
+    // Assuming a service function exists like this:
+    const updatedParticipant = await tournamentService.updateParticipantDetails(
+        tournamentId,
+        participantUserId,
+        updateData,
+        requestingUserId // Pass requesting user for permission checks within service if needed
+    );
+
+    if (!updatedParticipant) {
+        // Service should throw specific errors, but handle general case
+        return res.status(404).json({ message: 'Participant not found or update failed' });
+    }
+
+    res.status(200).json(updatedParticipant);
+
+  } catch (error) {
+    console.error(`Error updating participant ${participantUserId} in tournament ${tournamentId}:`, error);
+    // Handle specific errors from service
+    if (error.message === 'Tournament not found' || error.message === 'Participant not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message === 'Update forbidden' || error.message.includes('permission')) {
+        return res.status(403).json({ message: error.message });
+    }
+    // Generic error
+    res.status(500).json({ message: error.message || 'Failed to update participant' });
+  }
+}; // End of updateParticipant
+
+
+
+// Delete a specific participant from a tournament
+exports.deleteParticipant = async (req, res, next) => {
+  try {
+    const { id: tournamentId, participantUserId } = req.params;
+    const requestingUserId = req.user.id; // Assuming organizer check is done by middleware
+
+    // Basic validation
+    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(participantUserId)) {
+      return res.status(400).json({ message: 'Invalid tournament or participant ID format' });
+    }
+
+    // Call the service function to delete the participant
+    // Assuming a service function exists like this:
+    const result = await tournamentService.removeParticipant(
+        tournamentId,
+        participantUserId,
+        requestingUserId // Pass requesting user for permission checks within service if needed
+    );
+
+    if (!result || !result.success) { // Check for a success flag or similar from service
+        // Service should throw specific errors, but handle general case
+        return res.status(404).json({ message: result?.message || 'Participant not found or deletion failed' });
+    }
+
+    res.status(200).json({ message: 'Participant deleted successfully' }); // Or 204 No Content
+
+  } catch (error) {
+    console.error(`Error deleting participant ${participantUserId} from tournament ${tournamentId}:`, error);
+    // Handle specific errors from service
+    if (error.message === 'Tournament not found' || error.message === 'Participant not found') {
+      return res.status(404).json({ message: error.message });
+    }
+     if (error.message === 'Deletion forbidden' || error.message.includes('permission')) {
+        return res.status(403).json({ message: error.message });
+    }
+    // Generic error
+    res.status(500).json({ message: error.message || 'Failed to delete participant' });
+  }
+};
+
+
+
+
+
+// Get ranked participant standings for a tournament
+exports.getParticipantStandings = async (req, res) => {
+  try {
+    const tournamentId = req.params.id;
+
+    // Validate tournamentId (basic check)
+    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
+      return res.status(400).json({ message: 'Invalid tournament ID format' });
+    }
+
+    // Call the service function to calculate standings
+    // Assuming the service function is in debateService for now
+    const standings = await debateService.calculateParticipantStandings(tournamentId);
+
+    res.status(200).json(standings);
+
+  } catch (error) {
+    console.error('Error getting participant standings:', error);
+    // Handle specific errors if the service throws them
+    if (error.message === 'Tournament not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    // Generic error response
+    res.status(500).json({ message: error.message || 'Failed to calculate participant standings' });
   }
 };

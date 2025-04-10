@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react'; // Removed unused useContext
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,9 +13,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { api } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import JudgeFeedbackForm from './JudgeFeedbackForm'; // Import the form
 
 const DebaterFeedbackDisplay = () => {
   const { t } = useTranslation();
@@ -25,6 +31,7 @@ const DebaterFeedbackDisplay = () => {
   const [feedbackData, setFeedbackData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [openDialogJudgeId, setOpenDialogJudgeId] = useState(null); // State for dialog visibility and judge ID
 
   useEffect(() => {
     const fetchFeedback = async () => {
@@ -70,6 +77,13 @@ const DebaterFeedbackDisplay = () => {
   // Handle potential array of feedback (if multiple judges)
   const feedbackList = Array.isArray(feedbackData) ? feedbackData : [feedbackData];
 
+  const handleOpenDialog = (judgeId) => {
+    setOpenDialogJudgeId(judgeId);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialogJudgeId(null);
+  };
   return (
     <Box sx={{ mt: 2 }}>
       <Typography variant="h5" gutterBottom>
@@ -115,8 +129,39 @@ const DebaterFeedbackDisplay = () => {
           ) : (
             <Typography variant="body2">{t('feedback.noScoresProvided')}</Typography>
           )}
+
+          {/* Button to provide feedback on this judge */}
+          {feedbackItem.judge?._id && (
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleOpenDialog(feedbackItem.judge._id)}
+              >
+                {t('feedback.provideJudgeFeedbackButton')}
+              </Button>
+            </Box>
+          )}
         </Paper>
       ))}
+
+      {/* Feedback Dialog */}
+      <Dialog open={Boolean(openDialogJudgeId)} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('feedback.provideJudgeFeedbackTitle')}</DialogTitle>
+        <DialogContent>
+          {openDialogJudgeId && ( // Ensure we have an ID before rendering the form
+            <JudgeFeedbackForm
+              postingId={postingId}
+              judgeId={openDialogJudgeId}
+              judgeName={feedbackList.find(f => f.judge?._id === openDialogJudgeId)?.judge?.username || ''}
+              onSubmitSuccess={handleCloseDialog} // Close dialog on successful submission
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>{t('common.cancel')}</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

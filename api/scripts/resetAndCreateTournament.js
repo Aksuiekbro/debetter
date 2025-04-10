@@ -85,10 +85,10 @@ async function main() {
     console.log('Creating tournament...');
     const participants = [];
     for (const judgeId of judgeIDs) {
-      participants.push(judgeId);
+      participants.push({ userId: judgeId, tournamentRole: 'Judge' });
     }
     for (const debaterId of debaterIDs) {
-      participants.push(debaterId);
+      participants.push({ userId: debaterId, tournamentRole: 'Debater' });
     }
 
     const tournament = {

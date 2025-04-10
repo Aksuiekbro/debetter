@@ -20,14 +20,16 @@ async function findTournamentId() {
     // Assuming tournaments are stored in the 'debates' collection based on the Debate model structure
     const collection = database.collection('debates');
 
-    // Find the tournament by name (case-insensitive) and format
-    const tournament = await collection.findOne({
-      name: { $regex: `^${tournamentName}$`, $options: 'i' }, // Case-insensitive match
+    // Find the tournament by title (case-insensitive) and format
+    const filter = {
+      title: { $regex: `^${tournamentName}$`, $options: 'i' }, // Case-insensitive match for 'title'
       format: 'tournament' // Ensure it's a tournament
-    });
+    };
+    console.log('Executing query with filter:', JSON.stringify(filter, null, 2)); // Log the filter
+    const tournament = await collection.findOne(filter);
 
     if (tournament) {
-      console.log(`Found tournament "${tournament.name}" with ID: ${tournament._id}`);
+      console.log(`Found tournament "${tournament.title}" with ID: ${tournament._id}`); // Use tournament.title
       // Output only the ID on a new line for easier capture if needed
       console.log('\nTournament ID:');
       console.log(tournament._id.toString());

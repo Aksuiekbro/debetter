@@ -25,6 +25,7 @@ import {
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { api } from '../config/api';
 
 const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
   const { t } = useTranslation();
@@ -124,7 +125,7 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
         <Button 
           size="small" 
           color="primary"
-          onClick={() => navigate(`/debates/${debate._id}`)}
+          onClick={() => navigate(debate.format === 'tournament' ? `/tournaments/${debate._id}` : `/debates/${debate._id}`)}
         >
           {t('debatesList.card.viewButton', 'View Details')}
         </Button>
@@ -213,7 +214,7 @@ const Debates = () => {
         queryParams.append('difficulty', Array.from(filters.difficulty).join(','));
       }
 
-      const response = await fetch(`http://localhost:5001/api/debates?${queryParams}`);
+      const response = await fetch(`${api.baseUrl}/api/debates?${queryParams}`);
       if (!response.ok) {
         throw new Error(t('debatesList.fetchError', 'Failed to fetch debates'));
       }
@@ -224,13 +225,13 @@ const Debates = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, sortBy, filters]);
+  }, [searchQuery, sortBy, filters, t]);
 
   const getCurrentUser = async () => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const response = await fetch('http://localhost:5001/api/users/profile', {
+        const response = await fetch(`${api.baseUrl}/api/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -277,7 +278,7 @@ const Debates = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5001/api/debates/${debateId}/join`, {
+      const response = await fetch(`${api.baseUrl}/api/debates/${debateId}/join`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -303,7 +304,7 @@ const Debates = () => {
         navigate('/login');
         return;
       }
-      const response = await fetch(`http://localhost:5001/api/debates/${debateId}/leave`, {
+      const response = await fetch(`${api.baseUrl}/api/debates/${debateId}/leave`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

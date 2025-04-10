@@ -7,6 +7,7 @@ const {
     getApfEvaluation, // Added comma here
     getDebaterFeedback // Added for debater feedback
 } = require('../controllers/apfController');
+const { submitFeedback: submitJudgeFeedback } = require('../controllers/judgeFeedbackController'); // Import new controller
 const { protect } = require('../middleware/authMiddleware');
 
 // APF tabulation routes
@@ -22,5 +23,8 @@ router.get('/evaluations/:evaluationId', protect, getApfEvaluation);
 
 // Debater feedback route
 router.get('/feedback/:debateId/:postingId', protect, getDebaterFeedback);
+
+// Judge feedback submission route
+router.post('/postings/:postingId/judge-feedback/:judgeId', protect, submitJudgeFeedback);
 
 module.exports = router;

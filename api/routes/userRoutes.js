@@ -2,13 +2,15 @@ const User = require('../models/User');
 const express = require('express');
 const router = express.Router();
 const { protect, isAdmin, canGenerateTestData } = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware'); // Import upload middleware
 const {
     register,
     login,
     getProfile,
     updateProfile,
     sendFriendRequest,
-    registerTestUsers
+    registerTestUsers,
+    updateProfilePhoto // Import the new controller function
 } = require('../controllers/authController');
 const aiService = require('../services/aiService');
 
@@ -20,6 +22,7 @@ router.post('/register-test-users', protect, canGenerateTestData, registerTestUs
 // Profile routes
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateProfile);
+router.post('/profile/photo', protect, upload.single('profilePhoto'), updateProfilePhoto); // Add profile photo upload route
 
 // Friend request routes
 router.post('/:id/friend', protect, sendFriendRequest);

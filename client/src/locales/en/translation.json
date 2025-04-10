@@ -11,5 +11,67 @@
     "login": "Login",
     "register": "Register",
     "search_placeholder": "Search debates..."
+  },
+  "common": {
+    "notAvailable": "N/A"
+  },
+  "profile": {
+    "role": {
+      "debater": "Debater",
+      "judge": "Judge",
+      "organizer": "Organizer"
+    },
+    "error": {
+      "updateFailed": "Failed to update profile",
+      "loginToAddFriend": "Please log in to add friends",
+      "friendRequestFailed": "Failed to send friend request",
+      "fetchFailed": "Failed to fetch profile"
+    },
+    "alert": {
+      "friendRequestSent": "Friend request sent successfully!"
+    },
+    "button": {
+      "retry": "Retry",
+      "editInfo": "Edit info & settings",
+      "addFriend": "Add friend",
+      "addNewDebate": "Add new debate"
+    },
+    "interests": {
+      "placeholder": "Add some interests to show what topics you like"
+    },
+    "bio": {
+      "placeholder": "Add your bio to let others know about you"
+    },
+    "stats": {
+      "debates": "DEBATES",
+      "wins": "WINS",
+      "ongoing": "ONGOING",
+      "judged": "JUDGED"
+    },
+    "tabs": {
+      "debatesPlaceholder": "Your debates will appear here",
+      "winsPlaceholder": "Your winning debates will appear here",
+      "ongoingPlaceholder": "Your ongoing debates will appear here",
+      "judgedPlaceholder": "Debates you've judged will appear here"
+    },
+    "editDialog": {
+      "title": "Edit Profile",
+      "bioLabel": "Bio",
+      "interestsLabel": "Interests",
+      "addInterestLabel": "Add new interest",
+      "addButton": "Add",
+      "cancelButton": "Cancel",
+      "saveButton": "Save"
+    },
+    "phoneLabel": "Phone:",
+    "clubLabel": "Club:",
+    "experienceLabel": "Experience:",
+    "rankLabel": "Rank:",
+    "awardsLabel": "Awards:",
+    "otherInfoLabel": "Other Info:",
+    "judgeInfoTitle": "Judge Information",
+    "awards": {
+      "placeholder": "No awards listed"
+    }
   }
 }

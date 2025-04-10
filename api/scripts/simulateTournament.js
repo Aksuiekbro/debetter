@@ -283,7 +283,7 @@ const main = async () => {
     const tournaments = await Debate.find({
       format: 'tournament',
       title: 'Qamqor Cup'
-    }).populate('participants');
+    }).populate({ path: 'participants.userId', model: 'User' }); // Populate userId within participants
     
     if (tournaments.length === 0) {
       console.error('Tournament not found');
@@ -294,18 +294,20 @@ const main = async () => {
     console.log(`Found tournament: ${tournament.title}`);
     
     // Extract debaters and judges
-    const debaters = tournament.participants.filter(p => p.role !== 'judge');
-    const judges = tournament.participants.filter(p => p.role === 'judge');
+    // Filter based on tournamentRole, accessing populated user via p.userId if needed
+    const debaters = tournament.participants.filter(p => p.tournamentRole === 'Debater');
+    const judges = tournament.participants.filter(p => p.tournamentRole === 'Judge');
     
     console.log(`Found ${debaters.length} debaters and ${judges.length} judges`);
 
     // Find the Head Judge (assuming username 'judge_aibek' identifies them)
-    const headJudge = judges.find(j => j.username === 'judge_aibek');
-    if (!headJudge) {
-        console.error('Head Judge (judge_aibek) not found among participants!');
+    // Find head judge by checking the populated userId's username
+    const headJudgeParticipant = judges.find(p => p.userId && p.userId.username === 'judge_aibek');
+    if (!headJudgeParticipant || !headJudgeParticipant.userId) {
+        console.error('Head Judge (judge_aibek) not found among participants or userId not populated!');
         process.exit(1);
     }
-    const headJudgeId = headJudge._id;
+    const headJudgeId = headJudgeParticipant.userId._id; // Get ID from populated user
     console.log(`Found Head Judge ID: ${headJudgeId}`);
     
     // Create teams
@@ -331,7 +333,7 @@ const main = async () => {
     // Create postings
     const postings = createPostings(
       { teams: updatedTeams, tournamentRounds: simulatedRounds },
-      judges,
+      judges.map(p => p.userId), // Pass the array of populated User documents
       headJudgeId // Pass headJudgeId
     );
     console.log(`Created ${postings.length} postings`);
