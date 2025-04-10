@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
@@ -19,6 +19,11 @@ import ApfJudgeEvaluation from './components/ApfJudgeEvaluation';
 import TeamRegistrationForm from './components/TeamRegistrationForm';
 import PostingDetails from './components/PostingDetails';
 import LandingPage from './components/LandingPage';
+import CreateTournamentForm from './components/CreateTournamentForm';
+import DebaterFeedbackDisplay from './components/DebaterFeedbackDisplay';
+import NotificationSettings from './components/NotificationSettings'; // Import NotificationSettings
+import ActiveJudgeInterface from './components/ActiveJudgeInterface'; // Import the new interface
+import JudgeLeaderboard from './components/JudgeLeaderboard'; // Import JudgeLeaderboard
 
 const theme = createTheme({
   palette: {
@@ -60,7 +65,7 @@ function App() {
         <div className="App">
           <Routes>
             {/* Landing page route */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<Navigate to="/home" replace />} />
             
             {/* All other routes with Navbar */}
             <Route element={<MainLayout />}>
@@ -75,12 +80,25 @@ function App() {
               <Route path="/tournaments" element={<Tournaments />} />
               <Route path="/tournaments/:id" element={<TournamentDetail />} />
               <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
-              <Route path="/judge-panel" element={<JudgePanel />} />
+              <Route path="/tournaments/:id/judge-leaderboard" element={<JudgeLeaderboard />} />
+              <Route path="/create-tournament" element={<CreateTournamentForm />} />
+              <Route
+                path="/judge-panel"
+                element={
+                  ['judge', 'admin'].includes(localStorage.getItem('userRole'))
+                  ? <JudgePanel />
+                  : <Navigate to="/home" replace />
+                }
+              />
               <Route path="/tabulation" element={<ApfTabulation />} />
               <Route path="/debates/:id/evaluate" element={<ApfJudgeEvaluation />} />
               <Route path="/debates/:id/register-team" element={<TeamRegistrationForm />} />
               <Route path="/debates/:id/postings/:postingId" element={<PostingDetails />} />
-            </Route>
+              <Route path="/feedback/:debateId/:postingId" element={<DebaterFeedbackDisplay />} />
+              {/* Add Notification Settings Route */}
+              <Route path="/settings/notifications" element={<NotificationSettings />} />
+              <Route path="/judge/:debateId/:postingId" element={<ActiveJudgeInterface />} />
+           </Route>
           </Routes>
         </div>
       </Router>

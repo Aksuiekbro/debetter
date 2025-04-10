@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+// import ParticipantStandings from '../ParticipantStandings'; // Removed - Component not found
 import {
   Box,
   Typography,
@@ -9,15 +11,20 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  Divider // Import Divider
 } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material'; // Changed from ShuffleIcon
 
 const StandingsTab = ({
   teams = [], // Expects teams array already potentially updated with standings data
   onRefreshStandings, // Function to trigger fetching standings
-  loading // Optional: pass loading state if standings refresh is slow
+  loading, // Optional: pass loading state if standings refresh is slow
+  currentUser, // Added prop (for consistency, not used for hiding controls here)
+  tournamentCreatorId, // Added prop (for consistency, not used for hiding controls here)
 }) => {
+
+  const { t } = useTranslation();
 
   // Sort teams by wins (primary) and points (secondary) for display
   const sortedTeams = [...teams].sort((a, b) => {
@@ -28,14 +35,14 @@ const StandingsTab = ({
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Tournament Standings</Typography>
+        <Typography variant="h6">{t('standingsTab.title', 'Tournament Standings')}</Typography>
         <Button
           variant="outlined"
           onClick={onRefreshStandings}
           startIcon={<RefreshIcon />}
           disabled={loading} // Disable button while refreshing
         >
-          Refresh Standings
+          {t('standingsTab.refreshButton', 'Refresh Standings')}
         </Button>
       </Box>
 
@@ -43,11 +50,11 @@ const StandingsTab = ({
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Rank</TableCell>
-              <TableCell>Team</TableCell>
-              <TableCell align="right">Wins</TableCell>
-              <TableCell align="right">Losses</TableCell>
-              <TableCell align="right">Points</TableCell>
+              <TableCell>{t('standingsTab.headerRank', 'Rank')}</TableCell>
+              <TableCell>{t('standingsTab.headerTeam', 'Team')}</TableCell>
+              <TableCell align="right">{t('standingsTab.headerWins', 'Wins')}</TableCell>
+              <TableCell align="right">{t('standingsTab.headerLosses', 'Losses')}</TableCell>
+              <TableCell align="right">{t('standingsTab.headerPoints', 'Points')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -62,12 +69,17 @@ const StandingsTab = ({
             ))}
             {sortedTeams.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">No teams available</TableCell>
+                <TableCell colSpan={5} align="center">{t('standingsTab.noTeams', 'No teams available')}</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Add a separator and the Participant Standings component */}
+      <Divider sx={{ my: 3 }} />
+      {/* <ParticipantStandings /> - Removed, component not found */}
+
     </Box>
   );
 };

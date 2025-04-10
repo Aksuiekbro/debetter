@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogActions,
@@ -15,18 +16,19 @@ const DeleteConfirmationDialog = ({
   itemName = 'item', // Default item name
   loading = false // Optional loading state for the confirm button
 }) => {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Confirm Delete</DialogTitle>
+      <DialogTitle>{t('deleteDialog.title', 'Confirm Delete')}</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          Are you sure you want to delete this {itemName}? This action cannot be undone.
+          {t('deleteDialog.message', 'Are you sure you want to delete this {{item}}? This action cannot be undone.', { item: itemName })}
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button onClick={onClose} disabled={loading}>{t('deleteDialog.cancelButton', 'Cancel')}</Button>
         <Button onClick={onConfirm} color="error" disabled={loading}>
-          {loading ? 'Deleting...' : 'Delete'}
+          {loading ? t('deleteDialog.deletingButton', 'Deleting...') : t('deleteDialog.deleteButton', 'Delete')}
         </Button>
       </DialogActions>
     </Dialog>

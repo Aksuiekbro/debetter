@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { MongoClient, ObjectId } = require('mongodb');
+const bcrypt = require('bcryptjs');
 
 // Fixed dates to use
 const JAN_15_2025 = new Date('2025-01-15T12:00:00Z');
@@ -43,9 +44,10 @@ async function main() {
     ];
 
     for (const judge of judges) {
-      const result = await db.collection('users').insertOne(judge);
-      judgeIDs.push(result.insertedId);
-    }
+          const hashedPassword = await bcrypt.hash(judge.password, 10); // Hash the password
+          const result = await db.collection('users').insertOne({ ...judge, password: hashedPassword }); // Insert with hashed password
+          judgeIDs.push(result.insertedId);
+        }
     console.log(`Created ${judges.length} judges`);
 
     // Create Kazakh debaters
@@ -63,12 +65,13 @@ async function main() {
       // Use prefixed username for backend uniqueness
       const username = `debater_${name.toLowerCase()}${i+1}`;
       const email = `${name.toLowerCase()}${i+1}@turan.edu.kz`;
+      const hashedPassword = await bcrypt.hash('password123', 10); // Hash the password
       const debater = {
-        username, // Backend unique username 
+        username, // Backend unique username
         name, // Set to just the name for display
         email,
         role: 'user',
-        password: 'password123',
+        password: hashedPassword, // Use hashed password
         isTestAccount: true,
         createdAt: getRandomEnrollDate() // Explicit enrollment date before Feb 15
       };
@@ -82,10 +85,10 @@ async function main() {
     console.log('Creating tournament...');
     const participants = [];
     for (const judgeId of judgeIDs) {
-      participants.push(judgeId);
+      participants.push({ userId: judgeId, tournamentRole: 'Judge' });
     }
     for (const debaterId of debaterIDs) {
-      participants.push(debaterId);
+      participants.push({ userId: debaterId, tournamentRole: 'Debater' });
     }
 
     const tournament = {

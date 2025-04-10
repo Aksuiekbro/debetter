@@ -13,13 +13,18 @@
     "axios": "^1.7.9",
     "date-fns": "^2.30.0",
     "framer-motion": "^6.5.1",
+    "i18next": "^24.2.3",
+    "i18next-browser-languagedetector": "^8.0.4",
+    "i18next-http-backend": "^3.0.2",
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
     "react-brackets": "^0.4.7",
     "react-dom": "^18.3.1",
+    "react-i18next": "^15.4.1",
     "react-icons": "^5.5.0",
     "react-router-dom": "^6.29.0",
     "react-scripts": "5.0.1",
+    "socket.io-client": "^4.8.1",
     "web-vitals": "^4.2.4"
   },
   "scripts": {
@@ -49,6 +54,8 @@
   "proxy": "http://localhost:5001",
   "devDependencies": {
     "@testing-library/react": "^16.2.0",
-    "@testing-library/user-event": "^14.6.1"
+    "@testing-library/user-event": "^14.6.1",
+    "ajv": "^8.17.1",
+    "puppeteer": "^24.6.0"
   }
 }

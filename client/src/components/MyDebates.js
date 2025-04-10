@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Typography, 
-  Box, 
-  Grid, 
-  Card, 
-  CardContent, 
+import {
+  Container,
+  Typography,
+  Box,
+  Grid,
+  Card,
+  CardContent,
   CardActions,
-  Button, 
-  Divider, 
-  Tabs, 
-  Tab, 
+  Button,
+  Divider,
+  Tabs,
+  Tab,
   Chip,
   CircularProgress,
   Alert,
@@ -18,6 +18,7 @@ import {
   Paper
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { api } from '../config/api';
 import { getAuthHeaders } from '../utils/auth';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -44,16 +45,17 @@ function TabPanel(props) {
 }
 
 // Define DebateCard outside MyDebates
-const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, loadingAssignments }) => { // Add loadingAssignments prop
+const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, loadingAssignments, t }) => { // Added t to props
   const isTournament = debate.format === 'tournament';
   
   const getStatusColor = (status) => {
     switch (status) {
-      case 'upcoming': return 'primary';
+      case 'upcoming': return 'primary'; // Keep color logic
       case 'in-progress': return 'warning';
       case 'completed': return 'success';
       default: return 'default';
     }
+    // Status translation logic moved to where it's displayed
   };
 
   // Find judge assignments for this tournament
@@ -100,7 +102,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
             {isTournament && (
               <Chip
                 size="small"
-                label="Tournament"
+                label={t('myDebates.card.tournamentChip', 'Tournament')}
                 color="secondary"
                 sx={{ ml: 1 }}
               />
@@ -116,7 +118,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
             >
               <Chip
                 icon={<GavelIcon />}
-                label="Judge Assignments"
+                label={t('myDebates.card.judgeAssignmentsChip', 'Judge Assignments')}
                 variant="outlined"
                 color="primary"
                 sx={{ ml: 2 }}
@@ -128,19 +130,19 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
         <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Chip
             size="small"
-            label={`Status: ${debate.status}`}
+            label={`${t('myDebates.card.statusLabel', 'Status:')} ${t(`myDebates.status.${debate.status?.replace('-', '') || 'default'}`, debate.status || 'Unknown')}`}
             color={getStatusColor(debate.status)}
             variant="outlined"
           />
           <Chip
             size="small"
-            label={`Category: ${debate.category}`}
+            label={`${t('myDebates.card.categoryLabel', 'Category:')} ${debate.category}`}
             color="primary"
             variant="outlined"
           />
           <Chip
             size="small"
-            label={`Difficulty: ${debate.difficulty}`}
+            label={`${t('myDebates.card.difficultyLabel', 'Difficulty:')} ${debate.difficulty}`}
             color="primary"
             variant="outlined"
           />
@@ -151,7 +153,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
         </Typography>
         
         <Typography variant="body2" sx={{ mt: 2 }}>
-          Start Date: {new Date(debate.startDate).toLocaleString()}
+          {t('myDebates.card.startDateLabel', 'Start Date:')} {new Date(debate.startDate).toLocaleString()}
         </Typography>
         
         {/* Display assigned games for judges */}
@@ -159,7 +161,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
           <>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Your Judge Assignments
+              {t('myDebates.card.yourJudgeAssignmentsTitle', 'Your Judge Assignments')}
             </Typography>
             <Grid container spacing={2}>
               {tournamentAssignments.map((assignment, index) => (
@@ -167,22 +169,22 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>
-                        Judge Assignment #{index + 1}
+                        {t('myDebates.card.judgeAssignmentTitle', 'Judge Assignment #{{index}}', { index: index + 1 })}
                       </Typography>
                       
                       {/* Team 1 Section with Players */}
                       <Box sx={{ mb: 1.5, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
                         <Typography variant="body2" fontWeight="bold" color="primary">
-                          Team 1 (Gov): {assignment.team1.name}
+                          {t('myDebates.card.team1GovLabel', 'Team 1 (Gov):')} {assignment.team1.name}
                         </Typography>
                         {assignment.team1.leader && (
                           <Typography variant="body2" sx={{ pl: 1 }}>
-                            • Leader: {assignment.team1.leader.name}
+                            {t('myDebates.card.leaderRolePrefix', '• Leader:')} {assignment.team1.leader.name}
                           </Typography>
                         )}
                         {assignment.team1.speaker && (
                           <Typography variant="body2" sx={{ pl: 1 }}>
-                            • Speaker: {assignment.team1.speaker.name}
+                            {t('myDebates.card.speakerRolePrefix', '• Speaker:')} {assignment.team1.speaker.name}
                           </Typography>
                         )}
                       </Box>
@@ -190,32 +192,32 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                       {/* Team 2 Section with Players */}
                       <Box sx={{ mb: 1.5, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
                         <Typography variant="body2" fontWeight="bold" color="secondary">
-                          Team 2 (Opp): {assignment.team2.name}
+                          {t('myDebates.card.team2OppLabel', 'Team 2 (Opp):')} {assignment.team2.name}
                         </Typography>
                         {assignment.team2.leader && (
                           <Typography variant="body2" sx={{ pl: 1 }}>
-                            • Leader: {assignment.team2.leader.name}
+                            {t('myDebates.card.leaderRolePrefix', '• Leader:')} {assignment.team2.leader.name}
                           </Typography>
                         )}
                         {assignment.team2.speaker && (
                           <Typography variant="body2" sx={{ pl: 1 }}>
-                            • Speaker: {assignment.team2.speaker.name}
+                            {t('myDebates.card.speakerRolePrefix', '• Speaker:')} {assignment.team2.speaker.name}
                           </Typography>
                         )}
                       </Box>
                       
                       <Typography variant="body2">
-                        <strong>Theme:</strong> {assignment.theme}
+                        <strong>{t('myDebates.card.themeLabel', 'Theme:')}</strong> {assignment.theme}
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Location:</strong> {assignment.location}
+                        <strong>{t('myDebates.card.locationLabel', 'Location:')}</strong> {assignment.location}
                       </Typography>
                       
                       {/* Other judges section */}
                       {assignment.otherJudges && assignment.otherJudges.length > 0 && (
                         <Box sx={{ mt: 1 }}>
                           <Typography variant="body2">
-                            <strong>Co-Judges:</strong> {assignment.otherJudges.map(j => j.name).join(', ')}
+                            <strong>{t('myDebates.card.coJudgesLabel', 'Co-Judges:')}</strong> {assignment.otherJudges.map(j => j.name).join(', ')}
                           </Typography>
                         </Box>
                       )}
@@ -223,7 +225,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                       <Typography variant="body2" component="div" sx={{ mt: 1 }}>
                         <Chip
                           size="small"
-                          label={assignment.status === 'evaluated' ? 'Evaluated' : 'Pending Evaluation'}
+                          label={assignment.status === 'evaluated' ? t('myDebates.card.evaluatedStatus', 'Evaluated') : t('myDebates.card.pendingEvaluationStatus', 'Pending Evaluation')}
                           color={assignment.status === 'evaluated' ? 'success' : 'primary'}
                         />
                       </Typography>
@@ -244,7 +246,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                           }
                         }}
                       >
-                        {assignment.status === 'evaluated' ? 'View Evaluation' : 'Evaluate'}
+                        {assignment.status === 'evaluated' ? t('myDebates.card.viewEvaluationButton', 'View Evaluation') : t('myDebates.card.evaluateButton', 'Evaluate')}
                       </Button>
                     </CardActions>
                   </Card>
@@ -260,7 +262,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ color: 'success.main', display: 'flex', alignItems: 'center' }}>
               <EmojiEventsIcon sx={{ mr: 1 }} />
-              Your Debate Feedback & Evaluations
+              {t('myDebates.card.feedbackTitle', 'Your Debate Feedback & Evaluations')}
             </Typography>
             <Grid container spacing={2}>
               {userCompletedPostings.map((posting, index) => {
@@ -276,10 +278,10 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                 let userRole = '';
                 if (inTeam1 && posting.team1Members) {
                   const member = posting.team1Members.find(m => m.userId?._id === userId || m.userId === userId);
-                  userRole = member?.role === 'leader' ? 'Leader' : 'Speaker';
+                  userRole = member?.role === 'leader' ? t('myDebates.card.leaderRole', 'Leader') : t('myDebates.card.speakerRole', 'Speaker');
                 } else if (!inTeam1 && posting.team2Members) {
                   const member = posting.team2Members.find(m => m.userId?._id === userId || m.userId === userId);
-                  userRole = member?.role === 'leader' ? 'Leader' : 'Speaker';
+                  userRole = member?.role === 'leader' ? t('myDebates.card.leaderRole', 'Leader') : t('myDebates.card.speakerRole', 'Speaker');
                 }
                 
                 // Get feedback for the user's team
@@ -306,17 +308,17 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                       <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                           <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-                            Game: {posting.theme}
+                            {t('myDebates.card.gameLabel', 'Game:')} {posting.theme}
                           </Typography>
                           {isWinner ? (
                             <Chip
-                              label="Winner" 
+                              label={t('myDebates.card.winnerChip', 'Winner')}
                               color="success"
                               size="small"
                             />
                           ) : (
                             <Chip
-                              label="Completed" 
+                              label={t('myDebates.card.completedChip', 'Completed')}
                               color="primary"
                               size="small"
                             />
@@ -324,9 +326,9 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                         </Box>
                         
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-                          <Chip size="small" label={`Your Team: ${userTeamName || 'Team'}`} />
-                          <Chip size="small" label={`Role: ${userRole}`} variant="outlined" />
-                          <Chip size="small" label={`Opponent: ${opponentTeamName || 'Team'}`} variant="outlined" />
+                          <Chip size="small" label={`${t('myDebates.card.yourTeamLabel', 'Your Team:')} ${userTeamName || t('myDebates.card.teamPlaceholder', 'Team')}`} />
+                          <Chip size="small" label={`${t('myDebates.card.roleLabel', 'Role:')} ${userRole}`} variant="outlined" />
+                          <Chip size="small" label={`${t('myDebates.card.opponentLabel', 'Opponent:')} ${opponentTeamName || t('myDebates.card.teamPlaceholder', 'Team')}`} variant="outlined" />
                         </Box>
                         
                         <Grid container spacing={2}>
@@ -334,13 +336,13 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                           <Grid item xs={12} sm={6}>
                             <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
                               <Typography variant="subtitle2" gutterBottom color="primary">
-                                Team Score
+                                {t('myDebates.card.teamScoreTitle', 'Team Score')}
                               </Typography>
                               <Typography variant="h4" color="primary.main" gutterBottom>
-                                {teamScore || '0'} points
+                                {teamScore || '0'}{t('myDebates.card.pointsSuffix', ' points')}
                               </Typography>
                               <Typography variant="body2">
-                                {teamFeedback || 'No specific team feedback provided.'}
+                                {teamFeedback || t('myDebates.card.noTeamFeedback', 'No specific team feedback provided.')}
                               </Typography>
                             </Paper>
                           </Grid>
@@ -350,19 +352,19 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                             <Grid item xs={12} sm={6}>
                               <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
                                 <Typography variant="subtitle2" gutterBottom color="primary">
-                                  Individual Performance
+                                  {t('myDebates.card.individualPerformanceTitle', 'Individual Performance')}
                                 </Typography>
                                 <Typography variant="body2" gutterBottom>
-                                  <strong>Matter:</strong> {userScore.matter}/30
+                                  <strong>{t('myDebates.card.matterLabel', 'Matter:')}</strong> {userScore.matter}/30
                                 </Typography>
                                 <Typography variant="body2" gutterBottom>
-                                  <strong>Method:</strong> {userScore.method}/30
+                                  <strong>{t('myDebates.card.methodLabel', 'Method:')}</strong> {userScore.method}/30
                                 </Typography>
                                 <Typography variant="body2" gutterBottom>
-                                  <strong>Manner:</strong> {userScore.manner}/30
+                                  <strong>{t('myDebates.card.mannerLabel', 'Manner:')}</strong> {userScore.manner}/30
                                 </Typography>
                                 <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
-                                  Total: {userScore.matter + userScore.method + userScore.manner}/90
+                                  {t('myDebates.card.totalLabel', 'Total:')} {userScore.matter + userScore.method + userScore.manner}/90
                                 </Typography>
                               </Paper>
                             </Grid>
@@ -372,10 +374,10 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                         {/* Judge's Comments */}
                         <Box sx={{ mt: 2 }}>
                           <Typography variant="subtitle2" gutterBottom color="primary">
-                            Judge's Overall Comments
+                            {t('myDebates.card.judgesOverallCommentsTitle', "Judge's Overall Comments")}
                           </Typography>
                           <Typography variant="body2" sx={{ fontStyle: 'italic', pl: 1, borderLeft: '2px solid', borderColor: 'primary.light', py: 0.5 }}>
-                            "{posting.evaluation.comments || 'No overall comments provided.'}"
+                            "{posting.evaluation.comments || t('myDebates.card.noOverallComments', 'No overall comments provided.')}"
                           </Typography>
                         </Box>
                       </CardContent>
@@ -385,7 +387,14 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                           color="primary"
                           onClick={() => navigate(`/debates/${debate._id}/postings/${posting._id}`)}
                         >
-                          View Full Evaluation
+                          {t('myDebates.card.viewFullEvaluationButton', 'View Full Evaluation')}
+                        </Button>
+                        <Button
+                          size="small"
+                          color="secondary" // Use a different color to distinguish
+                          onClick={() => navigate(`/feedback/${debate._id}/${posting._id}`)}
+                        >
+                          {t('myDebates.card.viewFeedbackButton', 'View Feedback')}
                         </Button>
                       </CardActions>
                     </Card>
@@ -401,7 +410,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
           <>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Tournament Games
+              {t('myDebates.card.tournamentGamesTitle', 'Tournament Games')}
             </Typography>
             <Grid container spacing={2}>
               {debate.postings.map((posting, index) => (
@@ -409,22 +418,22 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>
-                        Game #{index + 1}
+                        {t('myDebates.card.gameTitle', 'Game #{{index}}', { index: index + 1 })}
                       </Typography>
                       
                       {/* Try to display team names if available */}
                       {posting.team1Name && posting.team2Name && (
                         <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Teams:</strong> {posting.team1Name} vs {posting.team2Name}
+                          <strong>{t('myDebates.card.teamsLabel', 'Teams:')}</strong> {posting.team1Name}{t('myDebates.card.vsSeparator', ' vs ')}{posting.team2Name}
                         </Typography>
                       )}
                       
                       {/* Display team members if available */}
                       {posting.team1Members && posting.team1Members.length > 0 && (
                         <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem' }}>
-                          <strong>Team 1:</strong> {posting.team1Members.map(member => (
-                            member.userId?.username ? 
-                              `${member.role === 'leader' ? 'Leader' : 'Speaker'}: ${member.userId.username}` 
+                          <strong>{t('myDebates.card.team1Label', 'Team 1:')}</strong> {posting.team1Members.map(member => (
+                            member.userId?.username ?
+                              `${member.role === 'leader' ? t('myDebates.card.leaderRole', 'Leader') : t('myDebates.card.speakerRole', 'Speaker')}: ${member.userId.username}`
                               : null
                           )).filter(Boolean).join(', ')}
                         </Typography>
@@ -432,32 +441,32 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                       
                       {posting.team2Members && posting.team2Members.length > 0 && (
                         <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem' }}>
-                          <strong>Team 2:</strong> {posting.team2Members.map(member => (
-                            member.userId?.username ? 
-                              `${member.role === 'leader' ? 'Leader' : 'Speaker'}: ${member.userId.username}` 
+                          <strong>{t('myDebates.card.team2Label', 'Team 2:')}</strong> {posting.team2Members.map(member => (
+                            member.userId?.username ?
+                              `${member.role === 'leader' ? t('myDebates.card.leaderRole', 'Leader') : t('myDebates.card.speakerRole', 'Speaker')}: ${member.userId.username}`
                               : null
                           )).filter(Boolean).join(', ')}
                         </Typography>
                       )}
                       
                       <Typography variant="body2">
-                        <strong>Theme:</strong> {posting.theme}
+                        <strong>{t('myDebates.card.themeLabel', 'Theme:')}</strong> {posting.theme}
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Location:</strong> {posting.location}
+                        <strong>{t('myDebates.card.locationLabel', 'Location:')}</strong> {posting.location}
                       </Typography>
                       {/* Use component="div" to avoid nesting div (Chip) inside p (Typography) */}
                       <Typography variant="body2" component="div">
                         <Chip
                           size="small"
-                          label={posting.status === 'completed' ? 'Completed' : 'Scheduled'}
+                          label={posting.status === 'completed' ? t('myDebates.card.completedChip', 'Completed') : t('myDebates.card.scheduledStatus', 'Scheduled')}
                           color={posting.status === 'completed' ? 'success' : 'primary'}
                           sx={{ mt: 1 }}
                         />
                         {posting.winner && (
                           <Chip
                             size="small"
-                            label={`Winner: ${posting.winnerName || 'Team'}`}
+                            label={`${t('myDebates.card.winnerLabel', 'Winner:')} ${posting.winnerName || t('myDebates.card.teamPlaceholder', 'Team')}`}
                             color="success"
                             sx={{ mt: 1, ml: 1 }}
                           />
@@ -624,7 +633,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
           color="primary"
           onClick={() => navigate(`/debates/${debate._id}`)}
         >
-          View Details
+          {t('myDebates.card.viewDetailsButton', 'View Details')}
         </Button>
         {debate.format === 'tournament' && (
           <Button
@@ -650,6 +659,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
 };
 
 const MyDebates = () => {
+  const { t } = useTranslation(); // Add useTranslation hook
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [debates, setDebates] = useState({ created: [], participated: [] });
@@ -743,8 +753,8 @@ const MyDebates = () => {
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="debate tabs">
-          <Tab label="Participated" />
-          <Tab label="Created" />
+          <Tab label={t('myDebates.tabs.participated', 'Participated')} />
+          <Tab label={t('myDebates.tabs.created', 'Created')} />
         </Tabs>
       </Box>
 
@@ -757,20 +767,20 @@ const MyDebates = () => {
               onClick={() => navigate('/judge-panel')}
               startIcon={<GavelIcon />}
             >
-              {judgeAssignments.filter(a => a.status === 'pending').length > 0 
-                ? `Judge Panel (${judgeAssignments.filter(a => a.status === 'pending').length} pending)` 
-                : 'Judge Panel'}
+              {judgeAssignments.filter(a => a.status === 'pending').length > 0
+                ? t('myDebates.judgePanelButtonPending', 'Judge Panel ({{count}} pending)', { count: judgeAssignments.filter(a => a.status === 'pending').length })
+                : t('myDebates.judgePanelButton', 'Judge Panel')}
             </Button>
           </Box>
         )}
         
         {debates.participated.length === 0 ? (
           <Alert severity="info">
-            You haven't joined any debates yet. Browse available debates to participate.
+            {t('myDebates.noParticipatedDebates', "You haven't joined any debates yet. Browse available debates to participate.")}
           </Alert>
         ) : (
           debates.participated.map(debate => (
-            <DebateCard
+            <DebateCard t={t}
               key={debate._id}
               debate={debate}
               navigate={navigate}
@@ -786,11 +796,11 @@ const MyDebates = () => {
       <TabPanel value={tabValue} index={1}>
         {debates.created.length === 0 ? (
           <Alert severity="info">
-            You haven't created any debates yet. Click the button below to host a new debate.
+            {t('myDebates.noCreatedDebates', "You haven't created any debates yet. Click the button below to host a new debate.")}
           </Alert>
         ) : (
           debates.created.map(debate => (
-            <DebateCard
+            <DebateCard t={t}
               key={debate._id}
               debate={debate}
               navigate={navigate}
@@ -807,7 +817,7 @@ const MyDebates = () => {
             color="primary"
             onClick={() => navigate('/host')}
           >
-            Host a New Debate
+            {t('myDebates.hostNewDebateButton', 'Host a New Debate')}
           </Button>
         </Box>
       </TabPanel>

@@ -18,7 +18,7 @@ exports.register = async (req, res) => {
     const rawRole = req.body.role;
     console.log('Raw role captured:', rawRole);
     
-    const { username, email, password } = req.body;
+    const { username, email, password, judgeRole, experience, club, phoneNumber, otherProfileInfo } = req.body; // Destructure new fields
     
     if (!username || !email || !password) {
       console.log('Missing required fields');
@@ -36,12 +36,25 @@ exports.register = async (req, res) => {
     console.log('Using direct role value:', userRole);
     
     // Create user with exactly the role that was received
-    const user = await User.create({
+    // Prepare data for user creation
+    // Prepare data for user creation, including new fields
+    const userData = {
       username,
       email,
       password,
-      role: userRole // Use the exact role from the request
-    });
+      role: userRole, // Use the exact role from the request
+      experience,     // Add new fields
+      club,
+      phoneNumber,
+      otherProfileInfo
+    };
+
+    // Conditionally add judgeRole if the role is 'judge'
+    if (userRole === 'judge') {
+      userData.judgeRole = judgeRole;
+    }
+
+    const user = await User.create(userData);
 
     console.log('FINAL USER OBJECT:', {
       _id: user._id,
@@ -73,17 +86,23 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
+      console.log('[Login Controller] Password matched successfully for:', user.email);
+      console.log('[Login Controller] Attempting to generate token...');
+      const token = generateToken(user._id); // Generate token explicitly
+      console.log('[Login Controller] Token generated successfully.');
+      console.log('[Login Controller] Attempting to send success response...');
       res.json({
         _id: user._id,
         username: user.username,
         email: user.email,
         role: user.role, // Include the role in the response
-        token: generateToken(user._id)
+        token: token // Use the generated token
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
+    console.error('[Login Controller] Error during login:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -97,11 +116,13 @@ exports.getProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Return all relevant user details, including new judge-specific fields
     res.json({
       _id: user._id,
       username: user.username,
       email: user.email,
-      role: user.role, // Include the role in the response
+      role: user.role,
+      judgeRole: user.judgeRole || '', // Include judgeRole
       bio: user.bio || '',
       interests: user.interests || [],
       metrics: user.metrics || {
@@ -109,7 +130,15 @@ exports.getProfile = async (req, res) => {
         wins: 0,
         ongoing: 0,
         judged: 0
-      }
+      },
+      // Add new fields with defaults
+      experience: user.experience || '',
+      club: user.club || '',
+      phoneNumber: user.phoneNumber || '',
+      otherProfileInfo: user.otherProfileInfo || '',
+      profilePhotoUrl: user.profilePhotoUrl || '',
+      awards: user.awards || [],
+      judgingStyle: user.judgingStyle || '' // Add judgingStyle
     });
   } catch (error) {
     console.error('Profile fetch error:', error);
@@ -119,28 +148,53 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { bio, interests } = req.body;
+    // Destructure all potential fields from the request body
+    const { username, email, phoneNumber, bio, interests, judgingStyle } = req.body; // Destructure judgingStyle
     const user = await User.findById(req.user._id);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Update fields if they are provided in the request
+    if (username !== undefined) {
+      // TODO: Add validation if username needs to be unique
+      user.username = username;
+    }
+    if (email !== undefined) {
+      // TODO: Add validation if email needs to be unique and format is correct
+      // const existingUser = await User.findOne({ email: email });
+      // if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+      //   return res.status(400).json({ message: 'Email already in use' });
+      // }
+      user.email = email;
+    }
+    if (phoneNumber !== undefined) {
+      // TODO: Add validation for phone number format if needed
+      user.phoneNumber = phoneNumber;
+    }
     if (bio !== undefined) {
       user.bio = bio;
     }
     if (interests !== undefined) {
       user.interests = interests;
     }
+    if (judgingStyle !== undefined) { // Add judgingStyle update logic
+      user.judgingStyle = judgingStyle;
+    }
 
     const updatedUser = await user.save();
+    // Respond with the updated user profile, including the new fields
     res.json({
       _id: updatedUser._id,
       username: updatedUser.username,
       email: updatedUser.email,
+      phoneNumber: updatedUser.phoneNumber, // Add phoneNumber to response
       bio: updatedUser.bio,
       interests: updatedUser.interests,
-      metrics: updatedUser.metrics
+      metrics: updatedUser.metrics, // Keep existing fields
+      judgingStyle: updatedUser.judgingStyle // Add judgingStyle to response
+      // Consider adding other relevant fields like role, club etc. if needed
     });
   } catch (error) {
     console.error('Profile update error:', error);
@@ -230,5 +284,58 @@ exports.registerTestUsers = async (req, res) => {
   } catch (error) {
     console.error('Error in bulk test user registration:', error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update user profile photo
+// @route   POST /api/users/profile/photo
+// @access  Private
+exports.updateProfilePhoto = async (req, res) => {
+  try {
+    // Check if a file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded.' });
+    }
+
+    // --- Placeholder Cloud Upload Logic ---
+    // In a real implementation, you would upload req.file.buffer to cloud storage
+    // and get the public URL back.
+    // Example: const photoUrl = await cloudStorageService.uploadProfilePhoto(req.file.buffer, req.user._id);
+    const placeholderUrl = `/uploads/profile-photos/placeholder-${req.user._id}-${Date.now()}.jpg`; // Dummy URL
+    const photoUrl = placeholderUrl;
+    // --- End Placeholder ---
+
+    // Find the user
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      // This case should ideally not happen if protect middleware is working
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update the user's profile photo URL
+    user.profilePhotoUrl = photoUrl;
+    const updatedUser = await user.save();
+
+    // Respond with success and the new URL
+    res.status(200).json({
+      message: 'Profile photo updated successfully.',
+      profilePhotoUrl: updatedUser.profilePhotoUrl,
+      // Optionally return other user details if needed
+      // _id: updatedUser._id,
+      // username: updatedUser.username,
+    });
+
+  } catch (error) {
+    console.error('Profile photo update error:', error);
+    // Check if the error is from multer (e.g., file size limit)
+    if (error instanceof multer.MulterError) {
+        return res.status(400).json({ message: `File upload error: ${error.message}` });
+    }
+    // Check for custom file filter errors
+    if (error.message.startsWith('Invalid file type')) {
+        return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Server error while updating profile photo.' });
   }
 };

@@ -99,8 +99,8 @@ const generateBrackets = (teams) => {
   for (let i = 0; i < perfectBracketSize; i += 2) {
     // Create a match object
     const match = {
-      team1: i < numTeams ? shuffledTeams[i] : null,
-      team2: i + 1 < numTeams ? shuffledTeams[i + 1] : null,
+      team1: i < numTeams ? shuffledTeams[i]._id : null, // Use Team ID
+      team2: i + 1 < numTeams ? shuffledTeams[i + 1]._id : null, // Use Team ID
       winner: null,
       completed: false,
       scores: { team1: 0, team2: 0 }
@@ -108,10 +108,10 @@ const generateBrackets = (teams) => {
     
     // If one team is missing, the other team advances automatically
     if (match.team1 && !match.team2) {
-      match.winner = match.team1;
+      match.winner = match.team1; // Winner is still the ID here
       match.completed = true;
     } else if (!match.team1 && match.team2) {
-      match.winner = match.team2;
+      match.winner = match.team2; // Winner is still the ID here
       match.completed = true;
     }
     
@@ -152,7 +152,7 @@ const generateBrackets = (teams) => {
 };
 
 // Create postings for the tournament
-const createPostings = (tournament, judges) => {
+const createPostings = (tournament, judges, headJudgeId) => {
   const postings = [];
   const teams = tournament.teams;
   
@@ -163,24 +163,26 @@ const createPostings = (tournament, judges) => {
     // Skip matches without teams
     if (!match.team1 || !match.team2) continue;
     
-    // Assign 1-3 judges per match
-    const numJudges = Math.min(3, judges.length);
-    const matchJudges = shuffleArray([...judges]).slice(0, numJudges);
-    
+    // Assign judges, ensuring Head Judge is included
+    const otherJudges = judges.filter(j => !j._id.equals(headJudgeId)); // Exclude head judge from random pool
+    const shuffledOtherJudges = shuffleArray([...otherJudges]);
+    const numOtherJudgesToAssign = Math.min(2, shuffledOtherJudges.length); // Assign up to 2 other judges
+    const assignedJudges = [headJudgeId]; // Start with Head Judge
+    for(let k = 0; k < numOtherJudgesToAssign; k++) {
+        assignedJudges.push(shuffledOtherJudges[k]._id);
+    }
+
     postings.push({
-      team1: match.team1,
-      team2: match.team2,
+      round: 1, // Add round number
+      matchNumber: i, // Add match number (index)
+      team1: match.team1, // Team ID from bracket
+      team2: match.team2, // Team ID from bracket
       location: `Room ${i + 1}`,
-      judges: matchJudges.map(j => j._id),
+      judges: assignedJudges, // Use the array with Head Judge included
       theme: getDebateTheme(),
-      status: 'completed', // Since we're simulating a completed tournament
-      createdAt: TOURNAMENT_DATE,
-      winner: Math.random() > 0.5 ? match.team1 : match.team2, // Randomly select winner
-      evaluation: {
-        team1Score: Math.floor(Math.random() * 30) + 70, // Random score between 70-100
-        team2Score: Math.floor(Math.random() * 30) + 70,
-        comments: "Great debate by both teams."
-      }
+      status: 'scheduled', // Set status to scheduled
+      createdAt: TOURNAMENT_DATE // Keep creation timestamp
+      // Remove winner and evaluation for initial setup
     });
   }
   
@@ -281,7 +283,7 @@ const main = async () => {
     const tournaments = await Debate.find({
       format: 'tournament',
       title: 'Qamqor Cup'
-    }).populate('participants');
+    }).populate({ path: 'participants.userId', model: 'User' }); // Populate userId within participants
     
     if (tournaments.length === 0) {
       console.error('Tournament not found');
@@ -292,10 +294,21 @@ const main = async () => {
     console.log(`Found tournament: ${tournament.title}`);
     
     // Extract debaters and judges
-    const debaters = tournament.participants.filter(p => p.role !== 'judge');
-    const judges = tournament.participants.filter(p => p.role === 'judge');
+    // Filter based on tournamentRole, accessing populated user via p.userId if needed
+    const debaters = tournament.participants.filter(p => p.tournamentRole === 'Debater');
+    const judges = tournament.participants.filter(p => p.tournamentRole === 'Judge');
     
     console.log(`Found ${debaters.length} debaters and ${judges.length} judges`);
+
+    // Find the Head Judge (assuming username 'judge_aibek' identifies them)
+    // Find head judge by checking the populated userId's username
+    const headJudgeParticipant = judges.find(p => p.userId && p.userId.username === 'judge_aibek');
+    if (!headJudgeParticipant || !headJudgeParticipant.userId) {
+        console.error('Head Judge (judge_aibek) not found among participants or userId not populated!');
+        process.exit(1);
+    }
+    const headJudgeId = headJudgeParticipant.userId._id; // Get ID from populated user
+    console.log(`Found Head Judge ID: ${headJudgeId}`);
     
     // Create teams
     const teams = createTeams(debaters);
@@ -305,18 +318,23 @@ const main = async () => {
     const tournamentRounds = generateBrackets(teams);
     console.log(`Generated ${tournamentRounds.length} tournament rounds`);
     
-    // Simulate tournament results
-    const simulatedRounds = simulateTournamentResults(tournamentRounds, teams);
-    console.log('Simulated tournament results');
+    // // Simulate tournament results (REMOVED FOR SETUP)
+    // const simulatedRounds = simulateTournamentResults(tournamentRounds, teams);
+    // console.log('Simulated tournament results');
     
-    // Update team stats based on results
-    const updatedTeams = updateTeamStats(teams, simulatedRounds);
-    console.log('Updated team statistics');
+    // // Update team stats based on results (REMOVED FOR SETUP)
+    // const updatedTeams = updateTeamStats(teams, simulatedRounds);
+    // console.log('Updated team statistics');
+
+    // Use original teams and rounds for setup
+    const updatedTeams = teams;
+    const simulatedRounds = tournamentRounds;
     
     // Create postings
     const postings = createPostings(
-      { teams: updatedTeams, tournamentRounds: simulatedRounds }, 
-      judges
+      { teams: updatedTeams, tournamentRounds: simulatedRounds },
+      judges.map(p => p.userId), // Pass the array of populated User documents
+      headJudgeId // Pass headJudgeId
     );
     console.log(`Created ${postings.length} postings`);
     
@@ -324,10 +342,10 @@ const main = async () => {
     tournament.teams = updatedTeams;
     tournament.tournamentRounds = simulatedRounds;
     tournament.postings = postings;
-    tournament.status = 'completed';
-    tournament.startDate = TOURNAMENT_DATE;
-    tournament.startedAt = TOURNAMENT_DATE;
-    tournament.endedAt = new Date(new Date(TOURNAMENT_DATE).setHours(18, 0, 0)); // End at 6 PM
+    // tournament.status = 'completed'; // Keep status as set by createTournament script (likely 'upcoming')
+    // tournament.startDate = TOURNAMENT_DATE; // Keep original dates
+    // tournament.startedAt = TOURNAMENT_DATE;
+    // tournament.endedAt = new Date(new Date(TOURNAMENT_DATE).setHours(18, 0, 0)); // Don't set end date yet
     
     // Save the updated tournament
     await tournament.save();

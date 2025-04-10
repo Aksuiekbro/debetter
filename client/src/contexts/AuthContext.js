@@ -5,6 +5,7 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  console.log('[AuthContext] Initializing user state:', null); // Log initial state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true); // Start loading until auth check is done
 
@@ -13,22 +14,34 @@ export const AuthProvider = ({ children }) => {
     const checkAuthStatus = async () => {
       const token = localStorage.getItem('token');
       if (token) {
-        // Placeholder: Validate token with backend - replace with actual API call
+        // Validate token with backend by fetching user profile
         try {
-          // Example: const response = await axios.get('/api/users/me', { headers: { 'x-auth-token': token } });
-          // setUser(response.data);
-          // setIsAuthenticated(true);
-          console.log("Placeholder: Token found, assuming authenticated for now.");
-          setUser({ name: "Placeholder User", role: "user", _id: "placeholder_id" }); // Example user
+          const config = {
+            headers: {
+              'Authorization': `Bearer ${token}` // Standard Bearer token format
+            }
+          };
+          // Fetch user profile using the token
+          const response = await axios.get('/api/users/profile', config);
+          setUser(response.data);
+          console.log('[AuthContext] User state updated (useEffect/token valid):', response.data);
           setIsAuthenticated(true);
         } catch (error) {
-          console.error("Placeholder: Token validation failed", error);
+          console.error("Token validation failed:", error.response ? error.response.data : error.message);
+          // Clear token and reset state if token is invalid or expired
           localStorage.removeItem('token');
           setUser(null);
+          console.log('[AuthContext] User state updated (useEffect/token invalid):', null);
           setIsAuthenticated(false);
+          // Note: Could potentially call logout() here if it encapsulates this cleanup logic
+        } finally {
+           // Ensure loading is set to false regardless of success or failure
+           setLoading(false);
         }
+      } else {
+        // No token found, not authenticated, finished loading
+        setLoading(false);
       }
-      setLoading(false); // Finished loading
     };
     checkAuthStatus();
   }, []);
@@ -42,7 +55,9 @@ export const AuthProvider = ({ children }) => {
     // setUser(response.data.user);
     // setIsAuthenticated(true);
     localStorage.setItem('token', 'fake_token'); // Example
-    setUser({ name: "Placeholder User", role: "user", _id: "placeholder_id" }); // Example user
+    const loggedInUser = { name: "Placeholder User", role: "user", _id: "placeholder_id" }; // Example user
+    setUser(loggedInUser);
+    console.log('[AuthContext] User state updated (login):', loggedInUser);
     setIsAuthenticated(true);
   };
 
@@ -51,6 +66,7 @@ export const AuthProvider = ({ children }) => {
     console.log("Placeholder: Logging out");
     localStorage.removeItem('token');
     setUser(null);
+    console.log('[AuthContext] User state updated (logout):', null);
     setIsAuthenticated(false);
   };
 
@@ -62,6 +78,7 @@ export const AuthProvider = ({ children }) => {
     logout,
   };
 
+  console.log('[AuthContext] Providing user value:', user);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
