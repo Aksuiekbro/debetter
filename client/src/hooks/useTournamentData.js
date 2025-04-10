@@ -34,24 +34,62 @@ export const useTournamentData = () => {
   const processFetchedData = useCallback((data) => {
     setTournament(data);
 
-    // Extract participants
-    const tournamentEntrants = data.participants?.filter(p => p.role !== 'judge') || [];
-    const tournamentJudges = data.participants?.filter(p => p.role === 'judge') || [];
+    console.log('[useTournamentData] Raw data.participants:', JSON.stringify(data.participants, null, 2));
 
-    setEntrants(tournamentEntrants.map(e => ({
-      id: e._id,
-      name: e.name || formatDebaterName(e.username),
-      email: e.email || 'N/A',
-      enrollDate: new Date(e.createdAt || Date.now()).toLocaleDateString(),
-      role: e.role
-    })));
+    // Extract participants based on tournamentRole
+    const tournamentEntrants = data.participants?.filter(p => p.tournamentRole !== 'Judge') || []; // Use tournamentRole
+    const tournamentJudges = data.participants?.filter(p => p.tournamentRole === 'Judge') || []; // Use tournamentRole
 
-    setJudges(tournamentJudges.map(j => ({
-      id: j._id,
-      name: j.name || formatDebaterName(j.username),
-      email: j.email || 'N/A',
-      role: j.judgeRole || 'Judge'
-    })));
+    console.log('[useTournamentData] Processing entrants (new structure):', JSON.stringify(tournamentEntrants, null, 2)); // Updated logging
+    setEntrants(tournamentEntrants.map(p => {
+      console.log(`[useTournamentData] Processing participant p (Type: ${typeof p}):`, JSON.stringify(p, null, 2));
+      if (typeof p === 'object' && p !== null) {
+          console.log(`[useTournamentData] p.userId (Type: ${typeof p.userId}):`, JSON.stringify(p.userId, null, 2));
+          if (!p.userId) {
+              console.error('[useTournamentData] ERROR: p.userId is missing or falsy for participant object (entrant):', JSON.stringify(p, null, 2));
+          }
+      } else {
+          console.error('[useTournamentData] ERROR: Participant p is not an object (entrant):', p);
+      }
+      // Inside the .map(p => { ... }) for entrants
+      console.log('[useTournamentData] Mapping participant:', JSON.stringify(p, null, 2));
+      const userIdData = p.userId;
+      const extractedName = userIdData?.username || userIdData?.name || 'Unknown Participant';
+      console.log('[useTournamentData] Extracted Name:', extractedName);
+      return {
+          id: userIdData?._id, // Use populated ID
+          name: extractedName,
+          email: userIdData?.email || 'N/A',
+          phoneNumber: userIdData?.phoneNumber || 'N/A',
+          club: userIdData?.club || 'N/A',
+          tournamentRole: p.tournamentRole,
+          teamId: p.teamId
+      };
+    }));
+
+    console.log('[useTournamentData] Processing judges (new structure):', JSON.stringify(tournamentJudges, null, 2)); // Added logging
+    setJudges(tournamentJudges.map(p => {
+      console.log(`[useTournamentData] Processing participant p (Type: ${typeof p}):`, JSON.stringify(p, null, 2));
+      if (typeof p === 'object' && p !== null) {
+          console.log(`[useTournamentData] p.userId (Type: ${typeof p.userId}):`, JSON.stringify(p.userId, null, 2));
+          if (!p.userId) {
+              console.error('[useTournamentData] ERROR: p.userId is missing or falsy for participant object (judge):', JSON.stringify(p, null, 2));
+          }
+      } else {
+          console.error('[useTournamentData] ERROR: Participant p is not an object (judge):', p);
+      }
+      // Return the mapped object
+      return {
+        userId: p.userId?._id, // Safe navigation
+        id: p.userId?._id, // Safe navigation
+        name: p.userId?.username, // Safe navigation
+        email: p.userId?.email || 'N/A', // Safe navigation
+        phoneNumber: p.userId?.phoneNumber || 'N/A', // Safe navigation
+        club: p.userId?.club || 'N/A', // Safe navigation
+        tournamentRole: p.tournamentRole // Should be 'Judge'
+        // No teamId needed for judges
+      };
+    }));
 
     // Process teams
     if (data.teams && data.teams.length > 0) {
@@ -59,6 +97,9 @@ export const useTournamentData = () => {
         const leaderMember = team.members.find(m => m.role === 'leader');
         const speakerMember = team.members.find(m => m.role === 'speaker');
         
+        // Extract all member names
+        const memberNames = team.members.map(m => formatDebaterName(m.userId?.username) || 'Unknown Member');
+
         return {
           id: team._id,
           name: team.name,
@@ -66,6 +107,7 @@ export const useTournamentData = () => {
           speaker: formatDebaterName(speakerMember?.userId?.username),
           leaderId: leaderMember?.userId?._id || leaderMember?.userId,
           speakerId: speakerMember?.userId?._id || speakerMember?.userId,
+          members: memberNames, // Add the array of member names
           wins: team.wins || 0,
           losses: team.losses || 0,
           points: team.points || 0

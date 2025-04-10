@@ -8,6 +8,8 @@ async function sendGameNotifications(debate, postingData, postingId) {
     const { judgeIds, team1Id, team2Id, scheduledTime, theme, batchName } = postingData;
     const results = { judgesNotified: 0, teamMembersNotified: 0, errors: [] };
     const debateId = debate._id;
+    console.log(`[sendGameNotifications] Received postingData:`, JSON.stringify(postingData, null, 2));
+    console.log(`[sendGameNotifications] team1Id: ${team1Id}, team2Id: ${team2Id}`);
 
     let reminderText = `You have been assigned to an APF debate`;
     if (scheduledTime) reminderText += ` scheduled for ${new Date(scheduledTime).toLocaleString()}`;
@@ -33,12 +35,14 @@ async function sendGameNotifications(debate, postingData, postingId) {
     // Notify team members
     const team1 = debate.teams.find(t => t._id.toString() === team1Id.toString());
     const team2 = debate.teams.find(t => t._id.toString() === team2Id.toString());
+    console.log(`[sendGameNotifications] Found team1: ${!!team1}, Found team2: ${!!team2}`);
 
     const notifyTeam = async (team, teamName) => {
         if (team && team.members) {
             for (const member of team.members) {
                 try {
                     if (member.userId) {
+                        console.log(`[sendGameNotifications] Processing member with userId: ${member.userId}`); // Log the userId before using it
                         const teamMember = await User.findById(member.userId);
                         if (teamMember) {
                             if (!teamMember.notifications) teamMember.notifications = [];
@@ -68,9 +72,24 @@ class PostingService {
     async validatePostingData(debateId, postingData) {
         const { team1Id, team2Id, location, virtualLink, judgeIds, theme } = postingData;
 
-        if (!team1Id || !team2Id || (!location && !virtualLink) || !judgeIds || judgeIds.length === 0 || !theme) {
+        // --- Add Detailed Logging ---
+        console.log('[validatePostingData] Received Data:', JSON.stringify(postingData, null, 2));
+        console.log(`[validatePostingData] Checking Fields:`);
+        console.log(`  !team1Id: ${!team1Id}`);
+        console.log(`  !team2Id: ${!team2Id}`);
+        console.log(`  !location: ${!location}`);
+        console.log(`  !virtualLink: ${!virtualLink}`);
+        console.log(`  (!location && !virtualLink): ${!location && !virtualLink}`);
+        console.log(`  !judgeIds: ${!judgeIds}`); // Should be false for []
+        console.log(`  !theme: ${!theme}`);
+        // --- End Detailed Logging ---
+
+        // Allow empty judgeIds array - judges might be assigned later
+        if (!team1Id || !team2Id || (!location && !virtualLink) || !judgeIds || !theme) {
+             console.error('[validatePostingData] Validation FAILED. Condition met.'); // Log failure
             throw new Error('Missing required fields for APF posting');
         }
+        console.log('[validatePostingData] Validation PASSED.'); // Log success
         if (team1Id === team2Id) {
             throw new Error('Teams cannot be the same');
         }
@@ -163,7 +182,10 @@ class PostingService {
         for (const game of batchGames) {
             try {
                 // Extract necessary data, map team/judge objects to IDs if needed
+                // Extract necessary data, including round and matchNumber
                 const postingData = {
+                    round: game.round, // Extract round
+                    matchNumber: game.matchNumber, // Extract matchNumber
                     team1Id: game.team1?.id || game.team1,
                     team2Id: game.team2?.id || game.team2,
                     location: game.location,
@@ -178,10 +200,13 @@ class PostingService {
                 };
 
                 // Validate each game individually (optional, could rely on single create validation)
+                // Note: validatePostingData doesn't currently check round/matchNumber, but could be added
                 await this.validatePostingData(debateId, postingData);
 
                 const newPosting = {
                     _id: new mongoose.Types.ObjectId(),
+                    round: postingData.round, // Add round
+                    matchNumber: postingData.matchNumber, // Add matchNumber
                     team1: postingData.team1Id, team2: postingData.team2Id,
                     location: postingData.location || '', virtualLink: postingData.virtualLink || '',
                     judges: postingData.judgeIds, theme: postingData.theme,
@@ -216,7 +241,16 @@ class PostingService {
                  const created = createdPostings.find(p => p.team1 === (game.team1?.id || game.team1) && p.team2 === (game.team2?.id || game.team2));
                  if (created && game.notifyParticipants !== false) {
                     try {
-                        await sendGameNotifications(updatedDebate, { ...game, judgeIds: game.judges?.map(j => j.id || j) || [] }, created._id);
+                        // Construct the data expected by sendGameNotifications
+                        const notificationData = {
+                            team1Id: game.team1, // Already string ID from script
+                            team2Id: game.team2, // Already string ID from script
+                            judgeIds: game.judges || [], // Already string IDs from script
+                            scheduledTime: game.scheduledTime,
+                            theme: game.theme,
+                            batchName: batchName
+                        };
+                        await sendGameNotifications(updatedDebate, notificationData, created._id);
                         // Update notification status in DB (could be optimized)
                         const finalDebate = await Debate.findById(debateId);
                         const finalPosting = finalDebate.postings.id(created._id);
@@ -453,6 +487,25 @@ class PostingService {
     await debate.save();
 
     return { success: true, message: 'Posting deleted successfully' };
+  }
+
+
+  // Placeholder for saving audio file (e.g., to cloud storage)
+  async saveAudioUrl(fileBuffer) {
+    // In a real implementation, upload fileBuffer to cloud storage
+    // and return the actual URL.
+    console.log(`[PostingService] Received audio buffer of size: ${fileBuffer?.length || 0}`);
+    // For now, just return a placeholder URL
+    return '/uploads/placeholder-audio.mp3';
+  }
+
+  // Placeholder for saving ballot image file (e.g., to cloud storage)
+  async saveBallotUrl(fileBuffer) {
+    // In a real implementation, upload fileBuffer to cloud storage
+    // and return the actual URL.
+    console.log(`[PostingService] Received ballot image buffer of size: ${fileBuffer?.length || 0}`);
+    // For now, just return a placeholder URL
+    return '/uploads/placeholder-ballot.jpg';
   }
 
 }

@@ -23,6 +23,7 @@ import {
   Stack
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PeopleIcon from '@mui/icons-material/People';
@@ -37,6 +38,7 @@ import { getAuthHeaders } from '../utils/auth';
 const Home = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { t } = useTranslation();
   const [username, setUsername] = useState(localStorage.getItem('username') || '');
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -84,7 +86,7 @@ const Home = () => {
 
   const fetchUserData = async () => {
     try {
-      const response = await api.get('/stats/users/stats', { headers: getAuthHeaders() });
+      const response = await api.client.get('/api/stats/users/stats', { headers: getAuthHeaders() });
       setUserStats(response.data);
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -94,7 +96,7 @@ const Home = () => {
 
   const fetchRecentDebates = async () => {
     try {
-      const response = await api.get('/debates/user/mydebates', { headers: getAuthHeaders() });
+      const response = await api.client.get('/api/debates/user/mydebates', { headers: getAuthHeaders() });
       // Combine created and participated debates, sort by date
       const allDebates = [...response.data.created, ...response.data.participated]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -110,7 +112,7 @@ const Home = () => {
 
   const fetchPublicDebates = async () => {
     try {
-      const response = await api.get('/debates', {
+      const response = await api.client.get('/api/debates', {
         params: {
           limit: 5,
           sortBy: 'recent'
@@ -126,7 +128,7 @@ const Home = () => {
 
   const fetchCommunityStats = async () => {
     try {
-      const response = await api.get('/stats/community');
+      const response = await api.client.get('/api/stats/community');
       setCommunityStats(response.data);
     } catch (error) {
       console.error('Error fetching community stats:', error);
@@ -149,10 +151,10 @@ const Home = () => {
   // Convert role to display name
   const getRoleDisplay = (role) => {
     switch(role) {
-      case 'judge': return 'Judge';
-      case 'organizer': return 'Organizer';
+      case 'judge': return t('home.roles.judge', 'Judge');
+      case 'organizer': return t('home.roles.organizer', 'Organizer');
       case 'user':
-      default: return 'Debater';
+      default: return t('home.roles.debater', 'Debater');
     }
   };
 
@@ -194,10 +196,10 @@ const Home = () => {
         boxShadow: 3
       }}>
         <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 2 }}>
-          Welcome to DeBetter
+          {t('home.hero.title', 'Welcome to DeBetter')}
         </Typography>
         <Typography variant="h5" sx={{ mb: 4, maxWidth: '800px', mx: 'auto', opacity: 0.9 }}>
-          A platform for meaningful discussions, structured debates, and intellectual growth
+          {t('home.hero.subtitle', 'A platform for meaningful discussions, structured debates, and intellectual growth')}
         </Typography>
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
           <Button 
@@ -211,7 +213,7 @@ const Home = () => {
               px: 4
             }}
           >
-            Join Debates
+            {t('home.hero.joinButton', 'Join Debates')}
           </Button>
           <Button 
             variant="outlined" 
@@ -224,7 +226,7 @@ const Home = () => {
               px: 4
             }}
           >
-            Host a Debate
+            {t('home.hero.hostButton', 'Host a Debate')}
           </Button>
         </Box>
       </Box>
@@ -256,7 +258,7 @@ const Home = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="h5" fontWeight="bold">
-                    Welcome back, {username}!
+                    {t('home.welcome.greeting', 'Welcome back, {{username}}!', { username })}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                     <Chip 
@@ -266,7 +268,7 @@ const Home = () => {
                       sx={{ fontWeight: 'medium' }}
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                      Last active: Today
+                      {t('home.welcome.lastActive', 'Last active: Today')}
                     </Typography>
                   </Box>
                 </Box>
@@ -279,21 +281,21 @@ const Home = () => {
                   startIcon={<PersonIcon />}
                   onClick={() => navigate('/profile')}
                 >
-                  My Profile
+                  {t('home.welcome.profileButton', 'My Profile')}
                 </Button>
                 <Button 
                   variant="outlined"
                   startIcon={<CalendarMonthIcon />}
                   onClick={() => navigate('/my-debates')}
                 >
-                  My Debates
+                  {t('home.welcome.myDebatesButton', 'My Debates')}
                 </Button>
                 <Button 
                   variant="contained"
                   startIcon={<EmojiEventsIcon />}
                   onClick={() => navigate('/tournaments')}
                 >
-                  Tournaments
+                  {t('home.welcome.tournamentsButton', 'Tournaments')}
                 </Button>
               </Box>
             </Grid>
@@ -301,24 +303,24 @@ const Home = () => {
           
           {/* User Stats */}
           <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" gutterBottom>Your Stats</Typography>
+            <Typography variant="h6" gutterBottom>{t('home.stats.title', 'Your Stats')}</Typography>
             <Grid container spacing={3}>
               <Grid item xs={6} sm={3}>
                 <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50' }}>
                   <Typography variant="h3" color="primary.main">{userStats.participatedDebates}</Typography>
-                  <Typography variant="body2">Debates</Typography>
+                  <Typography variant="body2">{t('home.stats.debates', 'Debates')}</Typography>
                 </Paper>
               </Grid>
               <Grid item xs={6} sm={3}>
                 <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50' }}>
                   <Typography variant="h3" color="primary.main">{userStats.wins}</Typography>
-                  <Typography variant="body2">Wins</Typography>
+                  <Typography variant="body2">{t('home.stats.wins', 'Wins')}</Typography>
                 </Paper>
               </Grid>
               <Grid item xs={6} sm={3}>
                 <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50' }}>
                   <Typography variant="h3" color="primary.main">{userStats.totalPoints}</Typography>
-                  <Typography variant="body2">Total Points</Typography>
+                  <Typography variant="body2">{t('home.stats.totalPoints', 'Total Points')}</Typography>
                 </Paper>
               </Grid>
               <Grid item xs={6} sm={3}>
@@ -326,7 +328,7 @@ const Home = () => {
                   <Box sx={{ position: 'relative', display: 'inline-flex' }}>
                     <Typography variant="h3" color="primary.main">{userStats.winRate}%</Typography>
                   </Box>
-                  <Typography variant="body2">Win Rate</Typography>
+                  <Typography variant="body2">{t('home.stats.winRate', 'Win Rate')}</Typography>
                 </Paper>
               </Grid>
             </Grid>
@@ -340,10 +342,10 @@ const Home = () => {
           {/* Topic Categories */}
           <Box sx={{ mb: 5 }}>
             <Typography variant="h4" gutterBottom fontWeight="bold">
-              Featured Debate Topics
+              {t('home.featured.title', 'Featured Debate Topics')}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              Explore these thought-provoking topics and join the conversation
+              {t('home.featured.subtitle', 'Explore these thought-provoking topics and join the conversation')}
             </Typography>
             
             <Grid container spacing={3}>
@@ -370,7 +372,7 @@ const Home = () => {
                         onClick={handleJoinDebate}
                         sx={{ color: 'primary.main' }}
                       >
-                        Explore Debates
+                        {t('home.featured.exploreButton', 'Explore Debates')}
                       </Button>
                     </CardActions>
                   </Card>
@@ -384,13 +386,13 @@ const Home = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h5" fontWeight="bold">
                 <CalendarMonthIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Upcoming Debates
+                {t('home.upcoming.title', 'Upcoming Debates')}
               </Typography>
               <Button 
                 variant="text" 
                 onClick={handleJoinDebate}
               >
-                View All
+                {t('home.viewAllButton', 'View All')}
               </Button>
             </Box>
             
@@ -413,16 +415,16 @@ const Home = () => {
                                 <Typography variant="body2" color="text.secondary">
                                   <CalendarMonthIcon sx={{ fontSize: '1rem', mr: 0.5, verticalAlign: 'text-top' }} />
                                   {formatDate(debate.date)}
-                                  {debate.time && ` at ${debate.time}`}
+                                  {debate.time && ` ${t('home.upcoming.timePrefix', 'at')} ${debate.time}`}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                   <PeopleIcon sx={{ fontSize: '1rem', mr: 0.5, verticalAlign: 'text-top' }} />
-                                  {debate.participants} Participants
+                                  {debate.participants?.length || 0} {t('home.upcoming.participantsSuffix', 'Participants')}
                                 </Typography>
                               </Box>
                             </Box>
                             <Chip 
-                              label="Upcoming" 
+                              label={t('home.upcoming.statusChip', 'Upcoming')}
                               size="small" 
                               color="primary" 
                               variant="outlined" 
@@ -435,14 +437,14 @@ const Home = () => {
                             variant="outlined"
                             onClick={() => handleViewDebate(debate.id)}
                           >
-                            View Details
+                            {t('home.upcoming.viewDetailsButton', 'View Details')}
                           </Button>
                           <Button 
                             size="small" 
                             variant="contained"
                             onClick={() => handleViewDebate(debate.id)}
                           >
-                            Join Debate
+                            {t('home.upcoming.joinButton', 'Join Debate')}
                           </Button>
                         </CardActions>
                       </Card>
@@ -453,13 +455,13 @@ const Home = () => {
             
             {recentDebates.filter(debate => debate.status === 'scheduled').length === 0 && (
               <Box sx={{ textAlign: 'center', p: 3, bgcolor: 'grey.50', borderRadius: 1 }}>
-                <Typography>No upcoming debates scheduled.</Typography>
+                <Typography>{t('home.upcoming.noDebatesMessage', 'No upcoming debates scheduled.')}</Typography>
                 <Button 
                   variant="contained"
                   sx={{ mt: 2 }}
                   onClick={handleCreateDebate}
                 >
-                  Host a New Debate
+                  {t('home.upcoming.hostNewButton', 'Host a New Debate')}
                 </Button>
               </Box>
             )}
@@ -471,13 +473,13 @@ const Home = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h5" fontWeight="bold">
                   <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                  Recent Debate Results
+                  {t('home.results.title', 'Recent Debate Results')}
                 </Typography>
                 <Button 
                   variant="text" 
                   onClick={handleJoinDebate}
                 >
-                  View All
+                  {t('home.viewAllButton', 'View All')}
                 </Button>
               </Box>
               
@@ -500,17 +502,17 @@ const Home = () => {
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                   <PeopleIcon sx={{ fontSize: '1rem', mr: 0.5, verticalAlign: 'text-top' }} />
-                                  {debate.participants} Participants
+                                  {debate.participants?.length || 0} {t('home.results.participantsSuffix', 'Participants')}
                                 </Typography>
                               </Box>
                               {debate.winner && (
                                 <Typography variant="body2" sx={{ mt: 1 }}>
-                                  <strong>Winner:</strong> {debate.winner}
+                                  <strong>Winner:</strong> {debate.winner?.name || t('home.results.noWinner', 'N/A')}
                                 </Typography>
                               )}
                             </Box>
                             <Chip 
-                              label="Completed" 
+                              label={t('home.results.statusChip', 'Completed')}
                               size="small" 
                               color="success" 
                               variant="outlined" 
@@ -520,9 +522,9 @@ const Home = () => {
                         <CardActions>
                           <Button 
                             size="small" 
-                            onClick={() => handleViewDebate(debate.id)}
+                            onClick={() => handleViewDebate(debate._id)}
                           >
-                            View Results
+                            {t('home.results.viewResultsButton', 'View Results')}
                           </Button>
                         </CardActions>
                       </Card>
@@ -536,77 +538,11 @@ const Home = () => {
         {/* Sidebar Section */}
         <Grid item xs={12} md={4}>
           {/* Get Started / Login Section */}
-          <Paper elevation={2} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
-              {isAuthenticated ? 'Quick Actions' : 'Get Started'}
-            </Typography>
-            
-            {!isAuthenticated ? (
-              <Stack spacing={2}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={() => navigate('/register')}
-                  startIcon={<PersonIcon />}
-                >
-                  Create Account
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate('/login')}
-                >
-                  Sign In
-                </Button>
-                <Divider sx={{ my: 1 }}>
-                  <Typography variant="body2" color="text.secondary">or</Typography>
-                </Divider>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleJoinDebate}
-                  sx={{ mt: 1 }}
-                >
-                  Browse as Guest
-                </Button>
-              </Stack>
-            ) : (
-              <Stack spacing={2}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handleCreateDebate}
-                  startIcon={<ForumIcon />}
-                >
-                  Create New Debate
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => navigate('/tournaments')}
-                  startIcon={<EmojiEventsIcon />}
-                >
-                  Join Tournament
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => navigate('/judge-panel')}
-                  startIcon={<SchoolIcon />}
-                >
-                  Judge Panel
-                </Button>
-              </Stack>
-            )}
-          </Paper>
 
           {/* Platform Stats */}
           <Paper elevation={2} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
-              Community Stats
+              {t('home.community.title', 'Community Stats')}
             </Typography>
             <List disablePadding>
               <ListItem sx={{ px: 0 }}>
@@ -616,7 +552,7 @@ const Home = () => {
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText 
-                  primary="Active Users" 
+                  primary={t('home.community.activeUsers', 'Active Users')}
                   secondary={communityStats.activeUsers.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
@@ -629,7 +565,7 @@ const Home = () => {
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText 
-                  primary="Debates Hosted" 
+                  primary={t('home.community.debatesHosted', 'Debates Hosted')}
                   secondary={communityStats.debatesHosted.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
@@ -642,7 +578,7 @@ const Home = () => {
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText 
-                  primary="Active Tournaments" 
+                  primary={t('home.community.activeTournaments', 'Active Tournaments')}
                   secondary={communityStats.activeTournaments.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
@@ -655,7 +591,7 @@ const Home = () => {
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText 
-                  primary="Teams Formed" 
+                  primary={t('home.community.teamsFormed', 'Teams Formed')}
                   secondary={communityStats.teamsFormed.toLocaleString()}
                   primaryTypographyProps={{ fontWeight: 'medium' }}
                   secondaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'primary.main' }}
@@ -667,16 +603,16 @@ const Home = () => {
           {/* Platform Overview */}
           <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-              About DeBetter
+              {t('home.about.title', 'About DeBetter')}
             </Typography>
             <Typography variant="body2" paragraph>
-              DeBetter is a platform designed to facilitate structured debates and thoughtful discussions on a wide range of topics.
+              {t('home.about.description1', 'DeBetter is a platform designed to facilitate structured debates and thoughtful discussions on a wide range of topics.')}
             </Typography>
             <Typography variant="body2" paragraph>
-              Our mission is to foster critical thinking, effective communication, and respectful exchange of ideas in a structured environment.
+              {t('home.about.description2', 'Our mission is to foster critical thinking, effective communication, and respectful exchange of ideas in a structured environment.')}
             </Typography>
             <Typography variant="body2">
-              Whether you're looking to sharpen your debating skills, explore diverse perspectives, or organize tournaments, DeBetter provides the tools and community to help you succeed.
+              {t('home.about.description3', "Whether you're looking to sharpen your debating skills, explore diverse perspectives, or organize tournaments, DeBetter provides the tools and community to help you succeed.")}
             </Typography>
             <Button 
               variant="text" 
@@ -684,7 +620,7 @@ const Home = () => {
               sx={{ mt: 2 }}
               onClick={() => window.open('#', '_blank')}
             >
-              Learn More
+              {t('home.about.learnMoreButton', 'Learn More')}
             </Button>
           </Paper>
         </Grid>

@@ -68,7 +68,13 @@ const postingSchema = new Schema({
   status: { 
     type: String, 
     enum: ['scheduled', 'in_progress', 'completed'], 
-    default: 'scheduled' 
+    default: 'scheduled'
+  },
+  round: { // Link to the tournament round
+    type: Number
+  },
+  matchNumber: { // Link to the match number within the round
+    type: Number
   },
   winner: { // Stores the _id of the embedded team object from Debate.teams
     type: mongoose.Schema.Types.ObjectId
@@ -99,7 +105,9 @@ const postingSchema = new Schema({
       default: false 
     },
     sentAt: Date
-  }
+  },
+  recordedAudioUrl: { type: String }, // URL for the recorded audio file
+  ballotImageUrl: { type: String } // URL for the uploaded ballot image
 });
 
 const debateSchema = new Schema({
@@ -109,7 +117,12 @@ const debateSchema = new Schema({
   status: { type: String, required: true, enum: ['upcoming', 'team-assignment', 'in-progress', 'completed'], default: 'upcoming' },
   difficulty: { type: String, required: true, enum: ['beginner', 'intermediate', 'advanced'] },
   startDate: { type: Date, required: true },
-  participants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  registrationDeadline: { type: Date },
+  participants: [{
+      userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      tournamentRole: { type: String, enum: ['Debater', 'Judge', 'Observer', 'Organizer', 'Admin'], required: true, default: 'Debater' }, // Role specific to this tournament
+      teamId: { type: Schema.Types.ObjectId } // Refers to _id in embedded teams array
+  }],
   creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   maxParticipants: { type: Number, default: function() { return this.format === 'tournament' ? 32 : 6; } },
   createdAt: { type: Date, default: Date.now },
@@ -124,6 +137,8 @@ const debateSchema = new Schema({
     currentDebaters: { type: Number, default: 0 },
     currentJudges: { type: Number, default: 0 }
   },
+  tournamentFormats: { type: [String], enum: ['APD', 'BP', 'LD'] }, // Added for tournament format specification
+  eligibilityCriteria: { type: String }, // Added for tournament eligibility rules
   mode: { type: String, enum: ['solo', 'duo'] },
   tournamentRounds: [{ roundNumber: Number, matches: [matchSchema] }],
   registrationDeadline: Date,
@@ -134,7 +149,16 @@ const debateSchema = new Schema({
   }],
   requiredJudges: { type: Number, default: function() { return this.format === 'tournament' ? 8 : 3 } },
   maxJudges: { type: Number, default: function() { return this.format === 'tournament' ? 8 : 3; } },
-  postings: [postingSchema]
+  postings: [postingSchema],
+  themes: [{ // Array to store tournament-specific themes/topics
+    _id: { type: Schema.Types.ObjectId, auto: true }, // Auto-generate ID for each theme
+    text: { type: String, required: true, trim: true }
+  }],
+  mapImageUrl: {
+    type: String,
+    trim: true,
+    default: null
+  },
 }, {
   timestamps: true
 });
@@ -148,8 +172,11 @@ debateSchema.index({ startDate: 1 });
 debateSchema.pre('save', async function(next) {
   console.log('Debate pre-save hook triggered. Format:', this.format);
   if (this.format === 'tournament') {
-    const parts = await this.populate('participants');
-    const [debaters, judges] = [parts.participants.filter(p => p.role !== 'judge'), parts.participants.filter(p => p.role === 'judge')];
+    // Populate the userId within each participant object to access user details
+    await this.populate({ path: 'participants.userId', model: 'User' });
+    // Filter based on the tournamentRole stored directly in the participants array
+    const debaters = this.participants.filter(p => p.tournamentRole === 'Debater');
+    const judges = this.participants.filter(p => p.tournamentRole === 'Judge');
     Object.assign(this.tournamentSettings, { currentDebaters: debaters.length, currentJudges: judges.length });
     console.log('Debaters:', debaters.length, 'Judges:', judges.length);
     if (debaters.length > 32 || judges.length > 8) throw new Error('Tournament limits exceeded');

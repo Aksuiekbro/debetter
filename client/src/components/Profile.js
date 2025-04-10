@@ -23,19 +23,21 @@ import AddIcon from '@mui/icons-material/Add';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
-
-// Add the function to get display name for role
-const getRoleDisplayName = (role) => {
-  const roleMap = {
-    'user': 'Debater',
-    'debater': 'Debater',
-    'judge': 'Judge',
-    'organizer': 'Organizer'
-  };
-  return roleMap[role] || role;
-};
+import { useTranslation } from 'react-i18next';
 
 const Profile = () => {
+  const { t } = useTranslation();
+
+  // Function to get display name for role
+  const getRoleDisplayName = (role) => {
+    const roleMap = {
+      'user': t('profile.role.debater', 'Debater'),
+      'debater': t('profile.role.debater', 'Debater'),
+      'judge': t('profile.role.judge', 'Judge'),
+      'organizer': t('profile.role.organizer', 'Organizer')
+    };
+    return roleMap[role] || role;
+  };
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState(0);
   const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -47,6 +49,14 @@ const Profile = () => {
     role: '',
     bio: '',
     interests: [],
+    // Add new fields from backend
+    phoneNumber: '',
+    club: '',
+    experience: '',
+    otherProfileInfo: '',
+    profilePhotoUrl: '',
+    awards: [],
+    judgeRole: '', // This will be displayed as Rank for judges
     metrics: {
       debates: 0,
       wins: 0,
@@ -55,7 +65,11 @@ const Profile = () => {
     }
   });
   const [editForm, setEditForm] = useState({
-    bio: profileData.bio,
+    username: '',
+    email: '',
+    phoneNumber: '',
+    bio: '',
+    judgingStyle: '', // Added for judge edit
     newInterest: ''
   });
 
@@ -65,8 +79,14 @@ const Profile = () => {
 
   const handleOpenEditDialog = () => {
     setOpenEditDialog(true);
+    // Initialize edit form with current profile data
     setEditForm({
-      bio: profileData.bio,
+      username: profileData.username,
+      email: profileData.email,
+      phoneNumber: profileData.phoneNumber || '',
+      bio: profileData.bio || '',
+      // Initialize judgingStyle only if the user is a judge
+      judgingStyle: profileData.role === 'judge' ? (profileData.judgingStyle || '') : '',
       newInterest: ''
     });
   };
@@ -78,10 +98,24 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     try {
       setError(null);
-      const { data } = await api.client.put(api.endpoints.profile, {
+      // Construct payload with updated fields from editForm
+      const payload = {
+        username: editForm.username,
+        email: editForm.email,
+        phoneNumber: editForm.phoneNumber,
         bio: editForm.bio,
-        interests: profileData.interests
-      });
+        interests: profileData.interests // Interests are managed directly in profileData for now
+      };
+
+      // Add judgingStyle to payload only if user is a judge
+      if (profileData.role === 'judge') {
+        payload.judgingStyle = editForm.judgingStyle;
+      }
+      // Filter out any unchanged fields to send only updates? Or send all?
+      // Sending all for simplicity, backend should handle unchanged values.
+      // Ensure the endpoint is correct as per instructions: PUT /api/users/profile
+      // Assuming api.endpoints.profile points to '/api/users/profile'
+      const { data } = await api.client.put(api.endpoints.profile, payload);
       
       setProfileData(prev => ({
         ...prev,
@@ -90,7 +124,7 @@ const Profile = () => {
       handleCloseEditDialog();
     } catch (err) {
       console.error('Profile update error:', err.response?.data || err.message);
-      setError(err.response?.data?.message || 'Failed to update profile');
+      setError(err.response?.data?.message || t('profile.error.updateFailed', 'Failed to update profile'));
     }
   };
 
@@ -115,7 +149,7 @@ const Profile = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setError('Please log in to add friends');
+        setError(t('profile.error.loginToAddFriend', 'Please log in to add friends'));
         return;
       }
 
@@ -126,9 +160,9 @@ const Profile = () => {
         }
       });
 
-      if (!response.ok) throw new Error('Failed to send friend request');
+      if (!response.ok) throw new Error(t('profile.error.friendRequestFailed', 'Failed to send friend request'));
       // Show success message
-      alert('Friend request sent successfully!');
+      alert(t('profile.alert.friendRequestSent', 'Friend request sent successfully!'));
     } catch (err) {
       setError(err.message);
       console.error('Friend request error:', err);
@@ -148,7 +182,7 @@ const Profile = () => {
         }));
       } catch (err) {
         console.error('Profile fetch error:', err.response?.data || err.message);
-        setError(err.response?.data?.message || 'Failed to fetch profile');
+        setError(err.response?.data?.message || t('profile.error.fetchFailed', 'Failed to fetch profile'));
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
           navigate('/login');
@@ -175,7 +209,7 @@ const Profile = () => {
         <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
           <Typography color="error">{error}</Typography>
           <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
-            Retry
+            {t('profile.button.retry', 'Retry')}
           </Button>
         </Paper>
       </Container>
@@ -189,6 +223,7 @@ const Profile = () => {
         <Grid container spacing={3}>
           <Grid item xs={12} md={3} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Avatar
+              src={profileData.profilePhotoUrl || undefined} // Use photo URL if available
               sx={{
                 width: 120,
                 height: 120,
@@ -197,7 +232,8 @@ const Profile = () => {
                 mb: 2
               }}
             >
-              {profileData.username[0]?.toUpperCase()}
+              {/* Fallback to initial if no photo URL */}
+              {!profileData.profilePhotoUrl && profileData.username[0]?.toUpperCase()}
             </Avatar>
             <Button
               variant="outlined"
@@ -206,7 +242,7 @@ const Profile = () => {
               fullWidth
               sx={{ mb: 2 }}
             >
-              Edit info & settings
+              {t('profile.button.editInfo', 'Edit info & settings')}
             </Button>
             <Button
               variant="outlined"
@@ -215,7 +251,7 @@ const Profile = () => {
               fullWidth
               sx={{ mb: 2 }}
             >
-              Add friend
+              {t('profile.button.addFriend', 'Add friend')}
             </Button>
             <Button
               variant="contained"
@@ -223,7 +259,7 @@ const Profile = () => {
               onClick={() => navigate('/host-debate')}
               fullWidth
             >
-              Add new debate
+              {t('profile.button.addNewDebate', 'Add new debate')}
             </Button>
           </Grid>
 
@@ -240,7 +276,24 @@ const Profile = () => {
                 sx={{ fontSize: '0.9rem', fontWeight: 'medium' }}
               />
             </Box>
-            
+
+            {/* Common Info Section */}
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <strong>{t('profile.emailLabel', 'Email:')}</strong> {profileData.email || t('common.notAvailable', 'N/A')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <strong>{t('profile.phoneLabel', 'Phone:')}</strong> {profileData.phoneNumber || t('common.notAvailable', 'N/A')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              <strong>{t('profile.clubLabel', 'Club:')}</strong> {profileData.club || t('common.notAvailable', 'N/A')}
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ mb: 3, fontStyle: profileData.bio ? 'normal' : 'italic' }}
+            >
+              {profileData.bio || t('profile.bio.placeholder', "Add your bio to let others know about you")}
+            </Typography>
             <Box sx={{ mb: 3 }}>
               {profileData.interests.map((interest, index) => (
                 <Chip
@@ -253,21 +306,76 @@ const Profile = () => {
               ))}
               {profileData.interests.length === 0 && (
                 <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  Add some interests to show what topics you like
+                  {t('profile.interests.placeholder', 'Add some interests to show what topics you like')}
                 </Typography>
               )}
             </Box>
 
-            <Typography 
-              variant="body1" 
-              color="text.secondary" 
-              sx={{ 
-                mb: 3,
-                fontStyle: profileData.bio ? 'normal' : 'italic'
-              }}
-            >
-              {profileData.bio || "Add your bio to let others know about you"}
-            </Typography>
+            {/* Participant Specific Info */}
+            {(profileData.role === 'user' || profileData.role === 'debater') && (
+              <Paper elevation={1} sx={{ p: 2, mb: 3, borderLeft: '3px solid', borderColor: 'secondary.light' }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'secondary.dark' }}>
+                  {t('profile.participantInfoTitle', 'Participant Information')}
+                </Typography>
+                {/* Awards */}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <strong>{t('profile.awardsLabel', 'Awards:')}</strong>
+                  {profileData.awards && profileData.awards.length > 0
+                    ? profileData.awards.join(', ')
+                    : t('profile.noAwards', 'No awards listed')}
+                </Typography>
+                {/* Feedback Received Section */}
+                <Box sx={{ mt: 2, pt: 1, borderTop: '1px dashed', borderColor: 'grey.300' }}>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'secondary.dark' }}>
+                    {t('profile.feedbackReceivedTitle', 'Feedback Received')}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    {t('profile.feedbackReceivedPlaceholder', 'Feedback from judges will appear here.')} {/* Adjusted placeholder */}
+                  </Typography>
+                </Box>
+                {/* Optional: Team Affiliation Placeholder */}
+                {/* <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  <strong>{t('profile.teamLabel', 'Team:')}</strong> {t('common.notAvailable', 'N/A')}
+                </Typography> */}
+              </Paper>
+            )}
+
+            {/* Judge Specific Info */}
+            {profileData.role === 'judge' && (
+              <Paper elevation={1} sx={{ p: 2, mb: 3, borderLeft: '3px solid', borderColor: 'primary.light' }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.dark' }}>
+                  {t('profile.judgeInfoTitle', 'Judge Information')}
+                </Typography>
+                {/* Rank (from judgeRole) */}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <strong>{t('profile.rankLabel', 'Rank:')}</strong> {profileData.judgeRole || t('common.notAvailable', 'N/A')}
+                </Typography>
+                {/* Experience */}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <strong>{t('profile.experienceLabel', 'Experience:')}</strong> {profileData.experience || t('common.notAvailable', 'N/A')}
+                </Typography>
+                {/* Judging Style Preference */}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <strong>{t('profile.judgingStyleLabel', 'Judging Style:')}</strong> {profileData.judgingStyle || t('common.notAvailable', 'N/A')}
+                </Typography>
+                 {/* Awards */}
+                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                   <strong>{t('profile.awardsLabel', 'Awards:')}</strong>
+                   {profileData.awards && profileData.awards.length > 0
+                     ? profileData.awards.join(', ')
+                     : t('profile.noAwards', 'No awards listed')}
+                 </Typography>
+                {/* Feedback Received Section */}
+                <Box sx={{ mt: 2, pt: 1, borderTop: '1px dashed', borderColor: 'grey.300' }}>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.dark' }}>
+                    {t('profile.feedbackReceivedTitle', 'Feedback Received')}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    {t('profile.feedbackReceivedPlaceholderJudge', 'Feedback from participants will appear here.')} {/* Adjusted placeholder */}
+                  </Typography>
+                </Box>
+              </Paper>
+            )}
           </Grid>
         </Grid>
       </Paper>
@@ -293,7 +401,7 @@ const Profile = () => {
                     {profileData.metrics.debates}
                   </Typography>
                   <Typography variant="caption">
-                    DEBATES
+                    {t('profile.stats.debates', 'DEBATES')}
                   </Typography>
                 </Box>
               }
@@ -305,7 +413,7 @@ const Profile = () => {
                     {profileData.metrics.wins}
                   </Typography>
                   <Typography variant="caption">
-                    WINS
+                    {t('profile.stats.wins', 'WINS')}
                   </Typography>
                 </Box>
               }
@@ -317,7 +425,7 @@ const Profile = () => {
                     {profileData.metrics.ongoing}
                   </Typography>
                   <Typography variant="caption">
-                    ONGOING
+                    {t('profile.stats.ongoing', 'ONGOING')}
                   </Typography>
                 </Box>
               }
@@ -329,7 +437,7 @@ const Profile = () => {
                     {profileData.metrics.judged}
                   </Typography>
                   <Typography variant="caption">
-                    JUDGED
+                    {t('profile.stats.judged', 'JUDGED')}
                   </Typography>
                 </Box>
               }
@@ -340,39 +448,123 @@ const Profile = () => {
         {/* Tab Content */}
         <Box sx={{ p: 3 }}>
           {currentTab === 0 && (
-            <Typography>Your debates will appear here</Typography>
+            <Typography>{t('profile.tabs.debatesPlaceholder', 'Your debates will appear here')}</Typography>
           )}
           {currentTab === 1 && (
-            <Typography>Your winning debates will appear here</Typography>
+            <Typography>{t('profile.tabs.winsPlaceholder', 'Your winning debates will appear here')}</Typography>
           )}
+          <TextField
+            autoFocus
+            margin="dense"
+            id="username"
+            label={t('profile.editDialog.usernameLabel', 'Username')}
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={editForm.username}
+            onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            id="email"
+            label={t('profile.editDialog.emailLabel', 'Email')}
+            type="email"
+            fullWidth
+            variant="outlined"
+            value={editForm.email}
+            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            id="phoneNumber"
+            label={t('profile.editDialog.phoneLabel', 'Phone Number')}
+            type="tel"
+            fullWidth
+            variant="outlined"
+            value={editForm.phoneNumber}
+            onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
           {currentTab === 2 && (
-            <Typography>Your ongoing debates will appear here</Typography>
+            <Typography>{t('profile.tabs.ongoingPlaceholder', 'Your ongoing debates will appear here')}</Typography>
           )}
           {currentTab === 3 && (
-            <Typography>Debates you've judged will appear here</Typography>
+            <Typography>{t('profile.tabs.judgedPlaceholder', "Debates you've judged will appear here")}</Typography>
           )}
         </Box>
       </Paper>
 
       {/* Edit Profile Dialog */}
       <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Profile</DialogTitle>
+        <DialogTitle>{t('profile.editDialog.title', 'Edit Profile')}</DialogTitle>
         <DialogContent>
+          {/* Basic Info Fields */}
+           <TextField
+            autoFocus
+            margin="dense"
+            id="username"
+            label={t('profile.editDialog.usernameLabel', 'Username')}
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={editForm.username}
+            onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            id="email"
+            label={t('profile.editDialog.emailLabel', 'Email')}
+            type="email"
+            fullWidth
+            variant="outlined"
+            value={editForm.email}
+            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            id="phoneNumber"
+            label={t('profile.editDialog.phoneLabel', 'Phone Number')}
+            type="tel"
+            fullWidth
+            variant="outlined"
+            value={editForm.phoneNumber}
+            onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
           <TextField
             fullWidth
-            label="Bio"
+            label={t('profile.editDialog.bioLabel', 'Bio')}
             multiline
             rows={4}
             value={editForm.bio}
             onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
-            sx={{ mt: 2, mb: 3 }}
+            sx={{ mb: 3 }} // Keep margin bottom
           />
+
+          {/* Judge Specific Edit Field */}
+          {profileData.role === 'judge' && (
+            <TextField
+              margin="dense"
+              id="judgingStyle"
+              label={t('profile.editDialog.judgingStyleLabel', 'Judging Style Preference')}
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={editForm.judgingStyle}
+              onChange={(e) => setEditForm(prev => ({ ...prev, judgingStyle: e.target.value }))}
+              sx={{ mb: 3 }}
+            />
+          )}
           
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>Interests</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('profile.editDialog.interestsLabel', 'Interests')}</Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <TextField
               fullWidth
-              label="Add new interest"
+              label={t('profile.editDialog.addInterestLabel', 'Add new interest')}
               value={editForm.newInterest}
               onChange={(e) => setEditForm(prev => ({ ...prev, newInterest: e.target.value }))}
             />
@@ -381,7 +573,7 @@ const Profile = () => {
               onClick={handleAddInterest}
               startIcon={<AddIcon />}
             >
-              Add
+              {t('profile.editDialog.addButton', 'Add')}
             </Button>
           </Box>
           
@@ -397,8 +589,11 @@ const Profile = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Cancel</Button>
-          <Button onClick={handleSaveProfile} variant="contained">Save</Button>
+          {error && <Typography color="error" sx={{ mr: 'auto', ml: 2 }}>{error}</Typography>}
+          <Button onClick={handleCloseEditDialog}>{t('common.button.cancel', 'Cancel')}</Button>
+          <Button onClick={handleSaveProfile} variant="contained" color="primary">
+            {t('common.button.save', 'Save')}
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

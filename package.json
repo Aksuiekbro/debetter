@@ -2,15 +2,20 @@
   "name": "mern-project",
   "version": "1.0.0",
   "description": "MERN Stack Project",
-  "main": "server.js",
+  "main": "api/server.js",
   "scripts": {
-    "start": "node server.js",
-    "server": "nodemon server.js",
+    "start": "node api/server.js",
+    "server": "nodemon api/server.js",
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build": "cd client && npm run build",
     "test": "jest",
-    "tournament:setup": "node scripts/runTournamentSetup.js"
+    "tournament:setup": "node scripts/runTournamentSetup.js",
+    "test:e2e": "node run-puppeteer-test.js",
+    "test:e2e:existing": "node test-existing-app.js",
+    "test:client": "node test-client-only.js",
+    "test:debetter": "node debetter-test.js",
+    "test:debetter:full": "node run-debetter-test.js"
   },
   "dependencies": {
     "@mui/x-date-pickers": "^7.28.2",
@@ -22,6 +27,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mcp-mongodb-atlas": "^0.1.10",
+    "mongodb": "^6.15.0",
     "mongoose": "^7.8.6",
     "react-beautiful-dnd": "^13.1.1"
   },
@@ -29,6 +35,7 @@
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
     "concurrently": "^8.2.1",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "puppeteer": "^24.6.0"
   }
 }

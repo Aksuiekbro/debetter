@@ -1,0 +1,77 @@
+{
+  "greeting": "Привет",
+  "navbar": {
+    "home": "Главная",
+    "host_debate": "Начать Дебаты",
+    "join_debate": "Присоединиться к Дебатам",
+    "tournaments": "Турниры",
+    "my_debates": "Мои Дебаты",
+    "profile": "Профиль",
+    "logout": "Выйти",
+    "login": "Войти",
+    "register": "Регистрация",
+    "search_placeholder": "Поиск дебатов..."
+  },
+  "common": {
+    "notAvailable": "Н/Д"
+  },
+  "profile": {
+    "role": {
+      "debater": "Дебатер",
+      "judge": "Судья",
+      "organizer": "Организатор"
+    },
+    "error": {
+      "updateFailed": "Не удалось обновить профиль",
+      "loginToAddFriend": "Пожалуйста, войдите, чтобы добавить друзей",
+      "friendRequestFailed": "Не удалось отправить запрос в друзья",
+      "fetchFailed": "Не удалось загрузить профиль"
+    },
+    "alert": {
+      "friendRequestSent": "Запрос в друзья успешно отправлен!"
+    },
+    "button": {
+      "retry": "Повторить",
+      "editInfo": "Редактировать инфо и настройки",
+      "addFriend": "Добавить в друзья",
+      "addNewDebate": "Добавить новые дебаты"
+    },
+    "interests": {
+      "placeholder": "Добавьте интересы, чтобы показать, какие темы вам нравятся"
+    },
+    "bio": {
+      "placeholder": "Добавьте свою биографию, чтобы другие узнали о вас"
+    },
+    "stats": {
+      "debates": "ДЕБАТЫ",
+      "wins": "ПОБЕДЫ",
+      "ongoing": "ТЕКУЩИЕ",
+      "judged": "СУДЕЙСТВО"
+    },
+    "tabs": {
+      "debatesPlaceholder": "Ваши дебаты появятся здесь",
+      "winsPlaceholder": "Ваши победные дебаты появятся здесь",
+      "ongoingPlaceholder": "Ваши текущие дебаты появятся здесь",
+      "judgedPlaceholder": "Дебаты, которые вы судили, появятся здесь"
+    },
+    "editDialog": {
+      "title": "Редактировать Профиль",
+      "bioLabel": "Биография",
+      "interestsLabel": "Интересы",
+      "addInterestLabel": "Добавить новый интерес",
+      "addButton": "Добавить",
+      "cancelButton": "Отмена",
+      "saveButton": "Сохранить"
+    },
+    "phoneLabel": "Телефон:",
+    "clubLabel": "Клуб:",
+    "experienceLabel": "Опыт:",
+    "rankLabel": "Ранг:",
+    "awardsLabel": "Награды:",
+    "otherInfoLabel": "Прочая информация:",
+    "judgeInfoTitle": "Информация о судье",
+    "awards": {
+      "placeholder": "Награды не указаны"
+    }
+  }
+}

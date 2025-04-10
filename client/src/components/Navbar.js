@@ -18,6 +18,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './ui/LanguageSwitcher'; // Import the new component
+import NotificationCenter from './NotificationCenter'; // Import NotificationCenter
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -62,9 +65,10 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   const [anchorEl, setAnchorEl] = useState(null);
-  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const userRole = localStorage.getItem('userRole');
 
   useEffect(() => {
     const checkAuth = () => {
@@ -85,17 +89,11 @@ const Navbar = () => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleNotificationClick = (event) => {
-    setNotificationAnchorEl(event.currentTarget);
-  };
 
   const handleClose = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationClose = () => {
-    setNotificationAnchorEl(null);
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -117,19 +115,19 @@ const Navbar = () => {
             onClick={() => navigate('/home')}
             sx={{ fontWeight: 'bold' }}
           >
-            DeBetter
+            {t('navbar.home')} {/* Assuming DeBetter is the home/brand */}
           </Button>
           <Button 
             color="inherit"
             onClick={() => navigate('/host-debate')}
           >
-            Host a Debate
+            {t('navbar.host_debate', 'Host a Debate')} {/* Added default value */}
           </Button>
           <Button 
             color="inherit"
             onClick={() => navigate('/debates')}
           >
-            Join a Debate
+            {t('navbar.join_debate', 'Join a Debate')} {/* Added default value */}
           </Button>
           {isAuthenticated && (
             <>
@@ -145,10 +143,30 @@ const Navbar = () => {
                 color="inherit"
                 onClick={() => navigate('/tournaments')}
               >
-                Tournaments
+                {t('navbar.tournaments')}
               </Button>
+              <Button
+                color="inherit"
+                onClick={() => navigate('/create-tournament')}
+                data-testid="create-tournament-nav-button" // Add test ID
+              >
+                {t('navbar.create_tournament', 'Create Tournament')}
+              </Button>
+              { (userRole === 'judge' || userRole === 'admin') && (
+                <Button
+                  color="inherit"
+                  onClick={() => navigate('/judge-panel')}
+                >
+                  {t('navbar.judge_panel', 'Judge Panel')} {/* Added translation key */}
+                </Button>
+              )}
             </>
           )}
+        </Box>
+
+        {/* Language Switcher Component */}
+        <Box sx={{ marginRight: 2 }}> {/* Keep margin for spacing */}
+          <LanguageSwitcher />
         </Box>
 
         {/* Right side */}
@@ -157,7 +175,7 @@ const Navbar = () => {
             <SearchIcon />
           </SearchIconWrapper>
           <StyledInputBase
-            placeholder="Search debates..."
+            placeholder={t('navbar.search_placeholder', 'Search debates...')}
             inputProps={{ 'aria-label': 'search' }}
           />
         </Search>
@@ -169,7 +187,7 @@ const Navbar = () => {
               color="inherit"
               onClick={() => navigate('/login')}
             >
-              Login
+              {t('navbar.login')}
             </Button>
             <Button 
               variant="outlined" 
@@ -183,38 +201,13 @@ const Navbar = () => {
                 }
               }}
             >
-              Sign Up
+              {t('navbar.register')}
             </Button>
           </Box>
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Notifications */}
-            <IconButton 
-              color="inherit"
-              onClick={handleNotificationClick}
-            >
-              <Badge badgeContent={3} color="secondary">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-            <Menu
-              anchorEl={notificationAnchorEl}
-              open={Boolean(notificationAnchorEl)}
-              onClose={handleNotificationClose}
-              PaperProps={{
-                sx: { width: 320 }
-              }}
-            >
-              <MenuItem onClick={handleNotificationClose}>
-                New debate invitation received
-              </MenuItem>
-              <MenuItem onClick={handleNotificationClose}>
-                Your debate starts in 1 hour
-              </MenuItem>
-              <MenuItem onClick={handleNotificationClose}>
-                New comment on your debate
-              </MenuItem>
-            </Menu>
+            {/* Notification Center Component */}
+            <NotificationCenter />
 
             {/* User Avatar */}
             <IconButton 
@@ -239,17 +232,23 @@ const Navbar = () => {
                 handleClose();
                 navigate('/profile');
               }}>
-                Profile
+                {t('navbar.profile')}
               </MenuItem>
               <MenuItem onClick={() => {
                 handleClose();
                 navigate('/my-debates');
               }}>
-                My Debates
-              </MenuItem>
-              <Divider />
+                {t('navbar.my_debates')}
+             </MenuItem>
+             <MenuItem onClick={() => {
+               handleClose();
+               navigate('/settings/notifications');
+             }}>
+               {t('navbar.notification_settings', 'Notification Settings')}
+             </MenuItem>
+             <Divider />
               <MenuItem onClick={handleLogout}>
-                Logout
+                {t('navbar.logout')}
               </MenuItem>
             </Menu>
           </Box>

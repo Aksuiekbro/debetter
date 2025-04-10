@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Grid,
@@ -24,9 +25,10 @@ import {
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { api } from '../config/api';
 
 const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
-
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const canJoinDebate = () => {
     if (!debate) return false;
@@ -47,7 +49,7 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
           {debate.format === 'tournament' && (
             <Chip 
               size="small" 
-              label="Tournament"
+              label={t('debatesList.card.tournamentChip', 'Tournament')}
               color="secondary"
               sx={{ ml: 1 }}
             />
@@ -61,19 +63,19 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
         <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: 'wrap', gap: 1 }}>
           <Chip 
             size="small"
-            label={`Category: ${debate.category}`}
+            label={t('debatesList.card.categoryLabel', 'Category: {{category}}', { category: t(`debatesList.filters.categories.${debate.category}`, debate.category) })}
             color="primary"
             variant="outlined"
           />
           <Chip 
             size="small"
-            label={`Difficulty: ${debate.difficulty}`}
+            label={t('debatesList.card.difficultyLabel', 'Difficulty: {{difficulty}}', { difficulty: t(`debatesList.filters.difficulty.${debate.difficulty}`, debate.difficulty) })}
             color="primary"
             variant="outlined"
           />
           <Chip 
             size="small"
-            label={`Status: ${debate.status}`}
+            label={t('debatesList.card.statusLabel', 'Status: {{status}}', { status: t(`debatesList.filters.status.${debate.status}`, debate.status) })}
             color="primary"
             variant="outlined"
           />
@@ -81,19 +83,19 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
             <>
               <Chip 
                 size="small"
-                label={`Debaters: ${debate.counts?.debaters || 0}/32`}
+                label={t('debatesList.card.debatersCount', 'Debaters: {{count}}/{{max}}', { count: debate.counts?.debaters || 0, max: 32 })}
                 color="primary"
                 variant="outlined"
               />
               <Chip 
                 size="small"
-                label={`Judges: ${debate.counts?.judges || 0}/8`}
+                label={t('debatesList.card.judgesCount', 'Judges: {{count}}/{{max}}', { count: debate.counts?.judges || 0, max: 8 })}
                 color="primary"
                 variant="outlined"
               />
               <Chip 
                 size="small"
-                label={`Mode: ${debate.mode || 'Solo'}`}
+                label={t('debatesList.card.modeLabel', 'Mode: {{mode}}', { mode: debate.mode || t('debatesList.card.defaultMode', 'Solo') })}
                 color="primary"
                 variant="outlined"
               />
@@ -101,7 +103,7 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
           ) : (
             <Chip 
               size="small"
-              label={`Participants: ${debate.participants.length}/${debate.maxParticipants}`}
+              label={t('debatesList.card.participantsCount', 'Participants: {{count}}/{{max}}', { count: debate.participants.length, max: debate.maxParticipants })}
               color="primary"
               variant="outlined"
             />
@@ -109,11 +111,11 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
         </Stack>
 
         <Typography variant="body2" sx={{ mt: 2 }}>
-          Start Date: {new Date(debate.startDate).toLocaleString()}
+          {t('debatesList.card.startDateLabel', 'Start Date:')} {new Date(debate.startDate).toLocaleString()}
           {debate.format === 'tournament' && debate.registrationDeadline && (
             <>
               <br />
-              Registration Deadline: {new Date(debate.registrationDeadline).toLocaleString()}
+              {t('debatesList.card.registrationDeadlineLabel', 'Registration Deadline:')} {new Date(debate.registrationDeadline).toLocaleString()}
             </>
           )}
         </Typography>
@@ -123,9 +125,9 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
         <Button 
           size="small" 
           color="primary"
-          onClick={() => navigate(`/debates/${debate._id}`)}
+          onClick={() => navigate(debate.format === 'tournament' ? `/tournaments/${debate._id}` : `/debates/${debate._id}`)}
         >
-          View Details
+          {t('debatesList.card.viewButton', 'View Details')}
         </Button>
         {currentUser && (
           <>
@@ -136,7 +138,7 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
                 variant="contained"
                 onClick={() => navigate(`/debates/${debate._id}/manage`)}
               >
-                Manage Debate
+                {t('debatesList.card.manageButton', 'Manage Debate')}
               </Button>
             ) : debate.participants.some(p => p._id === currentUser._id) ? (
               <Button 
@@ -147,8 +149,8 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
                 disabled={debate.format === 'tournament' && currentUser.role === 'judge' && debate.creator._id === currentUser._id}
               >
                 {debate.format === 'tournament' && currentUser.role === 'judge' && debate.creator._id === currentUser._id 
-                  ? 'Cannot Leave Own Tournament' 
-                  : 'Leave Debate'}
+                  ? t('debatesList.card.cannotLeaveOwnTournamentButton', 'Cannot Leave Own Tournament')
+                  : t('debatesList.card.leaveButton', 'Leave Debate')}
               </Button>
             ) : (
               <Button 
@@ -160,11 +162,11 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
               >
                 {!canJoinDebate() 
                   ? (debate.format === 'tournament' 
-                      ? (currentUser.role === 'judge' ? 'Judges Full' : 'Debaters Full') 
-                      : 'Full') 
+                      ? (currentUser.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
+                      : t('debatesList.card.fullButton', 'Full'))
                   : debate.format === 'tournament'
-                    ? `Join as ${currentUser.role === 'judge' ? 'Judge' : 'Debater'}`
-                    : 'Join Debate'}
+                    ? (currentUser.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
+                    : t('debatesList.card.joinButton', 'Join Debate')}
               </Button>
             )}
           </>
@@ -175,6 +177,7 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
 };
 
 const Debates = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('recent');
@@ -211,9 +214,9 @@ const Debates = () => {
         queryParams.append('difficulty', Array.from(filters.difficulty).join(','));
       }
 
-      const response = await fetch(`http://localhost:5001/api/debates?${queryParams}`);
+      const response = await fetch(`${api.baseUrl}/api/debates?${queryParams}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch debates');
+        throw new Error(t('debatesList.fetchError', 'Failed to fetch debates'));
       }
       const data = await response.json();
       setDebates(data);
@@ -222,13 +225,13 @@ const Debates = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, sortBy, filters]);
+  }, [searchQuery, sortBy, filters, t]);
 
   const getCurrentUser = async () => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const response = await fetch('http://localhost:5001/api/users/profile', {
+        const response = await fetch(`${api.baseUrl}/api/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -275,7 +278,7 @@ const Debates = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5001/api/debates/${debateId}/join`, {
+      const response = await fetch(`${api.baseUrl}/api/debates/${debateId}/join`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -301,7 +304,7 @@ const Debates = () => {
         navigate('/login');
         return;
       }
-      const response = await fetch(`http://localhost:5001/api/debates/${debateId}/leave`, {
+      const response = await fetch(`${api.baseUrl}/api/debates/${debateId}/leave`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -328,7 +331,7 @@ const Debates = () => {
   const FilterSection = ({ title, items, section }) => (
     <Box sx={{ mb: 3 }}>
       <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-        {title}
+        {t(title)}
       </Typography>
       <FormGroup>
         {items.map((item) => (
@@ -341,7 +344,7 @@ const Debates = () => {
                 sx={{ color: 'primary.main' }}
               />
             }
-            label={item.charAt(0).toUpperCase() + item.slice(1)}
+            label={t(`debatesList.filters.${section}.${item}`, item.charAt(0).toUpperCase() + item.slice(1))}
           />
         ))}
       </FormGroup>
@@ -355,22 +358,22 @@ const Debates = () => {
         <Grid item xs={12} md={3}>
           <Paper elevation={3} sx={{ p: 3, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
             <Typography variant="h5" sx={{ mb: 3, color: 'primary.main' }}>
-              Filters
+              {t('debatesList.filters.mainTitle', 'Filters')}
             </Typography>
             <FilterSection
-              title="Categories"
+              title="debatesList.filters.categoriesTitle" // Pass key instead of text
               items={filterOptions.categories}
               section="categories"
             />
             <Divider sx={{ my: 2 }} />
             <FilterSection
-              title="Status"
+              title="debatesList.filters.statusTitle" // Pass key instead of text
               items={filterOptions.status}
               section="status"
             />
             <Divider sx={{ my: 2 }} />
             <FilterSection
-              title="Difficulty"
+              title="debatesList.filters.difficultyTitle" // Pass key instead of text
               items={filterOptions.difficulty}
               section="difficulty"
             />
@@ -383,7 +386,7 @@ const Debates = () => {
           <TextField
             fullWidth
             variant="outlined"
-            placeholder="Search debates..."
+            placeholder={t('debatesList.searchPlaceholder', 'Search debates...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{ mb: 3 }}
@@ -399,16 +402,16 @@ const Debates = () => {
           {/* Sort Options */}
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
             <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Sort By</InputLabel>
+              <InputLabel>{t('debatesList.sort.label', 'Sort By')}</InputLabel>
               <Select
                 value={sortBy}
-                label="Sort By"
+                label={t('debatesList.sort.label', 'Sort By')}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <MenuItem value="recent">Most Recent</MenuItem>
-                <MenuItem value="popular">Most Popular</MenuItem>
-                <MenuItem value="upcoming">Upcoming First</MenuItem>
-                <MenuItem value="difficulty">Difficulty Level</MenuItem>
+                <MenuItem value="recent">{t('debatesList.sort.options.recent', 'Most Recent')}</MenuItem>
+                <MenuItem value="popular">{t('debatesList.sort.options.popular', 'Most Popular')}</MenuItem>
+                <MenuItem value="upcoming">{t('debatesList.sort.options.upcoming', 'Upcoming First')}</MenuItem>
+                <MenuItem value="difficulty">{t('debatesList.sort.options.difficulty', 'Difficulty Level')}</MenuItem>
               </Select>
             </FormControl>
           </Box>
@@ -419,7 +422,7 @@ const Debates = () => {
               Array.from(valueSet).map(value => (
                 <Chip
                   key={`${section}-${value}`}
-                  label={`${value.charAt(0).toUpperCase() + value.slice(1)}`}
+                  label={t(`debatesList.filters.${section}.${value}`, value.charAt(0).toUpperCase() + value.slice(1))}
                   onDelete={() => handleFilterChange(section, value)}
                   color="primary"
                   variant="outlined"
@@ -433,11 +436,11 @@ const Debates = () => {
           <Grid container spacing={3}>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 4 }}>
-                <Typography component="div">Loading debates...</Typography>
+                <Typography component="div">{t('debatesList.loading', 'Loading debates...')}</Typography>
               </Box>
             ) : debates.length === 0 ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 4 }}>
-                <Typography component="div">No debates found matching your criteria</Typography>
+                <Typography component="div">{t('debatesList.noDebatesFound', 'No debates found matching your criteria')}</Typography>
               </Box>
             ) : (
               debates.map((debate) => (
