@@ -17,9 +17,14 @@ const BracketTab = ({
   teams = [], // Add teams prop
   loading = false,
   onInitializeBracket,
-  initializing = false
+  initializing = false,
+  currentUser, // Added prop
+  tournamentCreatorId, // Added prop
 }) => {
   const { t } = useTranslation(); // Initialize useTranslation
+
+  // Determine if the current user is an organizer or admin for this tournament
+  const isOrganizerOrAdmin = currentUser && (currentUser.role === 'admin' || currentUser._id === tournamentCreatorId);
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -27,7 +32,8 @@ const BracketTab = ({
           {t('bracketTab.title', 'Tournament Bracket')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {typeof onInitializeBracket === 'function' && (
+          {/* Only show Initialize/Regenerate button to organizers/admins */}
+          {isOrganizerOrAdmin && typeof onInitializeBracket === 'function' && (
             <Button
               variant="contained"
               color="primary"

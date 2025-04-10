@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+// import ParticipantStandings from '../ParticipantStandings'; // Removed - Component not found
 import {
   Box,
   Typography,
@@ -10,14 +11,17 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  Divider // Import Divider
 } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material'; // Changed from ShuffleIcon
 
 const StandingsTab = ({
   teams = [], // Expects teams array already potentially updated with standings data
   onRefreshStandings, // Function to trigger fetching standings
-  loading // Optional: pass loading state if standings refresh is slow
+  loading, // Optional: pass loading state if standings refresh is slow
+  currentUser, // Added prop (for consistency, not used for hiding controls here)
+  tournamentCreatorId, // Added prop (for consistency, not used for hiding controls here)
 }) => {
 
   const { t } = useTranslation();
@@ -71,6 +75,11 @@ const StandingsTab = ({
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Add a separator and the Participant Standings component */}
+      <Divider sx={{ my: 3 }} />
+      {/* <ParticipantStandings /> - Removed, component not found */}
+
     </Box>
   );
 };

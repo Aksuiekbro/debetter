@@ -67,6 +67,9 @@ const JudgePanel = () => {
       const games = await response.json();
       console.log('Fetched assigned games:', games);
       setAssignedGames(games);
+      if (games && games.length > 0) {
+        console.log('[useJudgeAssignments] Processed assignedGames[0]:', JSON.stringify(games[0], null, 2));
+      }
     } catch (error) {
       console.error('Error fetching assigned games:', error);
       setError(t('judgePanel.loadError', 'Failed to load your assigned games. Please try again later.'));
@@ -76,8 +79,10 @@ const JudgePanel = () => {
   };
 
   const handleGameSelect = (game) => {
-    setSelectedGame(game);
-    setShowEvaluation(true);
+    // Navigate to the ActiveJudgeInterface for the selected game
+    // Ensure we use debateId and postingId as expected by the ActiveJudgeInterface route
+    // Assuming the 'game' object from '/api/apf/assignments' has these properties
+    navigate(`/judge/${game.debateId}/${game.postingId}`);
   };
 
   const handleCloseEvaluation = () => {
@@ -176,8 +181,9 @@ const JudgePanel = () => {
         />
       ) : (
         <Paper elevation={3} sx={{ p: 3 }}>
+          {assignedGames.length > 0 && console.log('[JudgePanel] Title value being rendered:', assignedGames[0]?.title)}
           <Typography variant="h4" gutterBottom>
-            {t('judgePanel.title', 'Judge Panel')}
+            {assignedGames.length > 0 ? `${t('judgePanel.title', 'Judge Panel')} - ${assignedGames[0].title.replace('{{debateTitle}} - ', '')}` : t('judgePanel.title', 'Judge Panel')}
           </Typography>
           
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>

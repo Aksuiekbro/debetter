@@ -238,28 +238,28 @@ router.put('/:id/scores/:roundIndex/:matchIndex', auth, async (req, res) => {
       if (match.judgeScores.length >= Math.min(tournament.judges.length, 3)) {
         match.completed = true;
         
-        // Update next round if this match is completed
-        if (roundIndex < tournament.rounds.length - 1) {
-          const nextRound = tournament.rounds[roundIndex + 1];
-          const nextMatchIndex = Math.floor(matchIndex / 2);
+        // // Update next round if this match is completed - COMMENTED OUT - Handled by tournamentService.advanceWinnerInBracket called from apfController
+        // if (roundIndex < tournament.rounds.length - 1) {
+        //   const nextRound = tournament.rounds[roundIndex + 1];
+        //   const nextMatchIndex = Math.floor(matchIndex / 2);
           
-          if (nextMatchIndex < nextRound.matches.length) {
-            const nextMatch = nextRound.matches[nextMatchIndex];
+        //   if (nextMatchIndex < nextRound.matches.length) {
+        //     const nextMatch = nextRound.matches[nextMatchIndex];
             
-            // Place winner in appropriate slot of next match
-            if (matchIndex % 2 === 0) {
-              nextMatch.team1 = match.winner;
-            } else {
-              nextMatch.team2 = match.winner;
-            }
-          }
-        }
+        //     // Place winner in appropriate slot of next match
+        //     if (matchIndex % 2 === 0) {
+        //       nextMatch.team1 = match.winner; // Note: match.winner here is likely a User ID, inconsistent with service
+        //     } else {
+        //       nextMatch.team2 = match.winner; // Note: match.winner here is likely a User ID, inconsistent with service
+        //     }
+        //   }
+        // }
         
-        // If this is the final match of the final round, set tournament winner
-        if (roundIndex === tournament.rounds.length - 1 && matchIndex === 0) {
-          tournament.winner = match.winner;
-          tournament.status = 'completed';
-        }
+        // // If this is the final match of the final round, set tournament winner - COMMENTED OUT - Handled by tournamentService.advanceWinnerInBracket
+        // if (roundIndex === tournament.rounds.length - 1 && matchIndex === 0) {
+        //   tournament.winner = match.winner; // Note: match.winner here is likely a User ID
+        //   tournament.status = 'completed';
+        // }
       }
     }
 

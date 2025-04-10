@@ -63,10 +63,9 @@ class TournamentService {
        format: 'tournament',
        creator: creator._id,
        status: 'upcoming',
-       participants: [{ // Creator automatically joins
-         _id: creator._id,
-         username: creator.username,
-         role: creator.role
+       participants: [{ // Creator automatically joins as Organizer
+         userId: creator._id,
+         tournamentRole: 'Organizer' // Assign a default role for the creator
        }],
        tournamentRounds: initializeTournamentRounds(32), // Assuming 32 participants default
        maxParticipants: 32, // Deprecated? Use tournamentSettings
@@ -123,11 +122,13 @@ class TournamentService {
 
   // Adds a participant to the tournament
   async addParticipant(debate, user) {
+      // Determine the tournament role based on the user's main role
+      // TODO: Allow specifying role during join if needed (e.g., Observer)
+      const tournamentRole = user.role === 'judge' ? 'Judge' : 'Debater';
       debate.participants.push({
-        _id: user._id,
-        username: user.username,
-        role: user.role,
-        judgeRole: user.role === 'judge' ? 'main' : undefined // Default judge role
+        userId: user._id,
+        tournamentRole: tournamentRole,
+        // teamId: null // Team is assigned later
       });
 
       // Update counters
@@ -195,7 +196,7 @@ class TournamentService {
           if (!currentParticipantIds.includes(judgeId)) {
               const user = await User.findById(judgeId);
               if (user) {
-                  currentParticipants.push({ _id: user._id, username: user.username, role: 'judge', judgeRole: 'main' });
+                  currentParticipants.push({ userId: user._id, tournamentRole: 'Judge' /* teamId: null */ });
                   currentParticipantIds.push(judgeId); // Add to check list
                   addedJudges.push(user._id);
                   judgesToAdd--;
@@ -210,7 +211,8 @@ class TournamentService {
           if (!currentParticipantIds.includes(debaterId)) {
               const user = await User.findById(debaterId);
               if (user) {
-                  currentParticipants.push({ _id: user._id, username: user.username, role: user.role || 'debater' });
+                  // Assuming non-judges are Debaters for now
+                  currentParticipants.push({ userId: user._id, tournamentRole: 'Debater' /* teamId: null */ });
                   currentParticipantIds.push(debaterId); // Add to check list
                   addedDebaters.push(user._id);
                   debatersToAdd--;
@@ -220,8 +222,10 @@ class TournamentService {
 
       debate.participants = currentParticipants;
       // Update counters directly
-      debate.tournamentSettings.currentJudges = currentParticipants.filter(p => p.role === 'judge').length;
-      debate.tournamentSettings.currentDebaters = currentParticipants.filter(p => p.role !== 'judge').length;
+      // Update counters based on the new structure
+      debate.tournamentSettings.currentJudges = currentParticipants.filter(p => p.tournamentRole === 'Judge').length;
+      debate.tournamentSettings.currentDebaters = currentParticipants.filter(p => p.tournamentRole === 'Debater').length;
+      // TODO: Add logic for 'Observer' role if implemented
 
       await debate.save();
 
@@ -232,6 +236,96 @@ class TournamentService {
           totalJudges: debate.tournamentSettings.currentJudges,
           totalDebaters: debate.tournamentSettings.currentDebaters,
       };
+  }
+
+
+  // Updates details for a specific participant within a tournament
+  async updateParticipantDetails(debateId, participantUserId, updateData) {
+    const debate = await Debate.findById(debateId);
+    if (!debate) throw new Error('Debate not found');
+    if (debate.format !== 'tournament') throw new Error('Operation only valid for tournaments');
+
+    // Find the participant subdocument within the array
+    const participant = debate.participants.find(p => p.userId.toString() === participantUserId);
+    if (!participant) throw new Error('Participant not found in this tournament');
+
+    // Update allowed fields in the participant subdocument
+    if (updateData.tournamentRole) {
+      // TODO: Add validation for allowed tournament roles ('Debater', 'Judge', 'Observer')
+      participant.tournamentRole = updateData.tournamentRole;
+    }
+    if (updateData.teamId !== undefined) { // Allow setting teamId to null or a valid ID
+      // TODO: Add validation to ensure teamId exists within the tournament's teams array if not null
+      participant.teamId = updateData.teamId ? new mongoose.Types.ObjectId(updateData.teamId) : null;
+    }
+
+    // Optional: Update related User document fields (like phone, club)
+    // Consider if this logic is better placed in a dedicated user profile update endpoint.
+    if (updateData.phoneNumber || updateData.club) {
+        const user = await User.findById(participantUserId);
+        if (!user) throw new Error('User associated with participant not found');
+        if (updateData.phoneNumber) user.phoneNumber = updateData.phoneNumber;
+        if (updateData.club) user.club = updateData.club;
+        await user.save();
+    }
+
+    // Mark the array as modified before saving the parent document
+    debate.markModified('participants');
+    await debate.save();
+
+    // Optionally, re-fetch the updated participant with populated data to return
+    const updatedDebate = await Debate.findById(debateId)
+                                      .populate('participants.userId', 'username email phoneNumber club name role')
+                                      .populate('participants.teamId', 'name')
+                                      .lean();
+    const updatedParticipant = updatedDebate.participants.find(p => p.userId._id.toString() === participantUserId);
+
+    return updatedParticipant; // Return the updated participant object
+  }
+
+
+  // Removes a specific participant from a tournament using $pull
+  async removeParticipantFromTournament(debateId, participantUserId) {
+    // Validate input IDs
+    if (!mongoose.Types.ObjectId.isValid(debateId) || !mongoose.Types.ObjectId.isValid(participantUserId)) {
+      throw new Error('Invalid ID format');
+    }
+
+    const debate = await Debate.findById(debateId);
+    if (!debate) throw new Error('Debate not found');
+    if (debate.format !== 'tournament') throw new Error('Operation only valid for tournaments');
+
+    // Find the participant to determine their role for counter updates *before* removing them
+    const participantToRemove = debate.participants.find(p => p.userId.toString() === participantUserId);
+    if (!participantToRemove) {
+        throw new Error('Participant not found in this tournament');
+    }
+    const role = participantToRemove.tournamentRole; // Get role before removal
+
+    // Use findByIdAndUpdate with $pull to remove the participant
+    const updateResult = await Debate.findByIdAndUpdate(
+      debateId,
+      { $pull: { participants: { userId: new mongoose.Types.ObjectId(participantUserId) } } },
+      { new: false } // We don't strictly need the updated doc here, but check result
+    );
+
+    // Check if the participant was actually found and pulled
+    // Note: findByIdAndUpdate returns the *original* document by default (unless {new: true})
+    // We already checked if the participant exists above, so the pull should succeed.
+    // If we needed absolute certainty, we could re-fetch and check length, but the check above is sufficient.
+
+    // Update counters after successful removal
+    const updatedDebate = await Debate.findById(debateId); // Re-fetch to get current state
+    if (!updatedDebate) throw new Error('Debate disappeared after update?'); // Should not happen
+
+    updatedDebate.tournamentSettings.currentJudges = updatedDebate.participants.filter(p => p.tournamentRole === 'Judge').length;
+    updatedDebate.tournamentSettings.currentDebaters = updatedDebate.participants.filter(p => p.tournamentRole === 'Debater').length;
+    // TODO: Add observer count update if needed
+
+    await updatedDebate.save();
+
+    // No specific return value needed, controller sends success message
+    return; 
   }
 
 
@@ -291,32 +385,19 @@ class TournamentService {
     const currentMatch = currentRound.matches[currentMatchIndex];
     if (!currentMatch) throw new Error(`Match ${matchNumber} in Round ${roundNumber} not found`);
 
-    // --- Resolve Winner Team ID to Representative User ID ---
-    const winningTeam = debate.teams.find(t => t._id.toString() === winnerTeamId.toString());
-    if (!winningTeam) throw new Error(`Winning team with ID ${winnerTeamId} not found in tournament`);
-
-    // Find the leader of the winning team (assuming leader represents the team in bracket)
-    const teamLeaderMember = winningTeam.members.find(m => m.role === 'leader');
-    if (!teamLeaderMember || !teamLeaderMember.userId) {
-        // Fallback: maybe use the first member? Or throw error? For now, log and potentially skip advancement.
-        console.warn(`Could not find leader for winning team ${winningTeam.name} (ID: ${winnerTeamId}). Cannot advance winner.`);
-        // Depending on requirements, you might want to throw an error here instead.
-        // throw new Error(`Leader not found for winning team ${winningTeam.name}`);
-        return debate; // Return without advancing
-    }
-    const winnerRepresentativeUserId = teamLeaderMember.userId._id; // Get the ObjectId
-    console.log(`[advanceWinner] Advancing winner: Team ${winningTeam.name}, Representative User ID: ${winnerRepresentativeUserId}`);
-    // --- End Winner Resolution ---
+    // Winner Team ID is passed directly, no need to resolve to User ID here.
+    // The bracket should store Team IDs.
+    console.log(`[advanceWinner] Advancing winner: Team ID ${winnerTeamId}`);
 
     // Update the current match (optional, could be done elsewhere)
-    currentMatch.winner = winnerRepresentativeUserId; // Store the representative User ID
+    currentMatch.winner = winnerTeamId; // Store the winning Team ID
     currentMatch.completed = true;
 
     // Check if it's the final round
     if (currentRoundIndex === debate.tournamentRounds.length - 1) {
       // This was the final match
-      console.log(`[advanceWinner] Final match completed. Tournament Winner User ID: ${winnerRepresentativeUserId}`);
-      debate.winner = winnerRepresentativeUserId; // Set tournament winner (User ID)
+      console.log(`[advanceWinner] Final match completed. Tournament Winner Team ID: ${winnerTeamId}`);
+      debate.winner = winnerTeamId; // Set tournament winner (Team ID)
       debate.status = 'completed';
     } else {
       // Advance winner to the next round
@@ -332,11 +413,11 @@ class TournamentService {
       // Determine if the current match feeds into team1 or team2 slot of the next match
       const isLeftFeeder = currentMatchIndex % 2 === 0;
       if (isLeftFeeder) {
-        console.log(`[advanceWinner] Placing winner ${winnerRepresentativeUserId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team1`);
-        nextMatch.team1 = winnerRepresentativeUserId;
+        console.log(`[advanceWinner] Placing winner Team ID ${winnerTeamId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team1`);
+        nextMatch.team1 = winnerTeamId;
       } else {
-        console.log(`[advanceWinner] Placing winner ${winnerRepresentativeUserId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team2`);
-        nextMatch.team2 = winnerRepresentativeUserId;
+        console.log(`[advanceWinner] Placing winner Team ID ${winnerTeamId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team2`);
+        nextMatch.team2 = winnerTeamId;
       }
     }
 

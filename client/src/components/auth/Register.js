@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next'; // Import useTranslation
-import { api } from '../../config/api';
+import { api } from '../../config/api'; // Removed getAuthHeaders
 
 const Register = () => {
   const navigate = useNavigate();
@@ -23,8 +23,14 @@ const Register = () => {
     email: '',
     password: '',
     role: 'user', // Default role
-    judgeRole: 'Judge' // Default judge role, only relevant if role is 'judge'
+    judgeRole: 'Judge', // Default judge role, only relevant if role is 'judge'
+    // Judge specific fields
+    phoneNumber: '',
+    club: '',
+    experience: '',
+    otherProfileInfo: '',
   });
+  const [profilePhoto, setProfilePhoto] = useState(null); // State for photo file
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -32,6 +38,10 @@ const Register = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handlePhotoChange = (e) => {
+    setProfilePhoto(e.target.files[0]);
   };
 
   const validateForm = () => {
@@ -42,6 +52,7 @@ const Register = () => {
     // Add validation for judgeRole if role is judge
     if (formData.role === 'judge' && !formData.judgeRole) {
       newErrors.judgeRole = t('register.validationError.judgeRoleRequired', 'Judge Role is required when role is Judge');
+      // Add validation for other judge fields if needed, e.g., phone number format
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -64,10 +75,38 @@ const Register = () => {
       };
       if (formData.role === 'judge') {
         payload.judgeRole = formData.judgeRole;
+        // Add other judge-specific fields to the main payload
+        payload.phoneNumber = formData.phoneNumber;
+        payload.club = formData.club;
+        payload.experience = formData.experience;
+        payload.otherProfileInfo = formData.otherProfileInfo;
       }
 
       const response = await api.client.post('/api/users/register', payload);
-      const data = response.data;
+      const data = response.data; // User data including token
+
+      // --- Photo Upload Step ---
+      if (formData.role === 'judge' && profilePhoto) {
+        try {
+          const photoFormData = new FormData();
+          photoFormData.append('profilePhoto', profilePhoto);
+
+          // Headers (including auth token) are automatically added by the axios interceptor.
+          // Content-Type for multipart/form-data is handled automatically by axios/browser.
+          const photoUploadHeaders = {
+            // No need to manually add headers here
+          };
+
+          await api.client.post('/api/users/profile/photo', photoFormData); // Removed manual headers
+          console.log('Profile photo uploaded successfully.');
+        } catch (photoError) {
+          console.error('Profile photo upload error:', photoError);
+          // Decide how to handle photo upload failure. Maybe alert the user?
+          // For now, we'll just log it and continue, as the user is registered.
+          alert(t('register.photoUploadError', 'User registered, but photo upload failed. You can upload it later via your profile.'));
+        }
+      }
+      // --- End Photo Upload Step ---
       
       // Debug log to check what role is being received back
       console.log('Registration response received:', data);
@@ -170,6 +209,7 @@ const Register = () => {
 
           {/* Conditionally render Judge Role dropdown */}
           {formData.role === 'judge' && (
+            <div>
             <FormControl fullWidth margin="normal" error={!!errors.judgeRole}>
               <InputLabel id="judge-role-label">{t('register.judgeRoleLabel', 'Judge Role')}</InputLabel>
               <Select
@@ -195,6 +235,60 @@ const Register = () => {
               </Select>
               {errors.judgeRole && <Typography color="error" variant="caption">{errors.judgeRole}</Typography>}
             </FormControl>
+
+            {/* Judge Specific Fields */}
+            <TextField
+              fullWidth
+              label={t('register.phoneNumberLabel', 'Phone Number')}
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              margin="normal"
+              inputProps={{ 'data-testid': 'register-phone-input' }}
+            />
+            <TextField
+              fullWidth
+              label={t('register.clubLabel', 'Club Affiliation')}
+              name="club"
+              value={formData.club}
+              onChange={handleChange}
+              margin="normal"
+              inputProps={{ 'data-testid': 'register-club-input' }}
+            />
+            <TextField
+              fullWidth
+              label={t('register.experienceLabel', 'Experience')}
+              name="experience"
+              value={formData.experience}
+              onChange={handleChange}
+              margin="normal"
+              multiline
+              rows={3}
+              inputProps={{ 'data-testid': 'register-experience-input' }}
+            />
+            <TextField
+              fullWidth
+              label={t('register.otherInfoLabel', 'Other Profile Info')}
+              name="otherProfileInfo"
+              value={formData.otherProfileInfo}
+              onChange={handleChange}
+              margin="normal"
+              multiline
+              rows={3}
+              inputProps={{ 'data-testid': 'register-otherinfo-input' }}
+            />
+            {/* Profile Photo Upload */}
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="body2">{t('register.photoLabel', 'Profile Photo:')}</Typography>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                style={{ display: 'block', marginTop: '8px' }}
+                data-testid="register-photo-input"
+              />
+            </Box>
+            </div>
           )}
           
           <Button 

@@ -112,7 +112,7 @@ const Home = () => {
 
   const fetchPublicDebates = async () => {
     try {
-      const response = await api.client.get('/debates', {
+      const response = await api.client.get('/api/debates', {
         params: {
           limit: 5,
           sortBy: 'recent'
@@ -538,72 +538,6 @@ const Home = () => {
         {/* Sidebar Section */}
         <Grid item xs={12} md={4}>
           {/* Get Started / Login Section */}
-          <Paper elevation={2} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
-              {isAuthenticated ? 'Quick Actions' : 'Get Started'}
-            </Typography>
-            
-            {!isAuthenticated ? (
-              <Stack spacing={2}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={() => navigate('/register')}
-                  startIcon={<PersonIcon />}
-                >
-                  Create Account
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate('/login')}
-                >
-                  Sign In
-                </Button>
-                <Divider sx={{ my: 1 }}>
-                  <Typography variant="body2" color="text.secondary">or</Typography>
-                </Divider>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleJoinDebate}
-                  sx={{ mt: 1 }}
-                >
-                  Browse as Guest
-                </Button>
-              </Stack>
-            ) : (
-              <Stack spacing={2}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handleCreateDebate}
-                  startIcon={<ForumIcon />}
-                >
-                  Create New Debate
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => navigate('/tournaments')}
-                  startIcon={<EmojiEventsIcon />}
-                >
-                  Join Tournament
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => navigate('/judge-panel')}
-                  startIcon={<SchoolIcon />}
-                >
-                  Judge Panel
-                </Button>
-              </Stack>
-            )}
-          </Paper>
 
           {/* Platform Stats */}
           <Paper elevation={2} sx={{ p: 3, mb: 4, borderRadius: 2 }}>

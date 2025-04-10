@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { api } from '../config/api';
 import { getAuthHeaders } from '../utils/auth';
 
@@ -30,6 +30,8 @@ export const useApfPostingManagement = (
   const [editId, setEditId] = useState(null); // ID of the posting being edited
   const [batchMode, setBatchMode] = useState(false);
   const [loading, setLoading] = useState(false); // General loading for posting actions
+  const [availableThemes, setAvailableThemes] = useState([]); // State for fetched themes
+  const [themesLoading, setThemesLoading] = useState(false); // Loading state for themes
 
   // Note: The main postings list state (apfPostings) lives in useTournamentData
 
@@ -74,6 +76,36 @@ export const useApfPostingManagement = (
     setOpenApfDialog(true);
   }, [teams, judges]); // Depend on teams and judges to find objects
 
+  // Effect to fetch available themes
+  useEffect(() => {
+    if (tournamentId) {
+      const fetchThemes = async () => {
+        setThemesLoading(true);
+        try {
+          const response = await fetch(`${api.baseUrl}/api/debates/${tournamentId}/themes`, {
+            headers: getAuthHeaders(),
+          });
+          if (!response.ok) {
+            throw new Error('Failed to fetch themes');
+          }
+          const data = await response.json();
+          // Assuming the API returns an array of objects like [{ _id: '...', text: '...' }]
+          // Or adjust based on actual API response structure
+          setAvailableThemes(data || []);
+        } catch (error) {
+          console.error("Error fetching themes:", error);
+          showNotification('Failed to load themes for dropdown.', 'error');
+          setAvailableThemes([]); // Reset or keep previous state? Resetting is safer.
+        } finally {
+          setThemesLoading(false);
+        }
+      };
+      fetchThemes();
+    } else {
+      setAvailableThemes([]); // Clear themes if tournamentId is not available
+    }
+  }, [tournamentId, showNotification]); // Rerun when tournamentId changes
+
   const handleCloseApfDialog = useCallback(() => {
     setOpenApfDialog(false);
     setIsEditing(false);
@@ -94,7 +126,7 @@ export const useApfPostingManagement = (
       );
       setCurrentApfGameData(prev => ({ ...prev, judges: selectedJudges }));
     } else if (fieldName === 'theme') {
-       // Handle freeSolo Autocomplete potentially giving a string or object
+       // Now expects a simple string value from the Select component
        setCurrentApfGameData(prev => ({ ...prev, theme: value }));
     }
     else {
@@ -139,7 +171,7 @@ export const useApfPostingManagement = (
         team1Id: team1.id,
         team2Id: team2.id,
         judgeIds: judgeIdsToSend,
-        theme: useCustomModel ? customModel : (typeof theme === 'string' ? theme : theme?.label || theme), // Handle theme object or string
+        theme: useCustomModel ? customModel : theme, // Theme is now always a string from the Select
         useCustomModel: useCustomModel,
       };
 
@@ -307,6 +339,8 @@ export const useApfPostingManagement = (
     editApfId: editId,
     batchMode,
     loadingApf: loading, // Renamed for clarity
+    availableThemes, // Pass down the fetched themes
+    themesLoading, // Pass down loading state if needed by UI
     setBatchMode,
     handleOpenApfDialog,
     handleCloseApfDialog,

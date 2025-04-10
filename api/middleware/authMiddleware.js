@@ -79,3 +79,20 @@ exports.canGenerateTestData = async (req, res, next) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Middleware factory to check for specific roles
+exports.requireRole = (...roles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            // This should ideally be caught by 'authenticate' middleware first
+            return res.status(401).json({ message: 'Not authenticated' });
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                message: `Access denied: Requires one of the following roles: ${roles.join(', ')}`
+            });
+        }
+        next();
+    };
+};

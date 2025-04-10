@@ -50,14 +50,7 @@ import {
 } from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
-// Predefined theme options
-const predefinedThemes = [
-  { id: 'th1', label: 'This House Believes that social media has improved public discourse' },
-  { id: 'th2', label: 'This House Would restrict the development of artificial intelligence' },
-  { id: 'th3', label: 'This House Would implement universal basic income' },
-  { id: 'th4', label: 'This House Believes that democracy is in decline globally' },
-  { id: 'th5', label: 'This House Would prioritize environmental protection over economic growth' },
-];
+// Predefined themes removed, will use fetched themes
 
 // Helper function to reorder items in a drag and drop list
 const reorder = (list, startIndex, endIndex) => {
@@ -91,15 +84,16 @@ function TabPanel(props) {
 const EnhancedApfPostingCard = ({
   teams = [],
   judges = [],
-  themes = predefinedThemes,
-  currentCardData = { 
-    team1: null, 
-    team2: null, 
-    location: '', 
+  availableThemes = [], // Renamed prop for fetched themes
+  themesLoading = false, // Prop for loading state
+  currentCardData = {
+    team1: null,
+    team2: null,
+    location: '',
     virtualLink: '',
-    judges: [], 
-    theme: null, 
-    customModel: '', 
+    judges: [],
+    theme: '', // Theme is now a string
+    customModel: '',
     useCustomModel: false,
     scheduledTime: null,
     status: 'scheduled',
@@ -497,58 +491,29 @@ const EnhancedApfPostingCard = ({
 
             {/* Theme or Custom Model */}
             {!useCustomModel ? (
-              <Grid item xs={12}>
-                <Box sx={{ mb: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                    {t('apfPostingCard.themeSelectionHint', 'Select from predefined themes or create your own debate topic')}
-                  </Typography>
-                </Box>
-                <Autocomplete
-                  freeSolo
-                  options={themes}
-                  getOptionLabel={(option) => typeof option === 'string' ? option : option.label || ''}
-                  value={currentCardData.theme}
-                  onChange={(event, newValue) => handleAutocompleteChange('theme', newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label={t('apfPostingCard.themeMotionLabel', 'Theme / Motion')}
-                      variant="outlined"
-                      fullWidth
-                      helperText={t('apfPostingCard.themeHelperText', 'Select from list or type your own custom topic')}
-                      placeholder={t('apfPostingCard.themePlaceholder', 'Enter any topic you want to debate...')}
-                    />
-                  )}
-                  onInputChange={(event, newInputValue) => {
-                    if (event) {
-                      handleAutocompleteChange('theme', newInputValue);
-                    }
-                  }}
-                  renderOption={(props, option) => (
-                    <li {...props}>
-                      <Typography variant="body2">{option.label}</Typography>
-                    </li>
-                  )}
-                />
-                
-                {/* Quick select theme chips */}
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
-                    {t('apfPostingCard.quickSelectLabel', 'Quick Select:')}
-                  </Typography>
-                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                    {predefinedThemes.slice(0, 3).map((theme) => (
-                      <Chip 
-                        key={theme.id}
-                        label={theme.label.substring(0, 30) + '...'}
-                        onClick={() => handleAutocompleteChange('theme', theme)}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
+              <Grid item xs={12}> {/* Keep the wrapping Grid item */}
+                <FormControl fullWidth variant="outlined" disabled={themesLoading}>
+                  <InputLabel id="theme-select-label">{t('apfPostingCard.themeMotionLabel', 'Theme / Motion')}</InputLabel>
+                  <Select
+                    labelId="theme-select-label"
+                    name="theme" // Use name for handleTextFieldChange
+                    value={currentCardData.theme || ''} // Ensure value is controlled, default to empty string
+                    label={t('apfPostingCard.themeMotionLabel', 'Theme / Motion')}
+                    onChange={handleTextFieldChange} // Use the simpler handler
+                  >
+                    {themesLoading && <MenuItem disabled value=""><LinearProgress sx={{ width: '100%' }} /></MenuItem>}
+                    {!themesLoading && availableThemes.length === 0 && (
+                      <MenuItem disabled value="">{t('apfPostingCard.noThemesAvailable', 'No themes available')}</MenuItem>
+                    )}
+                    {availableThemes.map((theme) => (
+                      // Assuming theme object has _id and text properties from the API
+                      <MenuItem key={theme._id} value={theme.text}>
+                        {theme.text}
+                      </MenuItem>
                     ))}
-                  </Stack>
-                </Box>
+                  </Select>
+                  {themesLoading && <Typography variant="caption" sx={{ mt: 1 }}>{t('apfPostingCard.loadingThemes', 'Loading themes...')}</Typography>}
+                </FormControl>
               </Grid>
             ) : (
               <Grid item xs={12}>
