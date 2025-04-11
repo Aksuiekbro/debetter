@@ -149,6 +149,7 @@ const TournamentManagement = () => {
           }}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          teams={dataManager.teams} // Pass teams data for name lookup
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={2}> {/* Index updated */}

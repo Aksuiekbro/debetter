@@ -631,7 +631,13 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
         <Button
           size="small"
           color="primary"
-          onClick={() => navigate(`/debates/${debate._id}`)}
+          onClick={() => {
+            if (debate.format === 'tournament') {
+              navigate(`/tournaments/${debate._id}`);
+            } else {
+              navigate(`/debates/${debate._id}`);
+            }
+          }}
         >
           {t('myDebates.card.viewDetailsButton', 'View Details')}
         </Button>

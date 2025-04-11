@@ -61,8 +61,8 @@ const createTeams = (debaters) => {
         _id: new mongoose.Types.ObjectId(), // Generate new ObjectId for each team
         name: `Team ${Math.floor(i/2) + 1}`, 
         members: [
-          { userId: leader._id, role: 'leader' },
-          { userId: speaker._id, role: 'speaker' }
+          { userId: leader.userId, role: 'leader' }, // Corrected: Use userId from populated User
+          { userId: speaker.userId, role: 'speaker' } // Corrected: Use userId from populated User
         ],
         wins: 0,
         losses: 0,

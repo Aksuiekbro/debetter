@@ -119,12 +119,6 @@ const Navbar = () => {
           </Button>
           <Button 
             color="inherit"
-            onClick={() => navigate('/host-debate')}
-          >
-            {t('navbar.host_debate', 'Host a Debate')} {/* Added default value */}
-          </Button>
-          <Button 
-            color="inherit"
             onClick={() => navigate('/debates')}
           >
             {t('navbar.join_debate', 'Join a Debate')} {/* Added default value */}

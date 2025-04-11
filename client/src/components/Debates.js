@@ -136,7 +136,7 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
                 size="small" 
                 color="primary" 
                 variant="contained"
-                onClick={() => navigate(`/debates/${debate._id}/manage`)}
+                onClick={() => navigate(debate.format === 'tournament' ? `/tournaments/${debate._id}/manage` : `/debates/${debate._id}/manage`)}
               >
                 {t('debatesList.card.manageButton', 'Manage Debate')}
               </Button>

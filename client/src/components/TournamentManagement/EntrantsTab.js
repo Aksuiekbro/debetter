@@ -109,7 +109,10 @@ const EntrantsTab = ({
           </TableHead>
           <TableBody>
             {filteredEntrants.map((entrant) => {
-              const team = teams.find(t => t.id === entrant.teamId);
+              // Find the team name using the teamId, ensuring teams is an array
+              const teamName = Array.isArray(teams)
+                ? teams.find(t => t.id === entrant.teamId)?.name || 'N/A' // Use 'N/A' as fallback
+                : 'N/A'; // Fallback if teams is not an array
               return (
                 <TableRow key={entrant.userId}> {/* Use userId as key */}
                   <TableCell>
@@ -121,7 +124,7 @@ const EntrantsTab = ({
                   <TableCell>{entrant.phoneNumber}</TableCell>
                   <TableCell>{entrant.club}</TableCell>
                   <TableCell>{entrant.tournamentRole}</TableCell>
-                  <TableCell>{team ? team.name : 'N/A'}</TableCell> {/* Display team name */}
+                  <TableCell>{teamName}</TableCell> {/* Display team name */}
                   {isOrganizerOrAdmin && (
                     <TableCell align="right">
                       <IconButton
