@@ -133,6 +133,16 @@ exports.createDebate = async (req, res) => {
     const debateInput = req.body;
     const creator = req.user; // User object from auth middleware
 
+    // --- Start: Enforce tournament-only creation ---
+    if (!debateInput.format) {
+      // Default to tournament if format is missing
+      debateInput.format = 'tournament';
+    } else if (debateInput.format !== 'tournament') {
+      // Reject if format is explicitly set to something other than tournament
+      return res.status(400).json({ message: 'Only tournament creation is currently supported.' });
+    }
+    // --- End: Enforce tournament-only creation ---
+
     let preparedData;
 
     // If tournament, validate and prepare specific data using the service
@@ -263,12 +273,6 @@ exports.getDebate = async (req, res) => {
       }
 
       // Log the state of participants for debugging
-      console.log('CONTROLLER - Participants:', JSON.stringify({
-        count: debate.participants?.length || 0,
-        hasUserIds: debate.participants?.some(p => p.userId) || false,
-        format: debate.format,
-        counts: debate.counts
-      }, null, 2));
 
       res.json(debate);
     } catch (serviceError) {
@@ -298,19 +302,24 @@ exports.getPostingDetails = async (req, res) => {
   try {
     const { id: debateId, postingId } = req.params;
 
+    console.log(`[getPostingDetails] Received request for debateId: ${debateId}, postingId: ${postingId}`);
     // Use the postingService to fetch the details
     // Assuming postingService has a method like getPostingDetailsById
+    console.log(`[getPostingDetails] Calling postingService.getPostingById with debateId: ${debateId}, postingId: ${postingId}`);
     const postingDetails = await postingService.getPostingById(debateId, postingId);
 
+    console.log(`[getPostingDetails] postingService.getPostingById returned:`, !!postingDetails);
     if (!postingDetails) {
       return res.status(404).json({ message: 'Posting not found' });
     }
+      console.error(`[getPostingDetails] Posting not found via service! Returning 404.`);
 
     res.json(postingDetails);
   } catch (error) {
     console.error('Get posting details error:', error);
     if (error.message === 'Debate not found' || error.message === 'Posting not found') {
       return res.status(404).json({ message: error.message });
+    console.error('[getPostingDetails] Error fetching posting details via service:', error);
     }
     res.status(500).json({ message: error.message || 'Failed to get posting details' });
   }

@@ -82,7 +82,8 @@ const JudgePanel = () => {
     // Navigate to the ActiveJudgeInterface for the selected game
     // Ensure we use debateId and postingId as expected by the ActiveJudgeInterface route
     // Assuming the 'game' object from '/api/apf/assignments' has these properties
-    navigate(`/judge/${game.debateId}/${game.postingId}`);
+    console.log(`[JudgePanel] Navigating to game. Debate ID: ${game.tournamentId}, Posting ID: ${game.id}`); // Use correct props
+    navigate(`/judge/${game.tournamentId}/${game.id}`); // Use correct props
   };
 
   const handleCloseEvaluation = () => {

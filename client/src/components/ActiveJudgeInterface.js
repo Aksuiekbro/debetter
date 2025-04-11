@@ -38,7 +38,7 @@ const ActiveJudgeInterface = () => {
       setError(null);
       try {
         const headers = getAuthHeaders();
-        const response = await api.get(`/api/debates/${debateId}/postings/${postingId}`, { headers });
+        const response = await api.client.get(`/api/debates/${debateId}/postings/${postingId}`, { headers });
         setPostingDetails(response.data);
       } catch (err) {
         console.error("Error fetching posting details:", err);
@@ -100,7 +100,7 @@ const ActiveJudgeInterface = () => {
 
     try {
       const headers = getAuthHeaders();
-      await api.post(`/api/debates/${debateId}/postings/${postingId}/audio`, formData, {
+      await api.client.post(`/api/debates/${debateId}/postings/${postingId}/audio`, formData, {
         headers: {
           ...headers,
           'Content-Type': 'multipart/form-data',
@@ -137,7 +137,7 @@ const ActiveJudgeInterface = () => {
 
     try {
       const headers = getAuthHeaders();
-      await api.post(`/api/debates/${debateId}/postings/${postingId}/ballot`, formData, {
+      await api.client.post(`/api/debates/${debateId}/postings/${postingId}/ballot`, formData, {
         headers: {
           ...headers,
           'Content-Type': 'multipart/form-data',

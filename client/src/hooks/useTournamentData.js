@@ -56,6 +56,7 @@ export const useTournamentData = () => {
       const userIdData = p.userId;
       const extractedName = userIdData?.username || userIdData?.name || 'Unknown Participant';
       console.log('[useTournamentData] Extracted Name:', extractedName);
+      console.log('[useTournamentData] Participant teamId:', p.teamId);
       return {
           id: userIdData?._id, // Use populated ID
           name: extractedName,
@@ -98,8 +99,16 @@ export const useTournamentData = () => {
         const speakerMember = team.members.find(m => m.role === 'speaker');
         
         // Extract all member names
-        const memberNames = team.members.map(m => formatDebaterName(m.userId?.username) || 'Unknown Member');
+        console.log('[useTournamentData] Processing team:', team.name, 'Raw members:', JSON.stringify(team.members, null, 2));
+        const memberNames = team.members?.map(m => {
+            console.log('[useTournamentData] Processing team member - m.userId:', JSON.stringify(m.userId, null, 2)); // Log the populated object
+            const user = m.userId; // Keep this line for clarity if needed, or combine below
+            const userName = user?.username || user?.name || 'Unknown Member'; // Use userName for clarity
+            console.log('[useTournamentData] Extracted member name:', userName); // Log extracted name
+            return userName ? formatDebaterName(userName) : 'Unknown Member'; // Apply format OR fallback per member, using userName
+        }).join(', ') || 'N/A'; // Fallback if no members or all unknown
 
+        console.log('[useTournamentData] Processed memberNames string:', memberNames);
         return {
           id: team._id,
           name: team.name,

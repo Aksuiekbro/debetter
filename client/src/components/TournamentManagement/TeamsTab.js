@@ -77,10 +77,7 @@ const TeamsTab = ({
             {filteredTeams.map((team) => (
               <TableRow key={team.id}>
                 <TableCell>{team.name}</TableCell>
-                <TableCell>
-                  {/* Display members, handling array or string */}
-                  {Array.isArray(team.members) ? team.members.join(', ') : team.members}
-                </TableCell>
+                <TableCell>{team.members || 'N/A'}</TableCell>
                 {/* Removed Leader/Speaker cells */}
                 {/* Removed Wins/Points comments */}
                 {isOrganizerOrAdmin && (

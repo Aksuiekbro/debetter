@@ -16,6 +16,7 @@ class DebateService {
       // Fetch debate without populating participants.userId initially
       let debate = await Debate.findById(debateId)
         .populate('creator', 'username role name')
+        .populate('teams') // Populate only the top-level teams array
         .exec();
 
       if (!debate) {
@@ -26,11 +27,8 @@ class DebateService {
       if (debate.participants && Array.isArray(debate.participants)) {
         // Filter out invalid IDs and get unique valid IDs
         const participantUserIds = [...new Set(
-          debate.participants
-            .map(p => p.userId)
-            .filter(id => id && mongoose.Types.ObjectId.isValid(id))
+            debate.participants.map(p => p.userId || p._id).filter(id => id && mongoose.Types.ObjectId.isValid(id)) // Try p.userId OR p._id
         )];
-        console.log('[Service] Extracted participantUserIds:', participantUserIds);
 
         const userDetailsMap = new Map();
         if (participantUserIds.length > 0) {
@@ -40,7 +38,6 @@ class DebateService {
             })
             .select('username email phoneNumber club name role judgeRole profilePhotoUrl')
             .lean();
-            console.log('[Service] Found Users:', users);
 
             users.forEach(u => {
               if (u && u._id) {
@@ -56,12 +53,10 @@ class DebateService {
         // Create new participants array with populated user details
         const populatedParticipants = debate.participants.map(p => {
           try {
-            const participantObject = p.toObject();
-            if (p.userId) {
-              const userDetail = userDetailsMap.get(p.userId.toString());
-              console.log(`[Service] Mapping participant ID: ${p._id}, UserID: ${p.userId}, Found User:`, !!userDetail);
-              participantObject.userId = userDetail || null;
-            }
+            const idToLookup = p.userId || p._id; // Use the ID that exists
+            const userDetail = userDetailsMap.get(idToLookup?.toString());
+            const participantObject = p.toObject(); // Get plain object first
+            participantObject.userId = userDetail || null; // Assign fetched user (or null)
             return participantObject;
           } catch (participantError) {
             console.error('Error processing participant:', participantError);
@@ -98,7 +93,43 @@ class DebateService {
           }
         }
 
-        return populatedDebate;
+        // Manually populate teams.members.userId
+        if (populatedDebate.teams && populatedDebate.teams.length > 0) {
+            const teamMemberUserIds = [...new Set(
+                populatedDebate.teams.flatMap(t => t.members?.map(m => m.userId).filter(id => id && mongoose.Types.ObjectId.isValid(id)) || []) // Ensure IDs are valid ObjectIds
+            )];
+            console.log('[Service] Extracted teamMemberUserIds:', teamMemberUserIds); // Add log
+
+            const teamMemberUserDetailsMap = new Map();
+            if (teamMemberUserIds.length > 0) {
+                try {
+                    const teamMembers = await User.find({
+                        '_id': { $in: teamMemberUserIds }
+                    }).select('username name _id').lean(); // Select only needed fields + _id
+                    console.log('[Service] Found Team Member Users:', teamMembers); // Add log
+                    teamMembers.forEach(u => teamMemberUserDetailsMap.set(u._id.toString(), u));
+                } catch (teamUserError) {
+                    console.error('Error fetching team member user details:', teamUserError);
+                    // Decide how to handle: maybe continue with nulls?
+                }
+            }
+
+            // Merge data back into the teams array
+            populatedDebate.teams.forEach(team => {
+                if (team.members) {
+                    team.members = team.members.map(member => { // Use map to create a new array
+                        const memberObject = { ...member }; // Clone member to avoid direct mutation issues if 'teams' wasn't lean
+                        const userIdString = memberObject.userId?.toString();
+                        const userDetail = teamMemberUserDetailsMap.get(userIdString);
+                        console.log(`[Service] Mapping team ${team.name}, memberRef: ${userIdString}, Found User:`, !!userDetail); // Add log
+                        memberObject.userId = userDetail || null; // Replace ID with populated object or null
+                        return memberObject;
+                    });
+                }
+            });
+        }
+
+        return populatedDebate; // Return the fully modified plain JS object
       } else {
         // If no participants, return basic debate info
         const plainDebate = debate.toObject();
