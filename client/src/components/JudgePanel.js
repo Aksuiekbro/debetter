@@ -184,7 +184,9 @@ const JudgePanel = () => {
         <Paper elevation={3} sx={{ p: 3 }}>
           {assignedGames.length > 0 && console.log('[JudgePanel] Title value being rendered:', assignedGames[0]?.title)}
           <Typography variant="h4" gutterBottom>
-            {assignedGames.length > 0 ? `${t('judgePanel.title', 'Judge Panel')} - ${assignedGames[0].title.replace('{{debateTitle}} - ', '')}` : t('judgePanel.title', 'Judge Panel')}
+            {assignedGames && assignedGames.length > 0 && assignedGames[0].title && assignedGames[0].title.includes('Qamqor Cup')
+              ? `${t('judgePanel.title', 'Judge Panel')} - Qamqor Cup`
+              : t('judgePanel.title', 'Judge Panel')}
           </Typography>
           
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>

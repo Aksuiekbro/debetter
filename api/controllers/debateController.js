@@ -302,26 +302,71 @@ exports.getPostingDetails = async (req, res) => {
   try {
     const { id: debateId, postingId } = req.params;
 
-    console.log(`[getPostingDetails] Received request for debateId: ${debateId}, postingId: ${postingId}`);
-    // Use the postingService to fetch the details
-    // Assuming postingService has a method like getPostingDetailsById
-    console.log(`[getPostingDetails] Calling postingService.getPostingById with debateId: ${debateId}, postingId: ${postingId}`);
-    const postingDetails = await postingService.getPostingById(debateId, postingId);
-
-    console.log(`[getPostingDetails] postingService.getPostingById returned:`, !!postingDetails);
-    if (!postingDetails) {
-      return res.status(404).json({ message: 'Posting not found' });
+    if (!mongoose.Types.ObjectId.isValid(debateId) || !mongoose.Types.ObjectId.isValid(postingId)) {
+        return res.status(400).json({ message: 'Invalid Debate or Posting ID format' });
     }
-      console.error(`[getPostingDetails] Posting not found via service! Returning 404.`);
 
-    res.json(postingDetails);
+    // Fetch the parent debate, ensuring the teams array is selected/populated
+    // Assuming 'teams' is an array within the Debate document based on lookup logic.
+    // If 'teams' were refs needing population, it would be .populate('teams')
+    const debate = await Debate.findById(debateId)
+      .select('+teams +title +startDate +postings')
+      .populate({ path: 'teams.members.userId', select: 'username name email' }) // Populate team members
+      .lean(); // Use lean for performance if not modifying debate doc
+
+    if (!debate) {
+      console.error(`[getPostingDetails] Debate not found for ID: ${debateId}`);
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+
+    // Find the specific posting within the debate's postings array
+    // Ensure postings exist and are an array before trying to find
+    const posting = debate.postings?.find(p => p._id.equals(postingId));
+
+
+    if (!posting) {
+      console.error(`[getPostingDetails] Posting not found for ID: ${postingId} within Debate ID: ${debateId}`);
+      return res.status(404).json({ message: 'Posting not found within this debate' });
+    }
+
+    // Find the full team data using the IDs from the posting
+    const team1Data = debate.teams?.find(t => t._id.equals(posting.team1));
+    const team2Data = debate.teams?.find(t => t._id.equals(posting.team2));
+
+    // Construct the detailed response object including populated members
+    const responseData = {
+        _id: posting._id,
+        debateId: debate._id,
+        debateTitle: debate.title,
+        round: posting.round,
+        matchNumber: posting.matchNumber, // Assuming matchNumber exists or add if needed
+        theme: posting.theme,
+        location: posting.location,
+        startTime: debate.startDate, // Consider if posting has its own time
+        status: posting.status, // Include status from posting
+        team1: {
+            id: posting.team1,
+            name: team1Data?.name || 'Team 1 Not Found',
+            members: team1Data?.members || [] // Include the populated members array
+        },
+        team2: {
+            id: posting.team2,
+            name: team2Data?.name || 'Team 2 Not Found',
+            members: team2Data?.members || [] // Include the populated members array
+        },
+        judges: posting.judges // Keep judge IDs (consider populating if needed later)
+    };
+
+    res.status(200).json({ status: 'success', data: responseData });
+
   } catch (error) {
-    console.error('Get posting details error:', error);
-    if (error.message === 'Debate not found' || error.message === 'Posting not found') {
-      return res.status(404).json({ message: error.message });
-    console.error('[getPostingDetails] Error fetching posting details via service:', error);
+    console.error('Error in getPostingDetails:', error);
+    // Handle potential CastErrors if IDs are invalid format, though checked above
+    if (error.name === 'CastError') {
+        return res.status(400).json({ message: 'Invalid ID format provided.' });
     }
-    res.status(500).json({ message: error.message || 'Failed to get posting details' });
+    // Generic error handler
+    res.status(500).json({ message: 'Failed to get posting details', error: error.message });
   }
 };
 
@@ -1016,7 +1061,7 @@ exports.updateTeam = async (req, res) => {
 exports.registerParticipants = async (req, res) => {
   try {
     const { judges, debaters } = req.body;
-    console.log('Received registration request:', { judges, debaters });
+    // console.log('Received registration request:', { judges, debaters }); // Removed debug log
     const debateId = req.params.id; // Get debateId from params
 
     if (!Array.isArray(judges) || !Array.isArray(debaters)) {
@@ -1070,7 +1115,7 @@ exports.generateTestData = async (req, res) => {
     const testJudges = await User.find({ role: 'judge', isTestAccount: true }).limit(7);
     const testDebaters = await User.find({ role: 'user', isTestAccount: true }).limit(32);
     
-    console.log(`Found ${testJudges.length} test judges and ${testDebaters.length} test debaters`);
+    // console.log(`Found ${testJudges.length} test judges and ${testDebaters.length} test debaters`); // Removed debug log
     
     // Start with completely empty participants array - no creator included
     const participants = [];
@@ -1101,7 +1146,7 @@ exports.generateTestData = async (req, res) => {
     // Log the counts before saving
     const judgeCount = participants.filter(p => p.role === 'judge').length;
     const debaterCount2 = participants.filter(p => p.role === 'debater').length;
-    console.log(`Preparing to save ${judgeCount} judges and ${debaterCount2} debaters`);
+    // console.log(`Preparing to save ${judgeCount} judges and ${debaterCount2} debaters`); // Removed debug log
     
     // Update the debate with the test participants - completely replace existing participants
     debate.participants = participants;

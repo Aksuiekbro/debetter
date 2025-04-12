@@ -8,7 +8,6 @@ const checkStatus = async () => {
   try {
     // Increase connection timeout to 30 seconds
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 30000 });
-    console.log('Connected to MongoDB for verification.');
 
     const tournament = await Debate.findById(tournamentId).select('postings');
 
@@ -18,16 +17,13 @@ const checkStatus = async () => {
     }
 
     if (!tournament.postings || tournament.postings.length === 0) {
-      console.log('Tournament found, but it has no postings.');
       process.exit(0);
     }
 
-    console.log(`Found tournament. Checking status of first ${Math.min(3, tournament.postings.length)} postings...`);
 
     let allScheduled = true;
     for (let i = 0; i < Math.min(3, tournament.postings.length); i++) {
       const posting = tournament.postings[i];
-      console.log(`  Posting ${i + 1} status: ${posting.status}`);
       if (posting.status !== 'scheduled') {
         allScheduled = false;
       }
@@ -46,7 +42,6 @@ const checkStatus = async () => {
   } finally {
     // Ensure disconnection even if errors occur before process.exit()
     await mongoose.disconnect();
-    console.log('Disconnected from MongoDB.');
   }
 };
 

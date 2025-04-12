@@ -10,13 +10,13 @@
  * @returns {Promise<string>} - A promise that resolves with the public URL of the uploaded file.
  */
 const uploadFile = async (buffer, fileName, mimeType) => {
-  console.log(`[CloudStorageService - Placeholder] Uploading file: ${fileName}, Type: ${mimeType}, Size: ${buffer.length} bytes`);
+  // console.log(`[CloudStorageService - Placeholder] Uploading file: ${fileName}, Type: ${mimeType}, Size: ${buffer.length} bytes`); // Removed placeholder log
   // Simulate upload delay
   await new Promise(resolve => setTimeout(resolve, 500)); 
   
   // Return a dummy URL - replace with actual URL from cloud provider SDK
   const dummyUrl = `https://fake-cloud-storage.com/maps/${fileName}`; 
-  console.log(`[CloudStorageService - Placeholder] File uploaded to: ${dummyUrl}`);
+  // console.log(`[CloudStorageService - Placeholder] File uploaded to: ${dummyUrl}`); // Removed placeholder log
   return dummyUrl;
 };
 
@@ -28,13 +28,13 @@ const uploadFile = async (buffer, fileName, mimeType) => {
  * @returns {Promise<void>} - A promise that resolves when the file is deleted.
  */
 const deleteFile = async (fileUrl) => {
-  console.log(`[CloudStorageService - Placeholder] Deleting file: ${fileUrl}`);
+  // console.log(`[CloudStorageService - Placeholder] Deleting file: ${fileUrl}`); // Removed placeholder log
   // Simulate deletion delay
   await new Promise(resolve => setTimeout(resolve, 300)); 
 
   // Extract filename/key from URL (basic example)
   const fileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
-  console.log(`[CloudStorageService - Placeholder] File ${fileName} deleted.`);
+  // console.log(`[CloudStorageService - Placeholder] File ${fileName} deleted.`); // Removed placeholder log
   // No return value needed, just resolve or throw error if failed
 };
 

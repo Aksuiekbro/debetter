@@ -34,7 +34,7 @@ export const useTournamentData = () => {
   const processFetchedData = useCallback((data) => {
     setTournament(data);
 
-    console.log('[useTournamentData] Raw data.participants:', JSON.stringify(data.participants, null, 2));
+    // console.log('[useTournamentData] Raw data.participants:', JSON.stringify(data.participants, null, 2)); // Removed debug log
 
     // Extract participants based on tournamentRole
     const tournamentEntrants = data.participants?.filter(p => p.tournamentRole !== 'Judge') || []; // Use tournamentRole
@@ -42,9 +42,9 @@ export const useTournamentData = () => {
 
     console.log('[useTournamentData] Processing entrants (new structure):', JSON.stringify(tournamentEntrants, null, 2)); // Updated logging
     setEntrants(tournamentEntrants.map(p => {
-      console.log(`[useTournamentData] Processing participant p (Type: ${typeof p}):`, JSON.stringify(p, null, 2));
+      // console.log(`[useTournamentData] Processing participant p (Type: ${typeof p}):`, JSON.stringify(p, null, 2)); // Removed debug log
       if (typeof p === 'object' && p !== null) {
-          console.log(`[useTournamentData] p.userId (Type: ${typeof p.userId}):`, JSON.stringify(p.userId, null, 2));
+          // console.log(`[useTournamentData] p.userId (Type: ${typeof p.userId}):`, JSON.stringify(p.userId, null, 2)); // Removed debug log
           if (!p.userId) {
               console.error('[useTournamentData] ERROR: p.userId is missing or falsy for participant object (entrant):', JSON.stringify(p, null, 2));
           }
@@ -52,11 +52,11 @@ export const useTournamentData = () => {
           console.error('[useTournamentData] ERROR: Participant p is not an object (entrant):', p);
       }
       // Inside the .map(p => { ... }) for entrants
-      console.log('[useTournamentData] Mapping participant:', JSON.stringify(p, null, 2));
+      // console.log('[useTournamentData] Mapping participant:', JSON.stringify(p, null, 2)); // Removed debug log
       const userIdData = p.userId;
       const extractedName = userIdData?.username || userIdData?.name || 'Unknown Participant';
-      console.log('[useTournamentData] Extracted Name:', extractedName);
-      console.log('[useTournamentData] Participant teamId:', p.teamId);
+      // console.log('[useTournamentData] Extracted Name:', extractedName); // Removed debug log
+      // console.log('[useTournamentData] Participant teamId:', p.teamId); // Removed debug log
       return {
           id: userIdData?._id, // Use populated ID
           name: extractedName,
@@ -70,9 +70,9 @@ export const useTournamentData = () => {
 
     console.log('[useTournamentData] Processing judges (new structure):', JSON.stringify(tournamentJudges, null, 2)); // Added logging
     setJudges(tournamentJudges.map(p => {
-      console.log(`[useTournamentData] Processing participant p (Type: ${typeof p}):`, JSON.stringify(p, null, 2));
+      // console.log(`[useTournamentData] Processing participant p (Type: ${typeof p}):`, JSON.stringify(p, null, 2)); // Removed debug log
       if (typeof p === 'object' && p !== null) {
-          console.log(`[useTournamentData] p.userId (Type: ${typeof p.userId}):`, JSON.stringify(p.userId, null, 2));
+          // console.log(`[useTournamentData] p.userId (Type: ${typeof p.userId}):`, JSON.stringify(p.userId, null, 2)); // Removed debug log
           if (!p.userId) {
               console.error('[useTournamentData] ERROR: p.userId is missing or falsy for participant object (judge):', JSON.stringify(p, null, 2));
           }
@@ -99,7 +99,7 @@ export const useTournamentData = () => {
         const speakerMember = team.members.find(m => m.role === 'speaker');
         
         // Extract all member names
-        console.log('[useTournamentData] Processing team:', team.name, 'Raw members:', JSON.stringify(team.members, null, 2));
+        // console.log('[useTournamentData] Processing team:', team.name, 'Raw members:', JSON.stringify(team.members, null, 2)); // Removed debug log
         const memberNames = team.members?.map(m => {
             console.log('[useTournamentData] Processing team member - m.userId:', JSON.stringify(m.userId, null, 2)); // Log the populated object
             const user = m.userId; // Keep this line for clarity if needed, or combine below
@@ -108,7 +108,7 @@ export const useTournamentData = () => {
             return userName ? formatDebaterName(userName) : 'Unknown Member'; // Apply format OR fallback per member, using userName
         }).join(', ') || 'N/A'; // Fallback if no members or all unknown
 
-        console.log('[useTournamentData] Processed memberNames string:', memberNames);
+        // console.log('[useTournamentData] Processed memberNames string:', memberNames); // Removed debug log
         return {
           id: team._id,
           name: team.name,
@@ -160,7 +160,7 @@ export const useTournamentData = () => {
   }, []); // Dependencies for processFetchedData
 
   const fetchTournament = useCallback(async () => {
-    console.log(`[useTournamentData] Fetching data for tournament ID: ${tournamentId}`);
+    // console.log(`[useTournamentData] Fetching data for tournament ID: ${tournamentId}`); // Removed debug log
     setLoading(true);
     setError(null);
     try {
@@ -174,7 +174,7 @@ export const useTournamentData = () => {
       }
 
       const data = await response.json();
-      console.log('[useTournamentData] Fetched data:', data);
+      // console.log('[useTournamentData] Fetched data:', data); // Removed debug log
       processFetchedData(data);
 
     } catch (err) {
@@ -193,7 +193,7 @@ export const useTournamentData = () => {
   }, [tournamentId, processFetchedData]);
 
   const fetchStandings = useCallback(async () => {
-    console.log(`[useTournamentData] Fetching standings for tournament ID: ${tournamentId}`);
+    // console.log(`[useTournamentData] Fetching standings for tournament ID: ${tournamentId}`); // Removed debug log
     // Consider adding a separate loading state for standings if needed
     try {
       const response = await fetch(`${api.baseUrl}/api/apf/tabulation/${tournamentId}`, {
@@ -205,7 +205,7 @@ export const useTournamentData = () => {
       }
 
       const standingsData = await response.json();
-      console.log('[useTournamentData] Fetched standings data:', standingsData);
+      // console.log('[useTournamentData] Fetched standings data:', standingsData); // Removed debug log
       setStandings(standingsData);
 
       // Optionally update team stats based on standings
@@ -281,7 +281,7 @@ export const useTournamentData = () => {
 
   // Function to initialize or regenerate the tournament bracket
   const initializeBracket = useCallback(async () => {
-    console.log(`[useTournamentData] Initializing tournament bracket for ID: ${tournamentId}`);
+    // console.log(`[useTournamentData] Initializing tournament bracket for ID: ${tournamentId}`); // Removed debug log
     setInitializingBracket(true);
     try {
       const response = await fetch(`${api.baseUrl}/api/debates/${tournamentId}/initialize-bracket`, {

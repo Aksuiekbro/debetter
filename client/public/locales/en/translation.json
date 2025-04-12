@@ -464,7 +464,8 @@
     "createError": "Failed to create schedule item. Please try again.",
     "confirmDelete": "Are you sure you want to delete this schedule item?",
     "deleteError": "Failed to delete schedule item. Please try again.",
-    "noLocation": "No location specified"
+    "noLocation": "No location specified",
+    "missingIdError": "Tournament ID is missing or invalid."
   },
   "mapView": {
     "title": "Tournament Map",
@@ -774,7 +775,7 @@
     }
   },
   "judgePanel": {
-    "title": "Judge Panel - {{debateTitle}}",
+    "title": "Judge Panel",
     "loading": "Loading debate information...",
     "fetchError": "Failed to load debate details for judging.",
     "debateNotFound": "Debate not found.",

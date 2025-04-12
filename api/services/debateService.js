@@ -242,7 +242,7 @@ class DebateService {
 
       if (!imageUrlToDelete) {
         // No map exists, nothing to delete
-        console.log(`No map image found for debate ${debateId} to delete.`);
+        // Removed console.log for no map found
         return; // Or throw an error if preferred: throw new Error('No map image exists to delete.');
       }
 

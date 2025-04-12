@@ -14,7 +14,7 @@ const addUserSocket = (userId, socketId) => {
         userSockets.set(userId, new Set());
     }
     userSockets.get(userId).add(socketId);
-    console.log(`Socket ${socketId} associated with user ${userId}`);
+    // console.log(`Socket ${socketId} associated with user ${userId}`); // Removed debug log
 };
 
 const removeUserSocket = (userId, socketId) => {
@@ -23,7 +23,7 @@ const removeUserSocket = (userId, socketId) => {
         if (userSockets.get(userId).size === 0) {
             userSockets.delete(userId);
         }
-        console.log(`Socket ${socketId} disassociated from user ${userId}`);
+        // console.log(`Socket ${socketId} disassociated from user ${userId}`); // Removed debug log
     }
 };
 
@@ -61,7 +61,7 @@ const createNotification = async (data) => {
             const recipientSocketIds = userSockets.get(recipient);
             recipientSocketIds.forEach(socketId => {
                 io.to(socketId).emit('new_notification', savedNotification);
-                console.log(`Emitted 'new_notification' to socket ${socketId} for user ${recipient}`);
+                // console.log(`Emitted 'new_notification' to socket ${socketId} for user ${recipient}`); // Removed debug log
             });
         } else {
              if (!io) console.log("Socket.IO instance not available for emitting.");
@@ -131,7 +131,7 @@ const markAllAsRead = async (userId) => {
             { recipient: userId, read: false },
             { read: true }
         );
-        console.log(`Marked ${result.nModified} notifications as read for user ${userId}`);
+        // console.log(`Marked ${result.nModified} notifications as read for user ${userId}`); // Removed informational log
         return result; // Contains information like nModified
     } catch (error) {
         console.error(`Error marking all notifications as read for user ${userId}:`, error);

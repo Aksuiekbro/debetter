@@ -387,7 +387,7 @@ class TournamentService {
 
     // Winner Team ID is passed directly, no need to resolve to User ID here.
     // The bracket should store Team IDs.
-    console.log(`[advanceWinner] Advancing winner: Team ID ${winnerTeamId}`);
+    // console.log(`[advanceWinner] Advancing winner: Team ID ${winnerTeamId}`); // Removed debug log
 
     // Update the current match (optional, could be done elsewhere)
     currentMatch.winner = winnerTeamId; // Store the winning Team ID
@@ -396,7 +396,7 @@ class TournamentService {
     // Check if it's the final round
     if (currentRoundIndex === debate.tournamentRounds.length - 1) {
       // This was the final match
-      console.log(`[advanceWinner] Final match completed. Tournament Winner Team ID: ${winnerTeamId}`);
+      // console.log(`[advanceWinner] Final match completed. Tournament Winner Team ID: ${winnerTeamId}`); // Removed debug log
       debate.winner = winnerTeamId; // Set tournament winner (Team ID)
       debate.status = 'completed';
     } else {
@@ -413,17 +413,17 @@ class TournamentService {
       // Determine if the current match feeds into team1 or team2 slot of the next match
       const isLeftFeeder = currentMatchIndex % 2 === 0;
       if (isLeftFeeder) {
-        console.log(`[advanceWinner] Placing winner Team ID ${winnerTeamId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team1`);
+        // console.log(`[advanceWinner] Placing winner Team ID ${winnerTeamId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team1`); // Removed debug log
         nextMatch.team1 = winnerTeamId;
       } else {
-        console.log(`[advanceWinner] Placing winner Team ID ${winnerTeamId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team2`);
+        // console.log(`[advanceWinner] Placing winner Team ID ${winnerTeamId} into Round ${nextRoundIndex + 1}, Match ${nextMatchIndex + 1}, Slot team2`); // Removed debug log
         nextMatch.team2 = winnerTeamId;
       }
     }
 
     debate.markModified('tournamentRounds'); // Mark the array as modified
     await debate.save();
-    console.log(`[advanceWinner] Bracket updated successfully for Debate ID: ${debateId}`);
+    // console.log(`[advanceWinner] Bracket updated successfully for Debate ID: ${debateId}`); // Removed debug log
     return debate; // Return the updated debate document
   }
 

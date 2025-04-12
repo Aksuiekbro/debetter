@@ -18,4 +18,4 @@ This error indicates that the Mongoose library could not establish a functional 
 *   Temporary issues or high load on the Atlas cluster (`mango.oafyn.mongodb.net`).
 *   Local machine resource constraints.
 
-**Note:** This was *not* an error in the query logic itself, but a failure to connect to the database to execute the query.
+**Note:** This was *not* an error in the query logic itself, but a failure to connect to the database to execute the query. Solution is likely debates.findOne() instead of tournaments.findOne()

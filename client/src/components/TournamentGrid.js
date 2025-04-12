@@ -9,7 +9,7 @@ const transformDataForBracket = (backendRounds, teams = []) => { // Use teams pa
   if (!backendRounds || !Array.isArray(backendRounds) || backendRounds.length === 0) {
     return [];
   }
-  console.log('[TournamentGrid] Processing backendRounds:', JSON.stringify(backendRounds, null, 2));
+  // console.log('[TournamentGrid] Processing backendRounds:', JSON.stringify(backendRounds, null, 2)); // Removed debug log
 
   console.log('[TournamentGrid] Using teams:', JSON.stringify(teams, null, 2)); // Log teams
   // Assumption: backendRounds is an array of rounds,
@@ -91,7 +91,7 @@ const TournamentGrid = ({ rounds, entrants = [], teams = [] }) => { // Add entra
 
   // Handle clicking on a match (seed)
   const handleMatchClick = (match) => {
-    console.log('Match clicked (seed data):', match);
+    // console.log('Match clicked (seed data):', match); // Removed debug log
     setSelectedMatchId(match.id); // Store the ID of the clicked match
     setDialogOpen(true); // Open the dialog
   };

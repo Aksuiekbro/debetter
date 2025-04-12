@@ -59,7 +59,7 @@ const createScheduleItem = async (req, res, next) => {
  * Accessible by authenticated users.
  */
 const getScheduleItemsForTournament = async (req, res, next) => {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Extract 'id' from params and rename to tournamentId
 
     try {
         // Optional: Check if tournament exists if needed, but service handles invalid ID

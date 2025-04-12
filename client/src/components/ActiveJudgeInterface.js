@@ -39,7 +39,9 @@ const ActiveJudgeInterface = () => {
       try {
         const headers = getAuthHeaders();
         const response = await api.client.get(`/api/debates/${debateId}/postings/${postingId}`, { headers });
-        setPostingDetails(response.data);
+        // Log the received data structure
+        // console.log("API Response Data:", response.data); // Removed debug log
+        setPostingDetails(response.data.data); // Assuming data is nested under 'data'
       } catch (err) {
         console.error("Error fetching posting details:", err);
         setError(t('activeJudgeInterface.errorFetchingDetails', 'Failed to load debate details. Please try again.'));
@@ -167,11 +169,14 @@ const ActiveJudgeInterface = () => {
   }
 
   // Safely access nested properties
-  const govTeamName = postingDetails.debate?.govTeam?.name || t('common.tbd', 'TBD');
-  const oppTeamName = postingDetails.debate?.oppTeam?.name || t('common.tbd', 'TBD');
-  const theme = postingDetails.debate?.theme?.theme || t('common.notSet', 'Not Set');
-  const time = postingDetails.debate?.time ? new Date(postingDetails.debate.time).toLocaleString() : t('common.notSet', 'Not Set');
-  const location = postingDetails.debate?.location || t('common.notSet', 'Not Set');
+  const theme = postingDetails?.theme || t('common.notSet', 'Not Set');
+  const govTeamName = postingDetails?.team1?.name || t('common.tbd', 'TBD');
+  const oppTeamName = postingDetails?.team2?.name || t('common.tbd', 'TBD');
+  const time = postingDetails?.startTime ? new Date(postingDetails.startTime).toLocaleString() : t('common.notSet', 'Not Set');
+  const location = postingDetails?.location || t('common.notSet', 'Not Set');
+
+  // Log the state variable just before rendering
+  // console.log("Posting Details State:", postingDetails); // Removed debug log
 
   return (
     <Paper elevation={3} sx={{ p: 3, mt: 2, maxWidth: 800, margin: 'auto' }}>

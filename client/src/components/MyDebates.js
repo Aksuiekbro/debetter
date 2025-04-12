@@ -480,11 +480,11 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                         // Only disable if the assignments are still loading
                         disabled={loadingAssignments}
                         onClick={() => {
-                          console.log(`Button clicked for posting: ${posting._id}, status: ${posting.status}`);
+                          // console.log(`Button clicked for posting: ${posting._id}, status: ${posting.status}`); // Removed debug log
                           const isJudgeForPosting = userRole === 'judge' &&
                                                     posting.judges &&
                                                     posting.judges.some(judge => judge._id === userId);
-                          console.log(`User ID: ${userId}, Role: ${userRole}, Is Judge for Posting: ${isJudgeForPosting}`);
+                          // console.log(`User ID: ${userId}, Role: ${userRole}, Is Judge for Posting: ${isJudgeForPosting}`); // Removed debug log
                           
                           if (isJudgeForPosting && posting.status !== 'completed') {
                             // Get the actual team objects from debate.teams
@@ -499,10 +499,10 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                             ) : null;
                             
                             // Log for debugging
-                            console.log('Found team1:', team1Obj?.name, 'team2:', team2Obj?.name);
-                            console.log('Teams array:', debate.teams);
-                            console.log('Posting team IDs:', posting.team1,  posting.team2);
-                            console.log('Team members:', posting.team1Members, posting.team2Members);
+                            // console.log('Found team1:', team1Obj?.name, 'team2:', team2Obj?.name); // Removed debug log
+                            // console.log('Teams array:', debate.teams); // Removed debug log
+                            // console.log('Posting team IDs:', posting.team1,  posting.team2); // Removed debug log
+                            // console.log('Team members:', posting.team1Members, posting.team2Members); // Removed debug log
                             
                             // More robust game data preparation
                             let gameData = {
@@ -605,12 +605,12 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                               }
                             }
                             
-                            console.log('Navigating to judge-panel with game data:', gameData);
+                            // console.log('Navigating to judge-panel with game data:', gameData); // Removed debug log
                             navigate('/judge-panel', { 
                               state: { selectedGame: gameData }
                             });
                           } else {
-                            console.log('Navigating to details page:', `/debates/${debate._id}/postings/${posting._id}`);
+                            // console.log('Navigating to details page:', `/debates/${debate._id}/postings/${posting._id}`); // Removed debug log
                             navigate(`/debates/${debate._id}/postings/${posting._id}`);
                           }
                         }}

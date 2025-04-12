@@ -15,7 +15,7 @@ exports.getApfTabulation = async (req, res) => {
       return res.status(400).json({ message: 'Tournament ID is required' });
     }
 
-    console.log('Fetching APF tabulation for tournament:', specificTournamentId);
+    // console.log('Fetching APF tabulation for tournament:', specificTournamentId); // Removed debug log
 
     // Fetch the Debate document and populate the teams array
     const debate = await Debate.findById(specificTournamentId).populate({
@@ -24,17 +24,19 @@ exports.getApfTabulation = async (req, res) => {
     });
 
     if (!debate) {
+      // Keep log for not found
       console.log('Tournament (Debate) not found with ID:', specificTournamentId);
       return res.status(404).json({ message: 'Tournament not found' });
     }
 
     if (!debate.teams || debate.teams.length === 0) {
+      // Keep log for no teams found
       console.log('No teams found in the tournament:', specificTournamentId);
       // Return empty standings if no teams exist
       return res.json([]);
     }
 
-    console.log(`Found ${debate.teams.length} teams in tournament ${specificTournamentId}`);
+    // console.log(`Found ${debate.teams.length} teams in tournament ${specificTournamentId}`); // Removed debug log
 
     // Map teams to the required standings format
     let standings = debate.teams.map(team => ({
@@ -58,7 +60,7 @@ exports.getApfTabulation = async (req, res) => {
       rank: index + 1
     }));
 
-    console.log(`Returning ${standings.length} teams in standings for tournament ${specificTournamentId}`);
+    // console.log(`Returning ${standings.length} teams in standings for tournament ${specificTournamentId}`); // Removed debug log
     res.json(standings);
 
   } catch (error) {
@@ -81,14 +83,15 @@ exports.submitApfEvaluation = async (req, res) => {
       notes
     } = req.body;
     
-    console.log('Evaluation submission received:');
-    console.log('- debateId (params):', debateId);
-    console.log('- gameId (body):', gameId);
-    console.log('- winningTeamId:', winningTeamId);
+    // console.log('Evaluation submission received:'); // Removed debug log
+    // console.log('- debateId (params):', debateId); // Removed debug log
+    // console.log('- gameId (body):', gameId); // Removed debug log
+    // console.log('- winningTeamId:', winningTeamId); // Removed debug log
     
     // Check if debate exists
     const debate = await Debate.findById(debateId);
     if (!debate) {
+      // Keep log for not found
       console.log('Debate not found with ID:', debateId);
       return res.status(404).json({ message: 'Debate not found' });
     }
@@ -113,7 +116,7 @@ exports.submitApfEvaluation = async (req, res) => {
       );
     }
     
-    console.log('Judge check result:', isJudge);
+    // console.log('Judge check result:', isJudge); // Removed debug log
     
     if (!isJudge) {
       return res.status(403).json({ message: 'Only judges can submit evaluations' });
@@ -183,8 +186,9 @@ exports.submitApfEvaluation = async (req, res) => {
             winningTeamObject.points += relevantPosting.evaluation.team2Score;
           }
           
-          console.log(`Updated winning team: ${winningTeamObject.name}, Wins: ${winningTeamObject.wins}, Points: ${winningTeamObject.points}`);
+          // console.log(`Updated winning team: ${winningTeamObject.name}, Wins: ${winningTeamObject.wins}, Points: ${winningTeamObject.points}`); // Removed debug log
         } else {
+          // Keep log for not found
           console.log('Could not find winning team object in tournament teams');
         }
 
@@ -196,25 +200,26 @@ exports.submitApfEvaluation = async (req, res) => {
           // Add 1 participation point for the losing team
           losingTeamObject.points = (losingTeamObject.points || 0) + 1;
           
-          console.log(`Updated losing team: ${losingTeamObject.name}, Losses: ${losingTeamObject.losses}, Points: ${losingTeamObject.points}`);
+          // console.log(`Updated losing team: ${losingTeamObject.name}, Losses: ${losingTeamObject.losses}, Points: ${losingTeamObject.points}`); // Removed debug log
         } else {
+           // Keep log for not found
            console.log('Could not find losing team object in tournament teams');
         }
           const losingTeamId = losingTeamObject ? losingTeamObject._id.toString() : null; // Define ID for later use
 
         // Mark the teams array as modified before saving
         debate.markModified('teams');
-        console.log('[BEFORE SAVE] Losing Team Object:', JSON.stringify(losingTeamObject));
+        // console.log('[BEFORE SAVE] Losing Team Object:', JSON.stringify(losingTeamObject)); // Removed debug log
         try {
             await debate.save();
-            console.log('[AFTER SAVE] debate.save() completed successfully.');
+            // console.log('[AFTER SAVE] debate.save() completed successfully.'); // Removed debug log
             // Optionally fetch the losing team again AFTER save to confirm
             if (losingTeamId) { // Check if losingTeamId was found earlier
                 const savedDebate = await Debate.findById(debateId);
                 const savedLosingTeam = savedDebate.teams.find(t => t._id.toString() === losingTeamId);
-                console.log('[AFTER SAVE] Losing Team Object from DB:', JSON.stringify(savedLosingTeam));
+                // console.log('[AFTER SAVE] Losing Team Object from DB:', JSON.stringify(savedLosingTeam)); // Removed debug log
             } else {
-                console.log('[AFTER SAVE] Skipping DB check for losing team as it was not identified earlier.');
+                // console.log('[AFTER SAVE] Skipping DB check for losing team as it was not identified earlier.'); // Removed debug log
             }
         } catch (saveError) {
             console.error('[SAVE ERROR] Error during debate.save():', saveError);
@@ -222,10 +227,10 @@ exports.submitApfEvaluation = async (req, res) => {
             // For now, just log and continue, but consider rethrowing or sending error response
         }
 
-        console.log('[BEFORE SAVE] Attempting debate.save() after marking teams modified...');
+        // console.log('[BEFORE SAVE] Attempting debate.save() after marking teams modified...'); // Removed debug log
         // --- Try to advance winner in bracket ---
         if (relevantPosting && relevantPosting.round != null && relevantPosting.matchNumber != null) {
-          console.log(`[submitApfEvaluation] Posting has round/match info. Attempting to advance winner in bracket...`);
+          // console.log(`[submitApfEvaluation] Posting has round/match info. Attempting to advance winner in bracket...`); // Removed debug log
           try {
             await tournamentService.advanceWinnerInBracket(
               debateId,
@@ -233,19 +238,20 @@ exports.submitApfEvaluation = async (req, res) => {
               relevantPosting.matchNumber,
               winningTeamId // Pass the winning team ID
             );
-            console.log(`[submitApfEvaluation] Bracket advancement successful for Round ${relevantPosting.round}, Match ${relevantPosting.matchNumber}.`);
+            // console.log(`[submitApfEvaluation] Bracket advancement successful for Round ${relevantPosting.round}, Match ${relevantPosting.matchNumber}.`); // Removed debug log
           } catch (bracketError) {
             console.error(`[submitApfEvaluation] Error advancing winner in bracket for Round ${relevantPosting.round}, Match ${relevantPosting.matchNumber}:`, bracketError);
             // Decide if this error should affect the response to the client.
             // For now, we'll just log it and continue, as the evaluation was saved.
           }
         } else {
-            console.log(`[submitApfEvaluation] Posting ${relevantPosting?._id} missing round/match info, skipping bracket advancement.`);
+            // console.log(`[submitApfEvaluation] Posting ${relevantPosting?._id} missing round/match info, skipping bracket advancement.`); // Removed debug log
         }
         // --- End bracket advancement ---
       } else {
+        // Keep log for not found
         console.log('Could not find posting with ID:', req.body.gameId);
-        console.log('Available posting IDs:', debate.postings.map(p => p._id.toString()));
+        // console.log('Available posting IDs:', debate.postings.map(p => p._id.toString())); // Removed debug log
       }
     }
     
@@ -262,7 +268,7 @@ exports.submitApfEvaluation = async (req, res) => {
 // Get judge's assigned APF debates
 exports.getJudgeAssignedDebates = async (req, res) => {
   try {
-    console.log('Fetching judge assignments for user:', req.user._id);
+    // console.log('Fetching judge assignments for user:', req.user._id); // Removed debug log
     
     // Find tournaments where the user is a judge through participants array
     // OR where the user is directly assigned as a judge to a posting
@@ -304,14 +310,14 @@ exports.getJudgeAssignedDebates = async (req, res) => {
     })
     .sort({ startDate: 1 });
     
-    console.log(`Found ${tournaments.length} tournaments for judge`);
+    // console.log(`Found ${tournaments.length} tournaments for judge`); // Removed debug log
     
     // Get all APF postings where this judge is assigned
     const assignedGames = [];
     
     for (const tournament of tournaments) {
-      console.log(`Processing tournament: ${tournament.title}, ID: ${tournament._id}`);
-      console.log(`Tournament has ${tournament.teams?.length || 0} teams and ${tournament.postings?.length || 0} postings`);
+      // console.log(`Processing tournament: ${tournament.title}, ID: ${tournament._id}`); // Removed debug log
+      // console.log(`Tournament has ${tournament.teams?.length || 0} teams and ${tournament.postings?.length || 0} postings`); // Removed debug log
       
       if (tournament.postings && tournament.postings.length > 0) {
         // Filter postings where this judge is assigned
@@ -322,19 +328,25 @@ exports.getJudgeAssignedDebates = async (req, res) => {
           )
         );
         
-        console.log(`Found ${judgePostings.length} postings assigned to this judge`);
+        // console.log(`Found ${judgePostings.length} postings assigned to this judge`); // Removed debug log
         
         for (const posting of judgePostings) {
-          console.log(`Processing posting: ${posting._id}, Teams: ${posting.team1} vs ${posting.team2}`);
+          // console.log(`Processing posting: ${posting._id}, Teams: ${posting.team1} vs ${posting.team2}`); // Removed debug log
           
           // Find team details with debug logging
           const team1 = tournament.teams.find(t => t._id.toString() === posting.team1.toString());
           const team2 = tournament.teams.find(t => t._id.toString() === posting.team2.toString());
           
-          console.log(`Team1 found: ${!!team1}, Team2 found: ${!!team2}`);
-          if (team1) console.log(`Team1 name: ${team1.name}, members: ${team1.members?.length || 0}`);
+          // console.log(`Team1 found: ${!!team1}, Team2 found: ${!!team2}`); // Removed debug log
+          // if (team1) console.log(`Team1 name: ${team1.name}, members: ${team1.members?.length || 0}`); // Removed debug log
           if (team2) console.log(`Team2 name: ${team2.name}, members: ${team2.members?.length || 0}`);
           
+          // Check if both teams were found before proceeding
+          if (!team1 || !team2) {
+            console.warn(`[getJudgeAssignedDebates] Skipping posting ${posting._id} in tournament ${tournament._id} due to missing team data. Team1 found: ${!!team1}, Team2 found: ${!!team2}`);
+            continue; // Skip to the next posting in this tournament
+          }
+
           // Extract team member details for UI with improved debugging
           let team1Members = {
             leader: null,
@@ -351,8 +363,8 @@ exports.getJudgeAssignedDebates = async (req, res) => {
             const leaderMember = team1.members.find(m => m.role === 'leader');
             const speakerMember = team1.members.find(m => m.role === 'speaker');
             
-            console.log(`Team1 leader member:`, leaderMember);
-            console.log(`Team1 speaker member:`, speakerMember);
+            // console.log(`Team1 leader member:`, leaderMember); // Removed debug log
+            // console.log(`Team1 speaker member:`, speakerMember); // Removed debug log
             
             if (leaderMember && leaderMember.userId) {
               // If userId is already populated, use it directly
@@ -365,7 +377,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
                   username: `Leader (${team1.name})`
                 };
               }
-              console.log(`Team1 leader user data:`, team1Members.leader);
+              // console.log(`Team1 leader user data:`, team1Members.leader); // Removed debug log
             }
             
             if (speakerMember && speakerMember.userId) {
@@ -379,7 +391,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
                   username: `Speaker (${team1.name})`
                 };
               }
-              console.log(`Team1 speaker user data:`, team1Members.speaker);
+              // console.log(`Team1 speaker user data:`, team1Members.speaker); // Removed debug log
             }
           }
           
@@ -388,8 +400,8 @@ exports.getJudgeAssignedDebates = async (req, res) => {
             const leaderMember = team2.members.find(m => m.role === 'leader');
             const speakerMember = team2.members.find(m => m.role === 'speaker');
             
-            console.log(`Team2 leader member:`, leaderMember);
-            console.log(`Team2 speaker member:`, speakerMember);
+            // console.log(`Team2 leader member:`, leaderMember); // Removed debug log
+            // console.log(`Team2 speaker member:`, speakerMember); // Removed debug log
             
             if (leaderMember && leaderMember.userId) {
               // If userId is already populated, use it directly
@@ -402,7 +414,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
                   username: `Leader (${team2.name})`
                 };
               }
-              console.log(`Team2 leader user data:`, team2Members.leader);
+              // console.log(`Team2 leader user data:`, team2Members.leader); // Removed debug log
             }
             
             if (speakerMember && speakerMember.userId) {
@@ -416,7 +428,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
                   username: `Speaker (${team2.name})`
                 };
               }
-              console.log(`Team2 speaker user data:`, team2Members.speaker);
+              // console.log(`Team2 speaker user data:`, team2Members.speaker); // Removed debug log
             }
           }
           
@@ -512,7 +524,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
       }
     }
     
-    console.log(`Returning ${assignedGames.length} assigned games for judge`);
+    // console.log(`Returning ${assignedGames.length} assigned games for judge`); // Removed debug log
     res.json(assignedGames);
   } catch (error) {
     console.error('Error getting assigned debates:', error);
@@ -547,7 +559,7 @@ exports.getDebaterFeedback = async (req, res) => {
     const { debateId, postingId } = req.params;
     const userId = req.user._id;
 
-    console.log(`Fetching feedback for user ${userId}, debate ${debateId}, posting ${postingId}`);
+    // console.log(`Fetching feedback for user ${userId}, debate ${debateId}, posting ${postingId}`); // Removed debug log
 
     // 1. Fetch Debate with populated teams and members
     const debate = await Debate.findById(debateId).populate({
@@ -560,6 +572,7 @@ exports.getDebaterFeedback = async (req, res) => {
     });
 
     if (!debate) {
+      // Keep log for not found
       console.log(`Debate not found: ${debateId}`);
       return res.status(404).json({ message: 'Debate not found' });
     }
@@ -568,12 +581,14 @@ exports.getDebaterFeedback = async (req, res) => {
     const posting = debate.postings.find(p => p._id.toString() === postingId);
 
     if (!posting) {
+      // Keep log for not found
       console.log(`Posting not found: ${postingId} in debate ${debateId}`);
       return res.status(404).json({ message: 'Posting not found' });
     }
 
     // 3. Check if posting is completed
     if (posting.status !== 'completed') {
+      // Keep log for status check
       console.log(`Posting ${postingId} is not completed (status: ${posting.status})`);
       return res.status(400).json({ message: 'Feedback is not available until the posting is completed' });
     }
@@ -602,11 +617,12 @@ exports.getDebaterFeedback = async (req, res) => {
     }
 
     if (!userTeam || !userRole) {
+      // Keep log for user not participant
       console.log(`User ${userId} not found as a participant in posting ${postingId}`);
       return res.status(403).json({ message: 'You did not participate in this specific debate posting' });
     }
 
-    console.log(`User ${userId} identified as ${userRole} on team ${userTeam.name} (${teamSide})`);
+    // console.log(`User ${userId} identified as ${userRole} on team ${userTeam.name} (${teamSide})`); // Removed debug log
 
     // 5. Determine the speaker key
     let speakerKey = null;
@@ -616,10 +632,11 @@ exports.getDebaterFeedback = async (req, res) => {
       speakerKey = userRole === 'leader' ? 'leader_opp' : 'speaker_opp';
     }
 
-    console.log(`Determined speaker key: ${speakerKey}`);
+    // console.log(`Determined speaker key: ${speakerKey}`); // Removed debug log
 
     // 6. Fetch the Evaluation using the ID from the posting
     if (!posting.evaluation || !posting.evaluation.evaluationId) {
+        // Keep log for missing evaluation ref
         console.log(`Posting ${postingId} is completed but missing evaluation reference.`);
         return res.status(404).json({ message: 'Evaluation data not found for this posting' });
     }
@@ -627,12 +644,14 @@ exports.getDebaterFeedback = async (req, res) => {
     const evaluation = await ApfEvaluation.findById(posting.evaluation.evaluationId);
 
     if (!evaluation) {
+        // Keep log for evaluation not found
         console.log(`Evaluation not found with ID: ${posting.evaluation.evaluationId}`);
         return res.status(404).json({ message: 'Evaluation data could not be retrieved' });
     }
 
     // 7. Extract scores and feedback
     if (!evaluation.speakerScores || !evaluation.speakerScores[speakerKey]) {
+        // Keep log for scores missing
         console.log(`Speaker scores missing or key ${speakerKey} not found in evaluation ${evaluation._id}`);
         return res.status(404).json({ message: 'Specific scores and feedback not found for your role in this evaluation' });
     }
