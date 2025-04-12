@@ -1,8 +1,9 @@
 // scripts/checkQamqorBracket.js
-require('dotenv').config(); // Load .env from the current directory
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../api/.env') }); // Load .env from api directory
 const { MongoClient, ObjectId } = require('mongodb');
 
-const tournamentId = '67e9100f4510e481c2667079'; // Qamqor Cup ID
+const tournamentId = '67f895cd0d84abb3011f1140'; // Qamqor Cup ID
 
 async function checkBracket() {
   const uri = process.env.MONGODB_URI;
@@ -11,7 +12,10 @@ async function checkBracket() {
     process.exit(1);
   }
 
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 60000, // 60 seconds
+      socketTimeoutMS: 60000 // 60 seconds
+  });
 
   try {
     await client.connect();

@@ -13,7 +13,7 @@ import { api } from '../../config/api'; // Removed getAuthHeaders
 // import { useAuth } from '../../contexts/AuthContext'; // Passed as prop
 
 const ScheduleView = ({ currentUser, tournamentCreatorId }) => {
-  const { tournamentId } = useParams();
+  const { id: tournamentId } = useParams();
   const { t } = useTranslation();
   // const { user } = useAuth(); // Passed as prop
 
@@ -31,8 +31,14 @@ const ScheduleView = ({ currentUser, tournamentCreatorId }) => {
   const fetchSchedule = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!tournamentId) {
+      // Don't fetch if tournamentId is not yet available
+      setError(t('scheduleView.missingIdError')); // Optional: Provide specific feedback
+      setLoading(false);
+      return;
+    }
     try {
-      const response = await api.get(`/api/debates/${tournamentId}/schedule`);
+      const response = await api.client.get(`/api/debates/${tournamentId}/schedule`);
       setScheduleItems(response.data || []); // Ensure it's an array
     } catch (err) {
       console.error("Error fetching schedule:", err);

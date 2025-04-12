@@ -11,7 +11,6 @@ const tournamentData = JSON.parse(fs.readFileSync('./qamqorCupData.json', 'utf8'
 // Function to update the tournament
 const updateTournament = async () => {
   try {
-    console.log('Updating Qamqor Cup tournament...');
     
     // Get admin token from .env file or set a default one for testing
     const token = process.env.ADMIN_TOKEN || 'your-admin-token';
@@ -24,8 +23,6 @@ const updateTournament = async () => {
       }
     });
     
-    console.log('Tournament updated successfully!');
-    console.log('Response:', response.data);
   } catch (error) {
     console.error('Error updating tournament:', error.response ? error.response.data : error.message);
   }

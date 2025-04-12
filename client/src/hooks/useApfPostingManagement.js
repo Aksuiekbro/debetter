@@ -183,7 +183,7 @@ export const useApfPostingManagement = (
          // TODO: Add PUT endpoint logic if available
          // url = `${api.baseUrl}/api/debates/${tournamentId}/postings/${editId}`;
          // method = 'PUT';
-         console.warn("API endpoint for editing APF posting not implemented. Using POST.");
+         // console.warn("API endpoint for editing APF posting not implemented. Using POST."); // Removed dev note
          // For now, we'll just re-POST which might create duplicates if not handled server-side
       }
 
@@ -317,7 +317,7 @@ export const useApfPostingManagement = (
       setLoading(true);
       // TODO: Implement API call for deleting a posting
       try {
-          console.warn(`API endpoint for deleting posting ${deletePostingId} not implemented.`);
+          // console.warn(`API endpoint for deleting posting ${deletePostingId} not implemented.`); // Removed dev note
           // Example: await fetch(`${api.baseUrl}/api/debates/${tournamentId}/postings/${deletePostingId}`, { method: 'DELETE', headers: getAuthHeaders() });
           showNotification('Posting deleted successfully (simulated)', 'success');
           handleCloseDeletePostingDialog();

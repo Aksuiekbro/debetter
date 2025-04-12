@@ -10,7 +10,7 @@ import { api } from '../../config/api'; // Removed getAuthHeaders
 // import { useAuth } from '../../contexts/AuthContext'; // Passed as prop
 
 const MapView = ({ currentUser, tournamentCreatorId }) => {
-  const { tournamentId } = useParams();
+  const { id: tournamentId } = useParams();
   const { t } = useTranslation();
   // const { user } = useAuth(); // Passed as prop
   const fileInputRef = useRef(null);
@@ -32,7 +32,7 @@ const MapView = ({ currentUser, tournamentCreatorId }) => {
     setMapUrl(null); // Reset map URL before fetching
     try {
       // The API should return { mapImageUrl: 'url' } or {} or 404 if no map
-      const response = await api.get(`/api/debates/${tournamentId}/map`);
+      const response = await api.client.get(`/api/debates/${tournamentId}/map`);
       if (response.data && response.data.mapImageUrl) {
         setMapUrl(response.data.mapImageUrl);
       } else {

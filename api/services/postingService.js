@@ -8,8 +8,8 @@ async function sendGameNotifications(debate, postingData, postingId) {
     const { judgeIds, team1Id, team2Id, scheduledTime, theme, batchName } = postingData;
     const results = { judgesNotified: 0, teamMembersNotified: 0, errors: [] };
     const debateId = debate._id;
-    console.log(`[sendGameNotifications] Received postingData:`, JSON.stringify(postingData, null, 2));
-    console.log(`[sendGameNotifications] team1Id: ${team1Id}, team2Id: ${team2Id}`);
+    // console.log(`[sendGameNotifications] Received postingData:`, JSON.stringify(postingData, null, 2)); // Removed debug log
+    // console.log(`[sendGameNotifications] team1Id: ${team1Id}, team2Id: ${team2Id}`); // Removed debug log
 
     let reminderText = `You have been assigned to an APF debate`;
     if (scheduledTime) reminderText += ` scheduled for ${new Date(scheduledTime).toLocaleString()}`;
@@ -35,7 +35,7 @@ async function sendGameNotifications(debate, postingData, postingId) {
     // Notify team members
     const team1 = debate.teams.find(t => t._id.toString() === team1Id.toString());
     const team2 = debate.teams.find(t => t._id.toString() === team2Id.toString());
-    console.log(`[sendGameNotifications] Found team1: ${!!team1}, Found team2: ${!!team2}`);
+    // console.log(`[sendGameNotifications] Found team1: ${!!team1}, Found team2: ${!!team2}`); // Removed debug log
 
     const notifyTeam = async (team, teamName) => {
         if (team && team.members) {
@@ -73,16 +73,7 @@ class PostingService {
         const { team1Id, team2Id, location, virtualLink, judgeIds, theme } = postingData;
 
         // --- Add Detailed Logging ---
-        console.log('[validatePostingData] Received Data:', JSON.stringify(postingData, null, 2));
-        console.log(`[validatePostingData] Checking Fields:`);
-        console.log(`  !team1Id: ${!team1Id}`);
-        console.log(`  !team2Id: ${!team2Id}`);
-        console.log(`  !location: ${!location}`);
-        console.log(`  !virtualLink: ${!virtualLink}`);
-        console.log(`  (!location && !virtualLink): ${!location && !virtualLink}`);
-        console.log(`  !judgeIds: ${!judgeIds}`); // Should be false for []
-        console.log(`  !theme: ${!theme}`);
-        // --- End Detailed Logging ---
+        // --- Removed Detailed Logging ---
 
         // Allow empty judgeIds array - judges might be assigned later
         if (!team1Id || !team2Id || (!location && !virtualLink) || !judgeIds || !theme) {
@@ -494,7 +485,7 @@ class PostingService {
   async saveAudioUrl(fileBuffer) {
     // In a real implementation, upload fileBuffer to cloud storage
     // and return the actual URL.
-    console.log(`[PostingService] Received audio buffer of size: ${fileBuffer?.length || 0}`);
+    // console.log(`[PostingService] Received audio buffer of size: ${fileBuffer?.length || 0}`); // Removed debug log
     // For now, just return a placeholder URL
     return '/uploads/placeholder-audio.mp3';
   }
@@ -503,7 +494,7 @@ class PostingService {
   async saveBallotUrl(fileBuffer) {
     // In a real implementation, upload fileBuffer to cloud storage
     // and return the actual URL.
-    console.log(`[PostingService] Received ballot image buffer of size: ${fileBuffer?.length || 0}`);
+    // console.log(`[PostingService] Received ballot image buffer of size: ${fileBuffer?.length || 0}`); // Removed debug log
     // For now, just return a placeholder URL
     return '/uploads/placeholder-ballot.jpg';
   }

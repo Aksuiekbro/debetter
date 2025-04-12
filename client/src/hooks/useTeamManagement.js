@@ -104,7 +104,7 @@ export const useTeamManagement = (
     // For now, simulate local deletion and show notification
     try {
       // Example: await fetch(`${api.baseUrl}/api/debates/teams/${deleteItemId}`, { method: 'DELETE', headers: getAuthHeaders() });
-      console.warn("API endpoint for team deletion not implemented. Simulating local deletion.");
+      // console.warn("API endpoint for team deletion not implemented. Simulating local deletion."); // Removed dev note
 
       // Optimistic update (remove locally) - remove if API call is added
       setTeams(prevTeams => prevTeams.filter(t => t.id !== deleteItemId));

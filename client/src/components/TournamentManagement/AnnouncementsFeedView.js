@@ -12,7 +12,7 @@ import { api } from '../../config/api'; // Removed getAuthHeaders
 
 // Renamed component
 const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId }) => {
-  const { tournamentId } = useParams();
+  const { id: tournamentId } = useParams();
   const { t } = useTranslation();
   // const { user } = useAuth(); // currentUser is now passed as a prop
 
@@ -33,7 +33,7 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId }) => {
     setError(null);
     try {
       // Fetching from the original announcements endpoint
-      const response = await api.get(`/api/debates/${tournamentId}/announcements`);
+      const response = await api.client.get(`/api/debates/${tournamentId}/announcements`);
       setAnnouncements(response.data);
     } catch (err) {
       console.error("Error fetching announcements:", err);

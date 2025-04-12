@@ -15,7 +15,6 @@ const assignHeadJudge = async () => {
 
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB Connected...');
 
     const headJudgeObjectId = new mongoose.Types.ObjectId(headJudgeId);
 
@@ -23,24 +22,18 @@ const assignHeadJudge = async () => {
     const debate = await Debate.findById(debateId);
 
     if (!debate) {
-      console.log(`Debate document with ID ${debateId} not found.`);
       await mongoose.disconnect();
-      console.log('MongoDB Disconnected.');
       return;
     }
 
     // Check if the debate format is 'tournament' (optional, but good practice)
     if (debate.format !== 'tournament') {
-        console.log(`Debate ${debate.title} is not a tournament format. Skipping posting update.`);
         await mongoose.disconnect();
-        console.log('MongoDB Disconnected.');
         return;
     }
 
     if (!debate.postings || debate.postings.length === 0) {
-      console.log(`Debate ${debate.title} has no postings.`);
       await mongoose.disconnect();
-      console.log('MongoDB Disconnected.');
       return;
     }
 
@@ -59,9 +52,7 @@ const assignHeadJudge = async () => {
         }
         posting.judges.push(headJudgeObjectId);
         updatedCount++;
-        console.log(`Added Head Judge to posting for Round ${posting.round}, Match ${posting.matchNumber || 'N/A'}`);
       } else {
-         console.log(`Head Judge already present in posting for Round ${posting.round}, Match ${posting.matchNumber || 'N/A'}`);
       }
     });
 
@@ -69,9 +60,7 @@ const assignHeadJudge = async () => {
       // Mark the postings array as modified since we updated it in code
       debate.markModified('postings');
       await debate.save();
-      console.log(`Successfully updated ${updatedCount} out of ${postingsFound} postings for debate ${debate.title}.`);
     } else {
-      console.log(`No postings needed updating for debate ${debate.title}. Head Judge already assigned where applicable.`);
     }
 
   } catch (err) {
@@ -81,7 +70,6 @@ const assignHeadJudge = async () => {
     // Ensure disconnection even if errors occur before the main logic
     if (mongoose.connection.readyState === 1) { // 1 means connected
         await mongoose.disconnect();
-        console.log('MongoDB Disconnected.');
     }
   }
 };

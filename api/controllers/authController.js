@@ -11,29 +11,29 @@ const generateToken = (id) => {
 exports.register = async (req, res) => {
   try {
     // Direct access to raw request data
-    console.log('RAW REQUEST BODY:', req.body);
-    console.log('RAW ROLE VALUE FROM CLIENT:', req.body.role);
+    // console.log('RAW REQUEST BODY:', req.body); // Removed debug log
+    // console.log('RAW ROLE VALUE FROM CLIENT:', req.body.role); // Removed debug log
     
     // Capture exactly what's in the request
     const rawRole = req.body.role;
-    console.log('Raw role captured:', rawRole);
+    // console.log('Raw role captured:', rawRole); // Removed debug log
     
     const { username, email, password, judgeRole, experience, club, phoneNumber, otherProfileInfo } = req.body; // Destructure new fields
     
     if (!username || !email || !password) {
-      console.log('Missing required fields');
+      // console.log('Missing required fields'); // Removed debug log
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      console.log('User already exists with email:', email);
+      // console.log('User already exists with email:', email); // Removed debug log
       return res.status(400).json({ message: 'User already exists' });
     }
 
     // Force the role to be exactly what was received
     const userRole = rawRole;
-    console.log('Using direct role value:', userRole);
+    // console.log('Using direct role value:', userRole); // Removed debug log
     
     // Create user with exactly the role that was received
     // Prepare data for user creation
@@ -86,11 +86,11 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
-      console.log('[Login Controller] Password matched successfully for:', user.email);
-      console.log('[Login Controller] Attempting to generate token...');
+      // console.log('[Login Controller] Password matched successfully for:', user.email); // Removed debug log
+      // console.log('[Login Controller] Attempting to generate token...'); // Removed debug log
       const token = generateToken(user._id); // Generate token explicitly
-      console.log('[Login Controller] Token generated successfully.');
-      console.log('[Login Controller] Attempting to send success response...');
+      // console.log('[Login Controller] Token generated successfully.'); // Removed debug log
+      // console.log('[Login Controller] Attempting to send success response...'); // Removed debug log
       res.json({
         _id: user._id,
         username: user.username,

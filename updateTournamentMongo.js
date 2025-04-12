@@ -18,7 +18,6 @@ mongoose.connect(process.env.MONGODB_URI, {
   w: 'majority'
 })
 .then(() => {
-  console.log('✅ MongoDB Atlas connection established successfully');
   updateTournament();
 })
 .catch((err) => {
@@ -29,7 +28,6 @@ mongoose.connect(process.env.MONGODB_URI, {
 // Function to update the tournament
 const updateTournament = async () => {
   try {
-    console.log('Updating Qamqor Cup tournament...');
     
     // Define Tournament model schema
     const tournamentSchema = new mongoose.Schema({
@@ -91,14 +89,9 @@ const updateTournament = async () => {
       throw new Error('Tournament not found');
     }
     
-    console.log('Tournament updated successfully!');
-    console.log('Teams:', result.teams.length);
-    console.log('Rounds:', result.rounds.length);
-    console.log('Winner:', result.winner.name);
     
     // Close the MongoDB connection
     await mongoose.connection.close();
-    console.log('MongoDB connection closed');
     process.exit(0);
   } catch (error) {
     console.error('Error updating tournament:', error.message);

@@ -185,15 +185,7 @@ const TournamentDetail = () => {
           {(() => {
             // Logging remains, but definitions are moved outside
             // Update logging
-            console.log('[TournamentDetail] Checking Manage Button Visibility:');
-            console.log('  User:', user ? `ID: ${user._id}, Role: ${user.role}` : 'Not loaded');
-            console.log('  Tournament:', tournament ? `Creator ID: ${tournament.creator}` : 'Not loaded');
-            console.log('  Is User Data Valid?:', isUserDataValid);
-            console.log('  Is Tournament Data Valid?:', isTournamentDataValid);
-            if (isUserDataValid && isTournamentDataValid) {
-                console.log('  Comparison (user._id === tournament.creator):', user._id === tournament.creator);
-            }
-            console.log('  Can Manage:', canManage);
+            // Removed detailed debug logs for manage button visibility check
             return null; // JSX requires an element or null to be returned
           })()}
           {/* Corrected condition: Check user, tournament, tournament.creator, role, and compare IDs */}
