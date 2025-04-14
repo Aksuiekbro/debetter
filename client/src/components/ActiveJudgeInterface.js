@@ -2,11 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Typography, Button, CircularProgress, Alert, Paper, Grid, TextField
+  Box, Typography, Button, CircularProgress, Alert, Paper, Grid, TextField,
+  Divider, List, ListItem, ListItemIcon, ListItemText,
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import EventNoteIcon from '@mui/icons-material/EventNote'; // Icon for Theme
+import GroupsIcon from '@mui/icons-material/Groups';       // Icon for Teams
+import ScheduleIcon from '@mui/icons-material/Schedule';   // Icon for Time
+import LocationOnIcon from '@mui/icons-material/LocationOn'; // Icon for Location
 import { api } from '../config/api'; // Assuming api client is here
 import { getAuthHeaders } from '../utils/auth'; // Assuming auth utils are here
 
@@ -188,12 +193,37 @@ const ActiveJudgeInterface = () => {
         {/* Debate Details Section */}
         <Grid item xs={12}>
           <Typography variant="h6" gutterBottom>{t('activeJudgeInterface.debateDetails', 'Debate Details')}</Typography>
-          <Typography><strong>{t('common.theme', 'Theme/Topic')}:</strong> {theme}</Typography>
-          <Typography><strong>{t('common.govTeam', 'Government Team')}:</strong> {govTeamName}</Typography>
-          <Typography><strong>{t('common.oppTeam', 'Opposition Team')}:</strong> {oppTeamName}</Typography>
-          <Typography><strong>{t('common.time', 'Time')}:</strong> {time}</Typography>
-          <Typography><strong>{t('common.location', 'Location')}:</strong> {location}</Typography>
+          <List dense>
+            <ListItem>
+              <ListItemIcon>
+                <EventNoteIcon />
+              </ListItemIcon>
+              <ListItemText primary={t('common.theme', 'Theme/Topic')} secondary={theme} />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <GroupsIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary={t('common.teams', 'Teams')}
+                secondary={`${t('common.govTeamShort', 'Gov')}: ${govTeamName} | ${t('common.oppTeamShort', 'Opp')}: ${oppTeamName}`}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <ScheduleIcon />
+              </ListItemIcon>
+              <ListItemText primary={t('common.time', 'Time')} secondary={time} />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <LocationOnIcon />
+              </ListItemIcon>
+              <ListItemText primary={t('common.location', 'Location')} secondary={location} />
+            </ListItem>
+          </List>
         </Grid>
+          <Divider sx={{ my: 2 }} />
 
         {/* Audio Recorder Section */}
         <Grid item xs={12} md={6}>
@@ -220,11 +250,12 @@ const ActiveJudgeInterface = () => {
             )}
             {isRecording && <CircularProgress size={24} color="secondary" />}
           </Box>
-          {audioBlob && !uploadingAudio && !audioUploadSuccess && (
+          {audioBlob && !uploadingAudio && ( // Show if blob exists and not uploading
             <Button
               variant="outlined"
               onClick={handleUploadAudio}
               sx={{ mt: 1 }}
+              disabled={audioUploadSuccess} // Disable after successful upload
             >
               {t('activeJudgeInterface.uploadAudio', 'Upload Recorded Audio')}
             </Button>
@@ -233,6 +264,7 @@ const ActiveJudgeInterface = () => {
           {audioUploadSuccess && <Alert severity="success" sx={{ mt: 1 }}>{t('activeJudgeInterface.audioUploadSuccess', 'Audio uploaded successfully!')}</Alert>}
           {audioUploadError && <Alert severity="error" sx={{ mt: 1 }}>{audioUploadError}</Alert>}
         </Grid>
+          <Divider sx={{ my: 2 }} />
 
         {/* Ballot Photo Upload Section */}
         <Grid item xs={12} md={6}>
@@ -257,11 +289,12 @@ const ActiveJudgeInterface = () => {
               {t('activeJudgeInterface.selectedFile', 'Selected')}: {selectedPhoto.name}
             </Typography>
           )}
-          {selectedPhoto && !uploadingPhoto && !photoUploadSuccess && (
+          {selectedPhoto && !uploadingPhoto && ( // Show if photo selected and not uploading
             <Button
               variant="outlined"
               onClick={handleUploadPhoto}
               sx={{ mt: 1 }}
+              disabled={photoUploadSuccess} // Disable after successful upload
             >
               {t('activeJudgeInterface.uploadPhotoButton', 'Upload Photo')}
             </Button>
@@ -270,6 +303,7 @@ const ActiveJudgeInterface = () => {
           {photoUploadSuccess && <Alert severity="success" sx={{ mt: 1 }}>{t('activeJudgeInterface.photoUploadSuccess', 'Ballot photo uploaded successfully!')}</Alert>}
           {photoUploadError && <Alert severity="error" sx={{ mt: 1 }}>{photoUploadError}</Alert>}
         </Grid>
+          <Divider sx={{ my: 2 }} />
 
         {/* Optional Notes Section */}
         <Grid item xs={12}>

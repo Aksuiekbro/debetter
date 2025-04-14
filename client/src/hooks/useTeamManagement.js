@@ -120,7 +120,7 @@ export const useTeamManagement = (
       setLoadingTeams(false);
       handleCloseDeleteDialog(); // Ensure dialog closes even on error
     }
-  }, [deleteItemId, showNotification, handleCloseDeleteDialog, setTeams /* remove setTeams if API call added */, refreshData]);
+  }, [deleteItemId, showNotification, handleCloseDeleteDialog, setTeams /* remove setTeams if API call added */]);
 
   const randomizeTeams = useCallback(async () => {
     setLoadingTeams(true);

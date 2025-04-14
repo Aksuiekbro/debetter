@@ -55,7 +55,7 @@ async function createTeams() {
         const existingUser = await User.findOne({ email });
         
         if (existingUser) {
-          console.log(`User ${firstName} ${lastName} already exists`);
+          // console.log(`User ${firstName} ${lastName} already exists`); // Removed info log
           teamMembers.push(existingUser);
           continue;
         }
@@ -74,7 +74,7 @@ async function createTeams() {
         
         await newUser.save();
         teamMembers.push(newUser);
-        console.log(`Created team member: ${firstName} ${lastName} for team ${teamName}`);
+        // console.log(`Created team member: ${firstName} ${lastName} for team ${teamName}`); // Removed info log
       }
       
       createdTeamMembers.push({

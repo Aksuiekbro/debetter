@@ -34,6 +34,7 @@ const {
     getMap,
     deleteMap,
     updateParticipant, // Added import for the new controller function
+    addParticipant, // Added import for adding a participant
     deleteParticipant, // Added import for the participant deletion controller function
     deleteTeam, // Import for deleting a team
     uploadAudio, // Import for uploading audio
@@ -89,6 +90,9 @@ router.put('/teams/:teamId', updateTeam);
 router.delete('/:id/teams/:teamId', protect, isOrganizer, deleteTeam); // Route to delete a team from a tournament
 
 // Route to update a specific participant's details within a tournament
+
+// Route to add a participant to a tournament
+router.post('/:id/participants', isOrganizer, addParticipant);
 router.put('/:id/participants/:participantUserId', isOrganizer, updateParticipant);
 // Route to delete a specific participant from a tournament
 router.delete('/:id/participants/:participantUserId', isOrganizer, deleteParticipant);

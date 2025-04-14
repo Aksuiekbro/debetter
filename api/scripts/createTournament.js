@@ -33,7 +33,7 @@ async function createTournament() {
     }).limit(5);
 
     if (judges.length < 3) {
-      console.log('Not enough judges found, creating with default judges');
+      // console.log('Not enough judges found, creating with default judges'); // Removed info log
     }
 
     // Create teams (in reality these would be actual user records)
@@ -59,11 +59,11 @@ async function createTournament() {
     });
 
     await tournament.save();
-    console.log('Tournament created successfully:', tournament._id);
+    // console.log('Tournament created successfully:', tournament._id); // Removed success log
     
     // Print some info about the tournament
-    console.log(`Created "${tournament.name}" with ${teams.length} teams and ${judges.length} judges`);
-    console.log(`Tournament structure: ${tournament.rounds.length} rounds with a total of ${tournament.rounds.reduce((sum, round) => sum + round.matches.length, 0)} matches`);
+    // console.log(`Created "${tournament.name}" with ${teams.length} teams and ${judges.length} judges`); // Removed summary log
+    // console.log(`Tournament structure: ${tournament.rounds.length} rounds with a total of ${tournament.rounds.reduce((sum, round) => sum + round.matches.length, 0)} matches`); // Removed summary log
 
   } catch (error) {
     console.error('Error creating tournament:', error);

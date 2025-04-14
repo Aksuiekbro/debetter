@@ -35,20 +35,20 @@ const Login = () => {
       // Use the API client instead of fetch for consistency
       const response = await api.client.post('/api/users/login', formData);
       const data = response.data;
-      console.log('Login successful, API response data:', data);
+      // console.log('Login successful, API response data:', data); // Removed debug log
       
-      console.log('Attempting to set localStorage items...');
+      // console.log('Attempting to set localStorage items...'); // Removed debug log
       localStorage.setItem('token', data.token);
       localStorage.setItem('userRole', data.role); // Store the role
       localStorage.setItem('username', data.username);
       localStorage.setItem('userId', data._id);
-      console.log('localStorage set, attempting to dispatch auth-change event...');
+      // console.log('localStorage set, attempting to dispatch auth-change event...'); // Removed debug log
       window.dispatchEvent(new Event('auth-change'));
-      console.log('Event dispatched, attempting to navigate to /home...');
+      // console.log('Event dispatched, attempting to navigate to /home...'); // Removed debug log
       navigate('/home');
     } catch (error) {
       console.error('Login error:', error);
-      console.error('Caught error during login process:', error);
+      // console.error('Caught error during login process:', error); // Removed redundant error log
       const errorMessage = error.response?.data?.message || t('login.genericError', 'Login failed. Please check your connection and try again.');
       setError(errorMessage);
     }

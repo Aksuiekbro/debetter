@@ -41,7 +41,7 @@ const JudgePanel = () => {
   // Check for navigation state to directly open evaluation
   useEffect(() => {
     if (location.state?.selectedGame) {
-      console.log('Received selectedGame from navigation state:', location.state.selectedGame);
+      // console.log('Received selectedGame from navigation state:', location.state.selectedGame); // Removed debug log
       setSelectedGame(location.state.selectedGame);
       setShowEvaluation(true);
       // Clear the state to prevent re-triggering on refresh/back navigation
@@ -65,10 +65,10 @@ const JudgePanel = () => {
       }
 
       const games = await response.json();
-      console.log('Fetched assigned games:', games);
+      // console.log('Fetched assigned games:', games); // Removed debug log
       setAssignedGames(games);
       if (games && games.length > 0) {
-        console.log('[useJudgeAssignments] Processed assignedGames[0]:', JSON.stringify(games[0], null, 2));
+        // console.log('[useJudgeAssignments] Processed assignedGames[0]:', JSON.stringify(games[0], null, 2)); // Removed debug log
       }
     } catch (error) {
       console.error('Error fetching assigned games:', error);
@@ -97,13 +97,14 @@ const JudgePanel = () => {
 
   const handleSubmitEvaluation = async (evaluationData) => {
     try {
-      console.log('Submitting evaluation:', evaluationData);
+      // console.log('Submitting evaluation:', evaluationData); // Removed debug log
       
       // Use the tournament ID as the debate ID for the API endpoint
       const debateId = selectedGame.tournamentId;
       
       // Ensure we have all required fields 
       if (!debateId || !evaluationData.gameId || !evaluationData.winningTeamId) {
+        // Keep error log for missing data
         console.error('Missing required data:', { debateId, gameId: evaluationData.gameId, winningTeamId: evaluationData.winningTeamId });
         setNotification({
           open: true,

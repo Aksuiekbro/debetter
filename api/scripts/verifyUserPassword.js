@@ -18,23 +18,16 @@ const verifyPassword = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ Connected to MongoDB.');
 
     const user = await User.findOne({ email: userEmail });
 
     if (!user) {
-      console.log(`User ${userEmail} not found.`);
     } else {
-      console.log(`User ${userEmail} found. Checking password...`);
       if (!user.password) {
-          console.log(`User ${userEmail} found, but has no password field.`);
       } else {
           const isMatch = await bcrypt.compare(plainPassword, user.password);
           if (isMatch) {
-            console.log(`✅ Password for ${userEmail} MATCHES the stored hash.`);
           } else {
-            console.log(`❌ Password for ${userEmail} does NOT match the stored hash.`);
-            console.log(`Stored hash: ${user.password}`); // Log hash for debugging
           }
       }
     }
@@ -42,7 +35,6 @@ const verifyPassword = async () => {
     console.error('❌ Error during verification:', error);
   } finally {
     await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB.');
   }
 };
 

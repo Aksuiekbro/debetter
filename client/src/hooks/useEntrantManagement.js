@@ -1,25 +1,32 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import axios from 'axios'; // Import axios for API calls
+import { useAuth } from '../contexts/AuthContext'; // To get user token
+import { useParams } from 'react-router-dom'; // To get tournamentId
 
-// Note: This hook currently manages local state for entrants as per the original
-// component's logic. For full CRUD, API calls would be added here.
-export const useEntrantManagement = (initialEntrants = [], setEntrants, showNotification) => {
+// Manages state and logic for adding/deleting tournament participants (entrants)
+export const useEntrantManagement = (refreshData, showNotification) => {
+  const { tournamentId } = useParams(); // Get tournamentId from URL
+  const { user } = useAuth(); // Get user for token
   const [openEntrantDialog, setOpenEntrantDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [entrantForm, setEntrantForm] = useState({ name: '', email: '' });
+  const [entrantForm, setEntrantForm] = useState({ userId: '', role: 'Debater' }); // Updated form state
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [deleteItemId, setDeleteItemId] = useState(null);
+  const [deleteUserId, setDeleteUserId] = useState(null); // Store userId for deletion
+  const [loading, setLoading] = useState(false); // Loading state for API calls
+  const [availableUsers, setAvailableUsers] = useState([]); // State for users list
 
   const handleOpenEntrantDialog = useCallback((editMode = false, entrant = null) => {
     setIsEditing(editMode);
-    if (editMode && entrant) {
-      setEntrantForm({ name: entrant.name, email: entrant.email });
-      setEditId(entrant.id);
-    } else {
-      setEntrantForm({ name: '', email: '' });
+    // Editing is not part of this task scope, focusing on Add/Delete
+    // if (editMode && entrant) {
+    //   setEntrantForm({ userId: entrant.userId, role: entrant.tournamentRole }); // Adjust based on actual entrant object structure
+    //   setEditId(entrant.userId);
+    // } else {
+      setEntrantForm({ userId: '', role: 'Debater' }); // Reset for adding
       setEditId(null);
-    }
+    // }
     setOpenEntrantDialog(true);
   }, []);
 
@@ -28,76 +35,121 @@ export const useEntrantManagement = (initialEntrants = [], setEntrants, showNoti
     // Reset form and editing state on close
     setIsEditing(false);
     setEditId(null);
-    setEntrantForm({ name: '', email: '' });
+    setEntrantForm({ userId: '', role: 'Debater' }); // Reset form
   }, []);
 
-  const handleEntrantFormChange = useCallback((e) => {
-    setEntrantForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  // Specific handler for Autocomplete or direct input changes
+  const handleEntrantFormChange = useCallback((name, value) => {
+    setEntrantForm(prev => ({ ...prev, [name]: value }));
   }, []);
+
+  // Fetch users who can be added (e.g., not already participants)
+  // This is a placeholder - the actual API endpoint might need refinement
+  const fetchAvailableUsers = useCallback(async () => {
+    if (!user?.token) return; // Need token
+    setLoading(true);
+    try {
+      // TODO: Ideally, this endpoint should exclude users already in the tournament
+      const response = await axios.get('/api/users', { // Assuming a general user list endpoint
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setAvailableUsers(response.data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      showNotification('Failed to fetch users list', 'error');
+      setAvailableUsers([]); // Clear on error
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.token, showNotification]);
+
+  // Fetch users when the dialog opens
+  useEffect(() => {
+    if (openEntrantDialog) {
+      fetchAvailableUsers();
+    }
+  }, [openEntrantDialog, fetchAvailableUsers]);
 
   const handleSubmitEntrant = useCallback(async () => {
-    // TODO: Replace with actual API call for adding/editing entrants
-    try {
-      if (isEditing) {
-        // Edit existing entrant (local state update)
-        setEntrants(prevEntrants =>
-          prevEntrants.map(e =>
-            e.id === editId ? { ...e, name: entrantForm.name, email: entrantForm.email } : e
-          )
-        );
-        showNotification('Entrant updated successfully', 'success');
-      } else {
-        // Add new entrant (local state update)
-        const newEntrant = {
-          id: `entrant-${Date.now()}`, // Temporary ID
-          name: entrantForm.name,
-          email: entrantForm.email,
-          enrollDate: new Date().toLocaleDateString()
-        };
-        setEntrants(prevEntrants => [...prevEntrants, newEntrant]);
-        showNotification('Entrant added successfully', 'success');
-      }
-      handleCloseEntrantDialog();
-    } catch (error) {
-      console.error('Error submitting entrant:', error);
-      showNotification('Failed to save entrant', 'error');
+    if (!entrantForm.userId || !entrantForm.role) {
+      showNotification('Please select a user and a role.', 'warning');
+      return;
     }
-  }, [isEditing, editId, entrantForm, setEntrants, showNotification, handleCloseEntrantDialog]);
+    if (!user?.token || !tournamentId) {
+      showNotification('Authentication error or missing tournament ID.', 'error');
+      return;
+    }
 
-  const handleDeleteEntrant = useCallback((id) => {
-    setDeleteItemId(id);
+    setLoading(true);
+    try {
+      // API Call to add participant
+      await axios.post(
+        `/api/debates/${tournamentId}/participants`,
+        { userId: entrantForm.userId, role: entrantForm.role },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+
+      showNotification('Participant added successfully', 'success');
+      handleCloseEntrantDialog();
+      refreshData(); // Refresh the tournament data to show the new participant
+    } catch (error) {
+      console.error('Error adding participant:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to add participant';
+      showNotification(errorMsg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [entrantForm, tournamentId, user?.token, showNotification, handleCloseEntrantDialog, refreshData]);
+
+  // Renamed id to userId for clarity
+  const handleDeleteEntrant = useCallback((userId) => {
+    setDeleteUserId(userId); // Store the userId to delete
     setOpenDeleteDialog(true);
   }, []);
 
   const handleCloseDeleteDialog = useCallback(() => {
     setOpenDeleteDialog(false);
-    setDeleteItemId(null);
+    setDeleteUserId(null);
   }, []);
 
   const confirmDeleteEntrant = useCallback(async () => {
-    // TODO: Replace with actual API call for deleting entrant
-    try {
-      setEntrants(prevEntrants => prevEntrants.filter(e => e.id !== deleteItemId));
-      showNotification('Entrant deleted successfully', 'success');
-      handleCloseDeleteDialog();
-    } catch (error) {
-      console.error('Error deleting entrant:', error);
-      showNotification('Failed to delete entrant', 'error');
+    if (!deleteUserId || !user?.token || !tournamentId) {
+       showNotification('Cannot delete participant: Missing ID or authentication.', 'error');
+       return;
     }
-  }, [deleteItemId, setEntrants, showNotification, handleCloseDeleteDialog]);
+    setLoading(true);
+    try {
+      // API Call to delete participant
+      await axios.delete(
+        `/api/debates/${tournamentId}/participants/${deleteUserId}`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+
+      showNotification('Participant deleted successfully', 'success');
+      handleCloseDeleteDialog();
+      refreshData(); // Refresh the tournament data
+    } catch (error) {
+      console.error('Error deleting participant:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to delete participant';
+      showNotification(errorMsg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [deleteUserId, tournamentId, user?.token, showNotification, handleCloseDeleteDialog, refreshData]);
 
   return {
+    loading,                  // Expose loading state
     openEntrantDialog,
-    isEditingEntrant: isEditing, // Renamed for clarity if other entities are managed
-    editEntrantId: editId,      // Renamed for clarity
+    isEditingEntrant: isEditing,
     entrantForm,
+    availableUsers,           // Expose users list for dialog
     handleOpenEntrantDialog,
     handleCloseEntrantDialog,
     handleEntrantFormChange,
     handleSubmitEntrant,
     handleDeleteEntrant,
-    openDeleteDialog,         // Expose delete dialog state
-    handleCloseDeleteDialog,  // Expose delete dialog close handler
-    confirmDeleteEntrant,     // Expose delete confirmation handler
+    openDeleteDialog,
+    handleCloseDeleteDialog,
+    confirmDeleteEntrant,
   };
 };

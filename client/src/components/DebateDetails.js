@@ -52,7 +52,7 @@ const DebateDetails = () => {
         }
         
         const data = response.data;
-        console.log('Received debate data:', data);
+        // console.log('Received debate data:', data); // Removed debug log
         
         // Only attempt to join if we have valid data and conditions are met
         if (data && userRole === 'judge' && data.creator._id === userId && 

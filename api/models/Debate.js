@@ -121,7 +121,8 @@ const debateSchema = new Schema({
   participants: [{
       userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
       tournamentRole: { type: String, enum: ['Debater', 'Judge', 'Observer', 'Organizer', 'Admin'], required: true, default: 'Debater' }, // Role specific to this tournament
-      teamId: { type: Schema.Types.ObjectId } // Refers to _id in embedded teams array
+      teamId: { type: Schema.Types.ObjectId }, // Refers to _id in embedded teams array
+      status: { type: String, enum: ['pending', 'registered', 'waitlisted', 'rejected'], default: 'pending' } // Status of the participant in the tournament
   }],
   creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   maxParticipants: { type: Number, default: function() { return this.format === 'tournament' ? 32 : 6; } },
@@ -170,7 +171,7 @@ debateSchema.index({ 'creator': 1 });
 debateSchema.index({ startDate: 1 });
 
 debateSchema.pre('save', async function(next) {
-  console.log('Debate pre-save hook triggered. Format:', this.format);
+  // console.log('Debate pre-save hook triggered. Format:', this.format); // Removed debug log
   if (this.format === 'tournament') {
     // Populate the userId within each participant object to access user details
     await this.populate({ path: 'participants.userId', model: 'User' });
@@ -178,7 +179,7 @@ debateSchema.pre('save', async function(next) {
     const debaters = this.participants.filter(p => p.tournamentRole === 'Debater');
     const judges = this.participants.filter(p => p.tournamentRole === 'Judge');
     Object.assign(this.tournamentSettings, { currentDebaters: debaters.length, currentJudges: judges.length });
-    console.log('Debaters:', debaters.length, 'Judges:', judges.length);
+    // console.log('Debaters:', debaters.length, 'Judges:', judges.length); // Removed debug log
     if (debaters.length > 32 || judges.length > 8) throw new Error('Tournament limits exceeded');
   }
   next();

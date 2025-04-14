@@ -6,121 +6,90 @@ import {
   DialogTitle,
   Button,
   TextField,
-  Select,
-  MenuItem,
   FormControl,
   InputLabel,
-  Grid // For layout
+  Grid, // For layout
+  Autocomplete, // Import Autocomplete
+  RadioGroup,   // Import RadioGroup
+  FormControlLabel, // Import FormControlLabel
+  Radio,          // Import Radio
+  CircularProgress // For loading state in Autocomplete
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
+// Updated props: removed isEditing, teams; added availableUsers
 const EntrantDialog = ({
   open,
   onClose,
-  onSubmit, // Corresponds to handleSubmitEntrant
-  isEditing,
-  entrantForm, // Updated form state { userId, name, email, phoneNumber, club, tournamentRole, teamId }
-  onFormChange,
+  onSubmit, // Corresponds to handleSubmitEntrant from the hook
+  entrantForm, // Expects { userId: '', role: 'Debater' }
+  onFormChange, // Expects (name, value) signature now
   loading = false,
-  teams = [] // Add teams prop
+  availableUsers = [] // Users list from the hook
 }) => {
   const { t } = useTranslation();
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{isEditing ? t('entrantDialog.editTitle', { defaultValue: 'Edit Entrant' }) : t('entrantDialog.addTitle', { defaultValue: 'Add Entrant' })}</DialogTitle>
-      <DialogContent>
-        {/* Display User Info (Read-only) */}
-        <Grid container spacing={2} sx={{ mb: 2, mt: 1 }}>
-          <Grid item xs={12} sm={6}>
+      {/* Title is always "Add Participant" now */}
+      <DialogTitle>{t('entrantDialog.addTitle', { defaultValue: 'Add Participant' })}</DialogTitle>
+      <DialogContent sx={{ pt: '20px !important' }}> {/* Add padding top */}
+        {/* User Selection Autocomplete */}
+        <Autocomplete
+          id="user-select-autocomplete"
+          options={availableUsers}
+          getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`} // Display name and email
+          value={availableUsers.find(user => user._id === entrantForm.userId) || null} // Find the selected user object
+          onChange={(event, newValue) => {
+            onFormChange('userId', newValue ? newValue._id : ''); // Update form state with selected user's ID
+          }}
+          isOptionEqualToValue={(option, value) => option._id === value?._id}
+          loading={loading} // Show loading indicator while fetching users
+          renderInput={(params) => (
             <TextField
-              label={t('entrantDialog.nameLabel', { defaultValue: 'Name' })}
-              value={entrantForm.name || ''}
+              {...params}
+              label={t('entrantDialog.userLabel', { defaultValue: 'Select User' })}
+              variant="outlined"
               fullWidth
-              InputProps={{ readOnly: true }}
-              variant="filled" // Indicate read-only
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <React.Fragment>
+                    {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                    {params.InputProps.endAdornment}
+                  </React.Fragment>
+                ),
+              }}
             />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label={t('entrantDialog.emailLabel', { defaultValue: 'Email' })}
-              value={entrantForm.email || ''}
-              fullWidth
-              InputProps={{ readOnly: true }}
-              variant="filled"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label={t('entrantDialog.phoneLabel', { defaultValue: 'Phone Number' })}
-              value={entrantForm.phoneNumber || 'N/A'}
-              fullWidth
-              InputProps={{ readOnly: true }}
-              variant="filled"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label={t('entrantDialog.clubLabel', { defaultValue: 'Club' })}
-              value={entrantForm.club || 'N/A'}
-              fullWidth
-              InputProps={{ readOnly: true }}
-              variant="filled"
-            />
-          </Grid>
-        </Grid>
+          )}
+          sx={{ mb: 2 }} // Margin bottom
+        />
 
-        {/* Editable Fields */}
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth margin="dense" disabled={loading}>
-              <InputLabel id="tournament-role-label">{t('entrantDialog.roleLabel', { defaultValue: 'Tournament Role' })}</InputLabel>
-              <Select
-                labelId="tournament-role-label"
-                name="tournamentRole"
-                value={entrantForm.tournamentRole || ''}
-                label={t('entrantDialog.roleLabel', { defaultValue: 'Tournament Role' })}
-                onChange={onFormChange}
-              >
-                {/* Add default roles or fetch dynamically if needed */}
-                <MenuItem value="Debater">{t('roles.debater', { defaultValue: 'Debater' })}</MenuItem>
-                <MenuItem value="Judge">{t('roles.judge', { defaultValue: 'Judge' })}</MenuItem>
-                <MenuItem value="Observer">{t('roles.observer', { defaultValue: 'Observer' })}</MenuItem>
-                {/* Add other roles as necessary */}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth margin="dense" disabled={loading}>
-              <InputLabel id="team-select-label">{t('entrantDialog.teamLabel', { defaultValue: 'Team' })}</InputLabel>
-              <Select
-                labelId="team-select-label"
-                name="teamId"
-                value={entrantForm.teamId || ''}
-                label={t('entrantDialog.teamLabel', { defaultValue: 'Team' })}
-                onChange={onFormChange}
-                displayEmpty // Allows showing 'None' when value is empty string or null
-              >
-                <MenuItem value="">
-                  <em>{t('common.none', { defaultValue: 'None' })}</em>
-                </MenuItem>
-                {teams.map((team) => (
-                  <MenuItem key={team.id} value={team.id}>
-                    {team.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
+        {/* Role Selection RadioGroup */}
+        <FormControl component="fieldset" fullWidth margin="dense" disabled={loading}>
+          <InputLabel shrink htmlFor="role-radio-group">{t('entrantDialog.roleLabel', { defaultValue: 'Assign Role' })}</InputLabel>
+          <RadioGroup
+            aria-label="role"
+            id="role-radio-group"
+            name="role" // Name matches the state key in the hook
+            value={entrantForm.role}
+            onChange={(e) => onFormChange('role', e.target.value)} // Use the updated handler
+            row // Display radios horizontally
+            sx={{ pt: 1 }} // Padding top for spacing from label
+          >
+            <FormControlLabel value="Debater" control={<Radio />} label={t('roles.debater', { defaultValue: 'Debater' })} />
+            <FormControlLabel value="Judge" control={<Radio />} label={t('roles.judge', { defaultValue: 'Judge' })} />
+            {/* Add other roles if needed, ensure they match backend expectations */}
+          </RadioGroup>
+        </FormControl>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>{t('entrantDialog.cancelButton', { defaultValue: 'Cancel' })}</Button>
-        {/* Pass the relevant form data needed for the API call */}
-        <Button onClick={() => onSubmit({ tournamentRole: entrantForm.tournamentRole, teamId: entrantForm.teamId || null })} color="primary" disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>{t('common.cancel', { defaultValue: 'Cancel' })}</Button>
+        {/* onSubmit now directly calls the hook's submit function */}
+        <Button onClick={onSubmit} color="primary" disabled={loading || !entrantForm.userId}> {/* Disable if no user selected */}
           {loading
-            ? (isEditing ? t('entrantDialog.updatingButton', { defaultValue: 'Updating...' }) : t('entrantDialog.addingButton', { defaultValue: 'Adding...' }))
-            : (isEditing ? t('entrantDialog.updateButton', { defaultValue: 'Update' }) : t('entrantDialog.addButton', { defaultValue: 'Add' }))}
+            ? t('common.adding', { defaultValue: 'Adding...' })
+            : t('common.add', { defaultValue: 'Add' })}
         </Button>
       </DialogActions>
     </Dialog>

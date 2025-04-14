@@ -62,9 +62,9 @@ const TournamentManagement = () => {
   const dataManager = useTournamentData(); // Fetches core data
 
   // Pass necessary state/setters/handlers from dataManager and uiManager to management hooks
+  // Pass refreshData from dataManager to entrantManager
   const entrantManager = useEntrantManagement(
-    dataManager.entrants,
-    dataManager.setEntrants, // Pass setter for local updates
+    dataManager.refreshData, // Pass the main refresh function
     uiManager.showNotification
   );
   const teamManager = useTeamManagement(
@@ -234,9 +234,9 @@ const TournamentManagement = () => {
         onSubmit={entrantManager.handleSubmitEntrant}
         isEditing={entrantManager.isEditingEntrant}
         entrantForm={entrantManager.entrantForm}
-        onFormChange={entrantManager.handleEntrantFormChange}
-        teams={dataManager.teams} // Pass teams data
-        // loading={entrantManager.loading} // Add loading state to hook if needed
+        onFormChange={entrantManager.handleEntrantFormChange} // Pass the updated handler
+        availableUsers={entrantManager.availableUsers} // Pass the list of users
+        loading={entrantManager.loading} // Pass loading state from the hook
       />
       <DeleteConfirmationDialog
         open={entrantManager.openDeleteDialog}

@@ -1836,6 +1836,85 @@ exports.updateParticipant = async (req, res, next) => {
 
 
 
+// Add Participant to Tournament
+exports.addParticipant = async (req, res, next) => {
+  try {
+    const { id: tournamentId } = req.params;
+    const { userId, role } = req.body; // Expecting 'Debater' or 'Judge'
+    const requestingUser = req.user; // From protect middleware
+
+    // --- Validation ---
+    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid tournament or user ID format' });
+    }
+    if (!role || !['Debater', 'Judge'].includes(role)) {
+        return res.status(400).json({ message: 'Invalid or missing participant role. Must be "Debater" or "Judge".' });
+    }
+
+    // --- Fetch Tournament ---
+    const debate = await Debate.findById(tournamentId);
+    if (!debate) {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+    if (debate.format !== 'tournament') {
+        return res.status(400).json({ message: 'Participants can only be added to tournaments.' });
+    }
+
+    // --- Authorization (Middleware 'isOrganizer' already handles this, but double-check) ---
+    // The isOrganizer middleware should suffice, but an explicit check can be added if needed:
+    // if (debate.creator.toString() !== requestingUser.id && requestingUser.role !== 'organizer' && requestingUser.role !== 'admin') {
+    //   return res.status(403).json({ message: 'Not authorized to add participants to this tournament.' });
+    // }
+
+    // --- Check for Duplicates ---
+    const existingParticipant = debate.participants.find(p => p.userId.toString() === userId);
+    if (existingParticipant) {
+      return res.status(409).json({ message: 'User is already a participant in this tournament.' });
+    }
+
+    // --- Check Capacity ---
+    // Use the model's method or check counts directly
+    const counts = debate.getParticipantCounts(); // Use the existing method
+    if (role === 'Debater' && counts.debaters >= counts.maxDebaters) {
+        return res.status(400).json({ message: 'Maximum number of debaters reached.' });
+    }
+    if (role === 'Judge' && counts.judges >= counts.maxJudges) {
+        return res.status(400).json({ message: 'Maximum number of judges reached.' });
+    }
+
+    // --- Add Participant ---
+    const newParticipant = {
+      userId: userId,
+      tournamentRole: role,
+      status: 'registered' // Set status directly as registered
+    };
+    debate.participants.push(newParticipant);
+
+    // --- Save and Respond ---
+    await debate.save(); // The pre-save hook should update counts
+
+    // Populate the newly added participant for the response
+    const populatedDebate = await Debate.findById(tournamentId).populate('participants.userId', 'username email role');
+    const addedParticipantDetails = populatedDebate.participants.find(p => p.userId._id.toString() === userId);
+
+
+    res.status(201).json({
+        message: 'Participant added successfully.',
+        participant: addedParticipantDetails,
+        // Optionally return updated counts
+        // currentDebaters: populatedDebate.tournamentSettings.currentDebaters,
+        // currentJudges: populatedDebate.tournamentSettings.currentJudges
+    });
+
+  } catch (error) {
+    console.error(`Error adding participant ${userId} to tournament ${tournamentId}:`, error);
+    // Handle potential errors during save or other operations
+    res.status(500).json({ message: error.message || 'Failed to add participant' });
+  }
+}; // End of addParticipant
+
+
+
 // Delete a specific participant from a tournament
 exports.deleteParticipant = async (req, res, next) => {
   try {

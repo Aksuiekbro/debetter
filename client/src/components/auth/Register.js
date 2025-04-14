@@ -63,7 +63,7 @@ const Register = () => {
     if (!validateForm()) return;
     
     // Debug log to check what role is being sent
-    console.log('Submitting registration with role:', formData.role);
+    // console.log('Submitting registration with role:', formData.role); // Removed debug log
     
     try {
       // Prepare payload, conditionally adding judgeRole
@@ -98,9 +98,9 @@ const Register = () => {
           };
 
           await api.client.post('/api/users/profile/photo', photoFormData); // Removed manual headers
-          console.log('Profile photo uploaded successfully.');
+          // console.log('Profile photo uploaded successfully.'); // Removed debug log
         } catch (photoError) {
-          console.error('Profile photo upload error:', photoError);
+          // console.error('Profile photo upload error:', photoError); // Removed less critical error log
           // Decide how to handle photo upload failure. Maybe alert the user?
           // For now, we'll just log it and continue, as the user is registered.
           alert(t('register.photoUploadError', 'User registered, but photo upload failed. You can upload it later via your profile.'));
@@ -109,8 +109,8 @@ const Register = () => {
       // --- End Photo Upload Step ---
       
       // Debug log to check what role is being received back
-      console.log('Registration response received:', data);
-      console.log('Role from server:', data.role);
+      // console.log('Registration response received:', data); // Removed debug log
+      // console.log('Role from server:', data.role); // Removed debug log
       
       localStorage.setItem('token', data.token);
       localStorage.setItem('userRole', data.role); // Store the role
@@ -118,7 +118,7 @@ const Register = () => {
       localStorage.setItem('userId', data._id);
       
       // Debug log to check what role is stored in localStorage
-      console.log('Role stored in localStorage:', localStorage.getItem('userRole'));
+      // console.log('Role stored in localStorage:', localStorage.getItem('userRole')); // Removed debug log
       
       window.dispatchEvent(new Event('auth-change'));
       navigate('/home');

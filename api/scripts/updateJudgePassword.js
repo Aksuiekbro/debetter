@@ -18,12 +18,10 @@ async function updatePassword() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('MongoDB Connected...');
 
     // Hash the new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPlainTextPassword, salt);
-    console.log(`Hashing password "${newPlainTextPassword}"...`);
 
     // Update the user's password
     const result = await User.updateOne(
@@ -32,18 +30,14 @@ async function updatePassword() {
     );
 
     if (result.matchedCount === 0) {
-      console.log(`User with email ${targetEmail} not found.`);
     } else if (result.modifiedCount === 1) {
-      console.log(`Successfully updated password for ${targetEmail}.`);
     } else {
-      console.log(`Password for ${targetEmail} was already up-to-date or update failed.`);
     }
 
   } catch (err) {
     console.error('Error updating password:', err.message);
   } finally {
     await mongoose.disconnect();
-    console.log('MongoDB Disconnected.');
   }
 }
 

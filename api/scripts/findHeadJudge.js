@@ -26,17 +26,13 @@ async function findJudge() {
     const usersCollection = db.collection('users');
 
     // Primary Goal: Find Head Judge
-    console.log('🔍 Searching for Head Judge...');
     let judge = await usersCollection.findOne(
       { role: 'judge', judgeRole: 'Head Judge' },
       { projection: { _id: 1, username: 1, judgeRole: 1 } }
     );
 
     if (judge) {
-      console.log('✅ Head Judge Found:');
-      console.log(JSON.stringify({ status: 'Head Judge Found', user: judge }, null, 2)); // Pretty print JSON
     } else {
-      console.log('ℹ️ No Head Judge found, searching for any judge...');
       // Fallback: Find any Judge
       judge = await usersCollection.findOne(
         { role: 'judge' },
@@ -44,11 +40,7 @@ async function findJudge() {
       );
 
       if (judge) {
-        console.log('✅ Regular Judge Found:');
-        console.log(JSON.stringify({ status: 'Judge Found (Not Head)', user: judge }, null, 2)); // Pretty print JSON
       } else {
-        console.log('❌ No users with role "judge" found.');
-        console.log(JSON.stringify({ status: 'No Judge Found' }));
       }
     }
   } catch (err) {
