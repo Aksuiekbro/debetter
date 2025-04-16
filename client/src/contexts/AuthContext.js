@@ -60,6 +60,35 @@ export const AuthProvider = ({ children }) => {
     console.log('[AuthContext] User state updated (login):', loggedInUser);
     setIsAuthenticated(true);
   };
+  // Add this register function
+  const register = async (username, email, password, role)  => {
+    setLoading(true);
+    try {
+      const response = await axios.post('/api/users/register', {
+        username,
+        email,
+        password,
+        role
+      });
+
+      // Store token and set authenticated state
+      localStorage.setItem('token', response.data.token);
+      setUser(response.data.user);
+      setIsAuthenticated(true);
+      console.log('[AuthContext] User state updated (register):', response.data);
+      return { success: true };
+    } catch (error) {
+      console.error('Registration error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Registration failed'
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   // Placeholder logout function
   const logout = () => {
@@ -76,6 +105,7 @@ export const AuthProvider = ({ children }) => {
     loading, // Provide loading state
     login,
     logout,
+    register // Add this line
   };
 
   console.log('[AuthContext] Providing user value:', user);
