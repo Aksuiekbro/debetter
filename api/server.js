@@ -117,17 +117,18 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.log('✅ MongoDB Atlas connection established successfully');
 })
 .catch((err) => {
-  console.error('❌ MongoDB connection error:', err);
+  console.error('❌ MongoDB connection error during startup:', err);
   console.error('Error details:', err.message);
-  // Exit process with failure
-  process.exit(1);
+  // Do not exit process here in serverless environment, allow app export
+  // The function might still be able to serve requests that don't require DB initially,
+  // or the connection might succeed on subsequent invocations.
 });
 
 const PORT = process.env.PORT || 5001;
 // Start the HTTP server instead of the Express app directly
-httpServer.listen(PORT, () => {
-    console.log(`🚀 Server (with Socket.IO) is running on port ${PORT}`);
-});
+// Vercel's @vercel/node runtime handles starting the server based on the exported app.
+// Explicitly calling listen() can interfere with this.
+// console.log(`Server configured for port ${PORT}, Vercel will handle listening.`);
 
 // Export the app and potentially the httpServer if needed elsewhere
-module.exports = { app, httpServer };
+module.exports = app; // Export the Express app directly for serverless compatibility
