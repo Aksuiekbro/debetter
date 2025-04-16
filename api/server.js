@@ -126,9 +126,10 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 const PORT = process.env.PORT || 5001;
 // Start the HTTP server instead of the Express app directly
-// Vercel's @vercel/node runtime handles starting the server based on the exported app.
-// Explicitly calling listen() can interfere with this.
-// console.log(`Server configured for port ${PORT}, Vercel will handle listening.`);
+// Render requires the application to bind to the port it provides.
+httpServer.listen(PORT, () => {
+    console.log(`🚀 Server (with Socket.IO) is running on port ${PORT}`);
+});
 
 // Export the app and potentially the httpServer if needed elsewhere
 module.exports = app; // Export the Express app directly for serverless compatibility
