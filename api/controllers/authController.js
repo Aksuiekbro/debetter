@@ -72,11 +72,20 @@ exports.register = async (req, res) => {
       token: generateToken(user._id)
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ 
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error('Registration error:', error); // Log the detailed error regardless of environment
+    
+    // Determine the message to send back based on the environment
+    const message = process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred during registration.'
+      : error.message;
+      
+    const responsePayload = { message };
+    // Only include stack trace in development environment
+    if (process.env.NODE_ENV === 'development') {
+      responsePayload.stack = error.stack;
+    }
+    
+    res.status(500).json(responsePayload);
   }
 };
 
