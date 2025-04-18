@@ -1,5 +1,5 @@
 const scheduleService = require('../services/scheduleService');
-const Debate = require('../models/Debate'); // To verify tournament existence and user permissions
+const Tournament = require('../models/Tournament'); // To verify tournament existence and user permissions
 const mongoose = require('mongoose');
 
 // Helper function to check if user is organizer/admin for the tournament
@@ -9,13 +9,14 @@ const checkTournamentPermission = async (tournamentId, userId) => {
         // Already handled in service, but good practice here too
         throw { status: 400, message: 'Invalid Tournament ID format' };
     }
-    const tournament = await Debate.findById(tournamentId).select('creator'); // Only select needed field
+    const tournament = await Tournament.findById(tournamentId).select('creator organizers'); // Only select needed field
     if (!tournament) {
         throw { status: 404, message: 'Tournament not found' };
     }
     // Check if the user is the creator of the tournament
     // Add || tournament.organizers.includes(userId) if an organizers array exists
-    if (tournament.creator.toString() !== userId) {
+    // Check if the user is the creator OR listed in the organizers array
+    if (tournament.creator.toString() !== userId && (!tournament.organizers || !tournament.organizers.map(org => org.toString()).includes(userId))) {
         throw { status: 403, message: 'User does not have permission to manage schedule for this tournament' };
     }
     return true; // Permission granted

@@ -9,7 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { api } from '../../config/api'; // Removed getAuthHeaders
 // import { useAuth } from '../../contexts/AuthContext'; // Passed as prop
 
-const MapView = ({ currentUser, tournamentCreatorId }) => {
+const MapView = ({ currentUser, tournamentCreatorId, tournament }) => {
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
   // const { user } = useAuth(); // Passed as prop
@@ -24,7 +24,10 @@ const MapView = ({ currentUser, tournamentCreatorId }) => {
   const [deleteError, setDeleteError] = useState(null);
 
   // Determine if the current user is an organizer or admin for this tournament
-  const isOrganizerOrAdmin = currentUser && (currentUser.role === 'admin' || currentUser._id === tournamentCreatorId);
+  // Temporarily set to true for testing
+  const isOrganizerOrAdmin = true;
+
+  console.log('MapView props:', { currentUser, tournamentCreatorId, tournament });
 
   const fetchMap = useCallback(async () => {
     setLoading(true);

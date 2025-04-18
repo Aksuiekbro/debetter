@@ -95,6 +95,10 @@ const TournamentSchema = new mongoose.Schema({
     id: String,
     name: String
   },
+  mapUrl: {
+    type: String,
+    trim: true
+  },
   createdAt: {
     type: Date,
     default: Date.now

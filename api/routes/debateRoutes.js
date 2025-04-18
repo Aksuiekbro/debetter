@@ -43,6 +43,7 @@ const {
 } = require('../controllers/debateController');
 const { getParticipantStandings } = require('../controllers/debateController'); // Import for participant standings
 const announcementController = require('../controllers/announcementController'); // Import announcement controller
+const commentController = require('../controllers/commentController'); // Import comment controller
 const scheduleRoutes = require('./scheduleRoutes'); // Import schedule routes
 const themeController = require('../controllers/themeController'); // Import theme controller
 const { protect, isOrganizer } = require('../middleware/authMiddleware');
@@ -131,6 +132,12 @@ router.post('/:id/announcements', announcementController.create); // Auth check 
 router.get('/:id/announcements', announcementController.getAllForTournament); // Publicly viewable by authenticated users
 router.put('/:id/announcements/:announcementId', announcementController.update); // Auth check inside controller
 router.delete('/:id/announcements/:announcementId', announcementController.delete); // Auth check inside controller
+router.post('/:id/announcements/:announcementId/image', upload.single('image'), announcementController.uploadImage); // Upload image for announcement
+
+// Comment routes for announcements
+router.post('/:id/announcements/:announcementId/comments', commentController.createComment); // Create a comment
+router.get('/:id/announcements/:announcementId/comments', commentController.getCommentsByAnnouncement); // Get all comments for an announcement
+router.delete('/:id/announcements/comments/:commentId', commentController.deleteComment); // Delete a comment
 
 // Tournament Schedule Routes (nested under /:id which represents tournamentId)
 // protect middleware is already applied globally above

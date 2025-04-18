@@ -55,8 +55,8 @@ const CreateTournamentForm = () => {
       title: name, // Use 'title' key
       format: 'tournament',
       tournamentFormats: selectedFormats, // Use 'tournamentFormats' key
-      startDate: date ? date.toISOString() : null, // Use 'startDate' key (Start Date)
-      registrationDeadline: registrationDeadline ? registrationDeadline.toISOString() : null, // Add registration deadline
+      startDate: date instanceof Date && !isNaN(date.getTime()) ? date.toISOString() : null, // Use 'startDate' key (Start Date)
+      registrationDeadline: registrationDeadline instanceof Date && !isNaN(registrationDeadline.getTime()) ? registrationDeadline.toISOString() : null, // Add registration deadline
       location,
       description,
       eligibilityCriteria: eligibility, // Use 'eligibilityCriteria' key
