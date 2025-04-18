@@ -94,12 +94,21 @@ router.post(
 // @access  Private/Admin
 router.put('/:id', auth, async (req, res) => {
   try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ msg: 'Not authorized to update tournaments' });
+    const tournament = await Tournament.findById(req.params.id).select('+creator +organizers'); // Select necessary fields for permission check
+
+    if (!tournament) {
+      return res.status(404).json({ msg: 'Tournament not found' });
     }
 
-    const tournament = await Tournament.findById(req.params.id);
+    // Check if user is the creator, an organizer, or an admin
+    const userId = req.user.id;
+    const isCreator = tournament.creator.toString() === userId;
+    const isOrganizer = tournament.organizers && tournament.organizers.map(org => org.toString()).includes(userId);
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isCreator && !isOrganizer && !isAdmin) {
+      return res.status(403).json({ msg: 'Not authorized to update this tournament' });
+    }
     
     if (!tournament) {
       return res.status(404).json({ msg: 'Tournament not found' });

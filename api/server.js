@@ -2,8 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const http = require('http'); // <-- Add http
-const { Server } = require("socket.io"); // <-- Add socket.io Server
+const http = require('http');
+const { Server } = require("socket.io");
 const jwt = require('jsonwebtoken'); // <-- Add jsonwebtoken for socket auth
 const { setIoInstance, addUserSocket, removeUserSocket } = require('./services/notificationService'); // <-- Import notification service functions
 
@@ -13,6 +13,7 @@ const apfRoutes = require('./routes/apfRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const tournamentRoutes = require('./routes/tournaments');
 const notificationRoutes = require('./routes/notificationRoutes');
+const announcementRoutes = require('./routes/announcementRoutes');
 require('./models/Team'); // Ensure Team model is registered
 require('./models/Tournament'); // Ensure Tournament model is registered
 
@@ -86,6 +87,12 @@ app.use((req, res, next) => {
 });
 
 // Routes
+    // Health check endpoint
+    app.get("/api/ping", (req, res) => {
+      res.status(200).send("pong");
+    });
+
+
 app.use('/api/users', userRoutes);
 app.use('/api/debates', debateRoutes);
 app.use('/api/apf', apfRoutes);
@@ -93,6 +100,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+app.use('/api/tournaments/:tournamentId/announcements', announcementRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);

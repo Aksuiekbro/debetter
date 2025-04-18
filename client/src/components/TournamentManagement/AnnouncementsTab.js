@@ -36,7 +36,7 @@ function a11yProps(index) {
   };
 }
 
-const AnnouncementsTab = ({ currentUser, tournamentCreatorId }) => {
+const AnnouncementsTab = ({ currentUser, tournamentCreatorId, tournament }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(0); // 0: Schedule, 1: Map, 2: Feed
 
@@ -58,20 +58,29 @@ const AnnouncementsTab = ({ currentUser, tournamentCreatorId }) => {
             textColor="primary"
           >
             {/* Use translation keys for labels */}
-            <Tab label={t('announcementsTab.scheduleTabLabel')} {...a11yProps(0)} />
-            <Tab label={t('announcementsTab.mapTabLabel')} {...a11yProps(1)} />
-            <Tab label={t('announcementsTab.feedTabLabel')} {...a11yProps(2)} />
+            <Tab label={t('announcementsTab.feedTabLabel')} {...a11yProps(0)} />
+            <Tab label={t('announcementsTab.scheduleTabLabel')} {...a11yProps(1)} />
+            <Tab label={t('announcementsTab.mapTabLabel')} {...a11yProps(2)} />
           </Tabs>
         </Box>
         <TabPanel value={activeTab} index={0}>
-          <ScheduleView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} />
+          <AnnouncementsFeedView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={tournament} />
         </TabPanel>
         <TabPanel value={activeTab} index={1}>
-          <MapView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} />
+          {/* ScheduleView might also need the tournament object if it has similar permission checks */}
+          <ScheduleView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={tournament} />
         </TabPanel>
         <TabPanel value={activeTab} index={2}>
-          <AnnouncementsFeedView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} />
+          <MapView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={tournament} />
         </TabPanel>
+
+        {/* Debug info */}
+        <Box sx={{ mt: 2, p: 2, border: '1px dashed #ccc' }}>
+          <Typography variant="caption">Debug Info:</Typography>
+          <pre style={{ fontSize: '0.7rem' }}>
+            {JSON.stringify({ activeTab, currentUser, tournamentCreatorId }, null, 2)}
+          </pre>
+        </Box>
       </Paper>
     </Box>
   );

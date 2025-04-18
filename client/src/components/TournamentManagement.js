@@ -106,7 +106,7 @@ const TournamentManagement = () => {
   }
 
   // --- Extract Creator ID ---
-  const tournamentCreatorId = dataManager.tournament?.creator; // Get creator ID
+  const tournamentCreatorId = dataManager.tournament?.creator?._id; // Get creator ID safely
 
   // --- Render Component ---
   return (
@@ -131,7 +131,7 @@ const TournamentManagement = () => {
 
       {/* Tab Panels */}
       <TabPanel value={uiManager.tabValue} index={0}> {/* Added Panel */}
-        <AnnouncementsTab currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} />
+        <AnnouncementsTab currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={dataManager.tournament} />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={1}> {/* Index updated */}
         <EntrantsTab
