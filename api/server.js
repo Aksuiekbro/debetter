@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const jwt = require('jsonwebtoken'); // <-- Add jsonwebtoken for socket auth
 const { setIoInstance, addUserSocket, removeUserSocket } = require('./services/notificationService'); // <-- Import notification service functions
+const socketService = require('./services/socketService'); // <-- Import socket service for announcements
 
 const userRoutes = require('./routes/userRoutes');
 const debateRoutes = require('./routes/debateRoutes');
@@ -30,6 +31,9 @@ const io = new Server(httpServer, {
 
 // Pass the io instance to the notification service
 setIoInstance(io);
+
+// Initialize the socket service
+socketService.initialize(httpServer);
 
 // Socket.IO Authentication Middleware
 io.use((socket, next) => {

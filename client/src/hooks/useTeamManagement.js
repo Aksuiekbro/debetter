@@ -13,7 +13,7 @@ export const useTeamManagement = (
   const [openTeamDialog, setOpenTeamDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [teamForm, setTeamForm] = useState({ name: '', leader: '', speaker: '' });
+  const [teamForm, setTeamForm] = useState({ name: '', leader: '', speaker: '', club: '', city: '', institution: '', isPresent: false });
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState(null);
@@ -24,10 +24,18 @@ export const useTeamManagement = (
     setIsEditing(editMode);
     if (editMode && team) {
       // Ensure we use IDs for the form state if available
-      setTeamForm({ name: team.name, leader: team.leaderId || '', speaker: team.speakerId || '' });
+      setTeamForm({
+        name: team.name,
+        leader: team.leaderId || '',
+        speaker: team.speakerId || '',
+        club: team.club || '',
+        city: team.city || '',
+        institution: team.institution || '',
+        isPresent: team.isPresent || false
+      });
       setEditId(team.id);
     } else {
-      setTeamForm({ name: '', leader: '', speaker: '' });
+      setTeamForm({ name: '', leader: '', speaker: '', club: '', city: '', institution: '', isPresent: false });
       setEditId(null);
     }
     setOpenTeamDialog(true);
@@ -37,7 +45,7 @@ export const useTeamManagement = (
     setOpenTeamDialog(false);
     setIsEditing(false);
     setEditId(null);
-    setTeamForm({ name: '', leader: '', speaker: '' });
+    setTeamForm({ name: '', leader: '', speaker: '', club: '', city: '', institution: '', isPresent: false });
   }, []);
 
   const handleTeamFormChange = useCallback((e) => {
@@ -52,6 +60,10 @@ export const useTeamManagement = (
         name: teamForm.name,
         leader: teamForm.leader, // Send IDs
         speaker: teamForm.speaker, // Send IDs
+        club: teamForm.club,
+        city: teamForm.city,
+        institution: teamForm.institution,
+        isPresent: teamForm.isPresent
       };
 
       let response;

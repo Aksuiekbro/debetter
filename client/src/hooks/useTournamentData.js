@@ -6,14 +6,14 @@ import { getAuthHeaders } from '../utils/auth';
 // Helper function to format debater names
 const formatDebaterName = (username) => {
   if (!username) return 'Unknown';
-  
+
   // If username has the format "debater_name123", extract just "Name"
   if (username.startsWith('debater_')) {
     // Extract the name part without prefix and digits
     const namePart = username.replace('debater_', '');
     // Capitalize first letter and remove any trailing numbers
     return namePart.replace(/[0-9]+$/, '')
-                  .charAt(0).toUpperCase() + 
+                  .charAt(0).toUpperCase() +
                   namePart.replace(/[0-9]+$/, '').slice(1);
   }
   return username; // Return original if not matching pattern
@@ -22,6 +22,7 @@ const formatDebaterName = (username) => {
 export const useTournamentData = () => {
   const { id: tournamentId } = useParams();
   const [loading, setLoading] = useState(true);
+  const [loadingStandings, setLoadingStandings] = useState(false); // Separate loading state for standings
   const [tournament, setTournament] = useState(null);
   const [entrants, setEntrants] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -29,6 +30,7 @@ export const useTournamentData = () => {
   const [postings, setPostings] = useState([]); // Renamed from apfPostings for consistency
   const [standings, setStandings] = useState([]);
   const [error, setError] = useState(null);
+  const [standingsError, setStandingsError] = useState(null); // Separate error state for standings
   const [initializingBracket, setInitializingBracket] = useState(false); // Add state for bracket initialization
 
   const processFetchedData = useCallback((data) => {
@@ -97,7 +99,7 @@ export const useTournamentData = () => {
       setTeams(data.teams.map(team => {
         const leaderMember = team.members.find(m => m.role === 'leader');
         const speakerMember = team.members.find(m => m.role === 'speaker');
-        
+
         // Extract all member names
         // console.log('[useTournamentData] Processing team:', team.name, 'Raw members:', JSON.stringify(team.members, null, 2)); // Removed debug log
         const memberNames = team.members?.map(m => {
@@ -193,22 +195,47 @@ export const useTournamentData = () => {
   }, [tournamentId, processFetchedData]);
 
   const fetchStandings = useCallback(async () => {
-    // console.log(`[useTournamentData] Fetching standings for tournament ID: ${tournamentId}`); // Removed debug log
-    // Consider adding a separate loading state for standings if needed
+    console.log(`[useTournamentData] Fetching standings for tournament ID: ${tournamentId}`);
+    // Set loading state for standings
+    setLoadingStandings(true);
+    setStandingsError(null); // Clear any previous errors
     try {
-      const response = await fetch(`${api.baseUrl}/api/apf/tabulation/${tournamentId}`, {
+      // Fetch the standings data
+      const standingsResponse = await fetch(`${api.baseUrl}/api/apf/tabulation/${tournamentId}`, {
         headers: getAuthHeaders()
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch standings: ${response.status}`);
+      if (!standingsResponse.ok) {
+        throw new Error(`Failed to fetch standings: ${standingsResponse.status}`);
       }
 
-      const standingsData = await response.json();
-      // console.log('[useTournamentData] Fetched standings data:', standingsData); // Removed debug log
+      // Fetch the round-by-round results
+      const roundResultsResponse = await fetch(`${api.baseUrl}/api/apf/round-results/${tournamentId}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (!roundResultsResponse.ok) {
+        console.warn(`Failed to fetch round results: ${roundResultsResponse.status}`);
+        // Continue with just the standings data
+      }
+
+      const standingsData = await standingsResponse.json();
+      console.log('[useTournamentData] Fetched standings data:', standingsData);
+
+      let roundResultsData = {};
+      try {
+        if (roundResultsResponse.ok) {
+          roundResultsData = await roundResultsResponse.json();
+          console.log('[useTournamentData] Fetched round results data:', roundResultsData);
+        }
+      } catch (roundError) {
+        console.error('[useTournamentData] Error parsing round results:', roundError);
+      }
+
+      // Update standings with round results
       setStandings(standingsData);
 
-      // Optionally update team stats based on standings
+      // Update team stats based on standings
       if (standingsData.length > 0) {
         setTeams(prevTeams => {
           return prevTeams.map(team => {
@@ -217,9 +244,12 @@ export const useTournamentData = () => {
               return {
                 ...team,
                 wins: teamStanding.wins || 0,
-                points: teamStanding.score || 0,
-                // Losses might need calculation based on total games played
-                losses: teamStanding.losses !== undefined ? teamStanding.losses : team.losses,
+                losses: teamStanding.losses || 0,
+                draws: teamStanding.draws || 0,
+                points: teamStanding.points || 0,
+                played: teamStanding.played || 0,
+                rank: teamStanding.rank || 0,
+                roundResults: teamStanding.roundResults || []
               };
             }
             return team;
@@ -229,8 +259,10 @@ export const useTournamentData = () => {
 
     } catch (err) {
       console.error('[useTournamentData] Error fetching standings:', err);
-      // Decide if standings fetch failure should be a visible error
-      // setError(err.message || 'Failed to load standings');
+      // Set the standings-specific error
+      setStandingsError(err.message || 'Failed to load standings');
+    } finally {
+      setLoadingStandings(false);
     }
   }, [tournamentId]);
 
@@ -308,7 +340,9 @@ export const useTournamentData = () => {
   return {
     tournamentId,
     loading,
+    loadingStandings, // Add the separate loading state for standings
     error,
+    standingsError, // Add the separate error state for standings
     tournament,
     entrants,
     teams,

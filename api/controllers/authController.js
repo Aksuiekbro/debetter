@@ -13,13 +13,13 @@ exports.register = async (req, res) => {
     // Direct access to raw request data
     // console.log('RAW REQUEST BODY:', req.body); // Removed debug log
     // console.log('RAW ROLE VALUE FROM CLIENT:', req.body.role); // Removed debug log
-    
+
     // Capture exactly what's in the request
     const rawRole = req.body.role;
     // console.log('Raw role captured:', rawRole); // Removed debug log
-    
-    const { username, email, password, judgeRole, experience, club, phoneNumber, otherProfileInfo } = req.body; // Destructure new fields
-    
+
+    const { username, email, password, experience, club, phoneNumber, otherProfileInfo } = req.body; // Destructure fields
+
     if (!username || !email || !password) {
       // console.log('Missing required fields'); // Removed debug log
       return res.status(400).json({ message: 'Please provide all required fields' });
@@ -34,7 +34,7 @@ exports.register = async (req, res) => {
     // Force the role to be exactly what was received
     const userRole = rawRole;
     // console.log('Using direct role value:', userRole); // Removed debug log
-    
+
     // Create user with exactly the role that was received
     // Prepare data for user creation
     // Prepare data for user creation, including new fields
@@ -49,9 +49,9 @@ exports.register = async (req, res) => {
       otherProfileInfo
     };
 
-    // Conditionally add judgeRole if the role is 'judge'
-    if (userRole === 'judge') {
-      userData.judgeRole = judgeRole;
+    // Ensure role is either participant or organizer
+    if (userRole !== 'participant' && userRole !== 'organizer') {
+      userData.role = 'participant'; // Default to participant if invalid role
     }
 
     const user = await User.create(userData);
@@ -73,18 +73,18 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error); // Log the detailed error regardless of environment
-    
+
     // Determine the message to send back based on the environment
     const message = process.env.NODE_ENV === 'production'
       ? 'An unexpected error occurred during registration.'
       : error.message;
-      
+
     const responsePayload = { message };
     // Only include stack trace in development environment
     if (process.env.NODE_ENV === 'development') {
       responsePayload.stack = error.stack;
     }
-    
+
     res.status(500).json(responsePayload);
   }
 };
@@ -131,7 +131,7 @@ exports.getProfile = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      judgeRole: user.judgeRole || '', // Include judgeRole
+      // judgeRole removed
       bio: user.bio || '',
       interests: user.interests || [],
       metrics: user.metrics || {
@@ -147,7 +147,7 @@ exports.getProfile = async (req, res) => {
       otherProfileInfo: user.otherProfileInfo || '',
       profilePhotoUrl: user.profilePhotoUrl || '',
       awards: user.awards || [],
-      judgingStyle: user.judgingStyle || '' // Add judgingStyle
+      judgingStyle: user.judgingStyle || '' // Keep judgingStyle for participant preferences
     });
   } catch (error) {
     console.error('Profile fetch error:', error);
@@ -246,7 +246,7 @@ exports.sendFriendRequest = async (req, res) => {
 exports.registerTestUsers = async (req, res) => {
   try {
     const { users } = req.body;
-    
+
     // Validate request
     if (!Array.isArray(users)) {
       return res.status(400).json({ message: 'Users must be provided as an array' });

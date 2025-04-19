@@ -15,7 +15,7 @@ import {
   IconButton, // Added
   TextField
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'; // Added
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckCircleIcon, Cancel as CancelIcon } from '@mui/icons-material';
 
 // Assume JudgeDialog and DeleteConfirmationDialog will be created later
 
@@ -24,6 +24,8 @@ const JudgesTab = ({
   onAddJudge, // Added prop
   onEditJudge, // Added prop
   onDeleteJudge, // Added prop
+  onCheckInJudge,
+  onCheckOutJudge,
   currentUser, // Added prop
   tournamentCreatorId, // Added prop
 }) => {
@@ -41,7 +43,8 @@ const JudgesTab = ({
   const filteredJudges = judges.filter(judge =>
     judge.name.toLowerCase().includes(searchTerm) ||
     (judge.email && judge.email.toLowerCase().includes(searchTerm)) ||
-    (judge.role && judge.role.toLowerCase().includes(searchTerm))
+    (judge.judgeRank && judge.judgeRank.toLowerCase().includes(searchTerm)) ||
+    (judge.judgeStatus && judge.judgeStatus.toLowerCase().includes(searchTerm))
   );
 
   return (
@@ -77,7 +80,10 @@ const JudgesTab = ({
               <TableCell>{t('judgesTab.headerName', { defaultValue: 'Name' })}</TableCell>
               <TableCell>{t('judgesTab.headerEmail', { defaultValue: 'Email' })}</TableCell>
               <TableCell>{t('judgesTab.headerPhone', { defaultValue: 'Phone Number' })}</TableCell>
+              <TableCell>{t('judgesTab.headerClub', { defaultValue: 'Club' })}</TableCell>
               <TableCell>{t('judgesTab.headerRank', { defaultValue: 'Rank' })}</TableCell>
+              <TableCell>{t('judgesTab.headerStatus', { defaultValue: 'Status' })}</TableCell>
+              <TableCell>{t('judgesTab.headerPresence', { defaultValue: 'Present' })}</TableCell>
               {isOrganizerOrAdmin && <TableCell align="right">{t('judgesTab.headerActions', { defaultValue: 'Actions' })}</TableCell>}
             </TableRow>
           </TableHead>
@@ -91,30 +97,76 @@ const JudgesTab = ({
                 </TableCell>
                 <TableCell>{judge.email || t('common.notAvailable', { defaultValue: 'N/A' })}</TableCell>
                 <TableCell>{judge.phoneNumber || t('common.notAvailable', { defaultValue: 'N/A' })}</TableCell>
-                <TableCell>{judge.role || t('common.notAvailable', { defaultValue: 'N/A' })}</TableCell>
+                <TableCell>{judge.club || t('common.notAvailable', { defaultValue: 'N/A' })}</TableCell>
+                <TableCell>
+                  {judge.yearsExperience > 0 || judge.courseLevel ? (
+                    <>
+                      {judge.yearsExperience > 0 && (
+                        <span>{t('judgesTab.yearsExperience', { years: judge.yearsExperience, defaultValue: `${judge.yearsExperience} years` })}</span>
+                      )}
+                      {judge.yearsExperience > 0 && judge.courseLevel && ', '}
+                      {judge.courseLevel && (
+                        <span>{judge.courseLevel}</span>
+                      )}
+                      <br />
+                      <span style={{ color: 'gray', fontSize: '0.9em' }}>
+                        {judge.judgeRank || t('common.notAvailable', { defaultValue: 'N/A' })}
+                      </span>
+                    </>
+                  ) : (
+                    judge.judgeRank || t('common.notAvailable', { defaultValue: 'N/A' })
+                  )}
+                </TableCell>
+                <TableCell>{judge.judgeStatus || t('common.notAvailable', { defaultValue: 'N/A' })}</TableCell>
+                <TableCell>
+                  {judge.isPresent ? (
+                    <CheckCircleIcon color="success" />
+                  ) : (
+                    <CancelIcon color="error" />
+                  )}
+                </TableCell>
                 {isOrganizerOrAdmin && (
                   <TableCell align="right">
-                    <IconButton
-                      color="primary"
-                      onClick={() => onEditJudge(judge)} // Pass full judge object
-                      title={t('judgesTab.editAction', { defaultValue: 'Edit Judge' })}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      color="error"
-                      onClick={() => onDeleteJudge(judge.id)} // Pass judge id
-                      title={t('judgesTab.deleteAction', { defaultValue: 'Delete Judge' })}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      {judge.isPresent ? (
+                        <IconButton
+                          color="error"
+                          onClick={() => onCheckOutJudge(judge.id)}
+                          title={t('judgesTab.checkOutAction', { defaultValue: 'Mark as Absent' })}
+                        >
+                          <CancelIcon />
+                        </IconButton>
+                      ) : (
+                        <IconButton
+                          color="success"
+                          onClick={() => onCheckInJudge(judge.id)}
+                          title={t('judgesTab.checkInAction', { defaultValue: 'Mark as Present' })}
+                        >
+                          <CheckCircleIcon />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        color="primary"
+                        onClick={() => onEditJudge(judge)} // Pass full judge object
+                        title={t('judgesTab.editAction', { defaultValue: 'Edit Judge' })}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        color="error"
+                        onClick={() => onDeleteJudge(judge.id)} // Pass judge id
+                        title={t('judgesTab.deleteAction', { defaultValue: 'Delete Judge' })}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 )}
               </TableRow>
             ))}
             {filteredJudges.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isOrganizerOrAdmin ? 5 : 4} align="center"> {/* Adjust colspan */}
+                <TableCell colSpan={isOrganizerOrAdmin ? 8 : 7} align="center"> {/* Adjust colspan for new column */}
                   {judges.length > 0 ? t('judgesTab.noMatch', { defaultValue: 'No judges match search' }) : t('judgesTab.noJudges', { defaultValue: 'No judges found' })}
                 </TableCell>
               </TableRow>

@@ -3,7 +3,8 @@ const Debate = require('../models/Debate');
 const User = require('../models/User');
 const tournamentService = require('../services/tournamentService'); // Import TournamentService
 
-// Get APF tabulation/standings
+const standingsService = require('../services/standingsService');
+
 // Get APF tabulation/standings
 exports.getApfTabulation = async (req, res) => {
   try {
@@ -15,57 +16,57 @@ exports.getApfTabulation = async (req, res) => {
       return res.status(400).json({ message: 'Tournament ID is required' });
     }
 
-    // console.log('Fetching APF tabulation for tournament:', specificTournamentId); // Removed debug log
+    console.log('Fetching tournament standings for:', specificTournamentId);
 
-    // Fetch the Debate document and populate the teams array
-    const debate = await Debate.findById(specificTournamentId).populate({
-        path: 'teams',
-        select: 'name wins points losses' // Select necessary fields
-    });
+    // Use the standings service to calculate standings
+    const standings = await standingsService.calculateStandings(specificTournamentId);
 
-    if (!debate) {
-      // Keep log for not found
-      console.log('Tournament (Debate) not found with ID:', specificTournamentId);
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-
-    if (!debate.teams || debate.teams.length === 0) {
-      // Keep log for no teams found
-      console.log('No teams found in the tournament:', specificTournamentId);
-      // Return empty standings if no teams exist
-      return res.json([]);
-    }
-
-    // console.log(`Found ${debate.teams.length} teams in tournament ${specificTournamentId}`); // Removed debug log
-
-    // Map teams to the required standings format
-    let standings = debate.teams.map(team => ({
-      id: team._id,
-      name: team.name,
-      wins: team.wins || 0, // Default to 0 if undefined
-      points: team.points || 0, // Default to 0 if undefined
-      losses: team.losses || 0, // Include losses if available
-      rank: 0 // Initialize rank
-    }));
-
-    // Sort by wins (descending) and then points (descending)
-    standings.sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.points - a.points;
-    });
-
-    // Assign ranks based on the sorted order
-    standings = standings.map((team, index) => ({
-      ...team,
-      rank: index + 1
-    }));
-
-    // console.log(`Returning ${standings.length} teams in standings for tournament ${specificTournamentId}`); // Removed debug log
+    // Return the calculated standings
     res.json(standings);
 
   } catch (error) {
-    console.error('Error getting APF tabulation:', error);
-    res.status(500).json({ message: 'Error fetching tournament standings', error: error.message });
+    console.error('Error getting tournament standings:', error);
+
+    // Handle specific errors
+    if (error.message === 'Tournament not found') {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+
+    res.status(500).json({
+      message: 'Error calculating tournament standings',
+      error: error.message
+    });
+  }
+};
+
+// Get round-by-round results for a tournament
+exports.getRoundResults = async (req, res) => {
+  try {
+    const { tournamentId } = req.query;
+    const specificTournamentId = tournamentId || req.params.tournamentId;
+
+    if (!specificTournamentId) {
+      return res.status(400).json({ message: 'Tournament ID is required' });
+    }
+
+    // Use the standings service to get round-by-round results
+    const roundResults = await standingsService.getRoundByRoundResults(specificTournamentId);
+
+    // Return the round-by-round results
+    res.json(roundResults);
+
+  } catch (error) {
+    console.error('Error getting round results:', error);
+
+    // Handle specific errors
+    if (error.message === 'Tournament not found') {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+
+    res.status(500).json({
+      message: 'Error fetching round results',
+      error: error.message
+    });
   }
 };
 
@@ -82,12 +83,12 @@ exports.submitApfEvaluation = async (req, res) => {
       gameId,
       notes
     } = req.body;
-    
+
     // console.log('Evaluation submission received:'); // Removed debug log
     // console.log('- debateId (params):', debateId); // Removed debug log
     // console.log('- gameId (body):', gameId); // Removed debug log
     // console.log('- winningTeamId:', winningTeamId); // Removed debug log
-    
+
     // Check if debate exists
     const debate = await Debate.findById(debateId);
     if (!debate) {
@@ -95,43 +96,43 @@ exports.submitApfEvaluation = async (req, res) => {
       console.log('Debate not found with ID:', debateId);
       return res.status(404).json({ message: 'Debate not found' });
     }
-    
+
     // Check if user is a judge for this debate
     let isJudge = false;
-    
+
     // First, check the participants array (if each participant is an object with _id and role)
-    if (debate.participants && debate.participants.length > 0 && 
+    if (debate.participants && debate.participants.length > 0 &&
         typeof debate.participants[0] === 'object' && debate.participants[0]._id) {
       isJudge = debate.participants.some(
         p => p._id.toString() === req.user._id.toString() && p.role === 'judge'
       );
     }
-    
+
     // If not found, check if participants are just user IDs and check postings judges
     if (!isJudge && debate.postings && debate.postings.length > 0) {
-      isJudge = debate.postings.some(posting => 
-        posting.judges && posting.judges.some(judgeId => 
+      isJudge = debate.postings.some(posting =>
+        posting.judges && posting.judges.some(judgeId =>
           judgeId.toString() === req.user._id.toString()
         )
       );
     }
-    
+
     // console.log('Judge check result:', isJudge); // Removed debug log
-    
+
     if (!isJudge) {
       return res.status(403).json({ message: 'Only judges can submit evaluations' });
     }
-    
+
     // Check if judge has already submitted an evaluation
     const existingEvaluation = await ApfEvaluation.findOne({
       debateId: debateId,
       judgeId: req.user._id
     });
-    
+
     if (existingEvaluation) {
       return res.status(400).json({ message: 'You have already evaluated this debate' });
     }
-    
+
     // Create new evaluation with both legacy and new data structures
     const evaluation = new ApfEvaluation({
       debateId,
@@ -143,20 +144,20 @@ exports.submitApfEvaluation = async (req, res) => {
       winningTeam: winningTeamId,
       notes
     });
-    
+
     await evaluation.save();
-    
+
     // Update debate posting status to completed
     if (debate.postings && debate.postings.length > 0) {
       // Find the relevant posting by ID
-      const relevantPosting = debate.postings.find(posting => 
+      const relevantPosting = debate.postings.find(posting =>
         posting._id.toString() === req.body.gameId
       );
-      
+
       if (relevantPosting) {
         relevantPosting.status = 'completed';
         relevantPosting.winner = winningTeamId;
-        
+
         // Store additional evaluation information in the posting
         relevantPosting.evaluation = {
           evaluationId: evaluation._id,
@@ -164,28 +165,28 @@ exports.submitApfEvaluation = async (req, res) => {
           team2Score: speakerScores?.leader_opp?.totalPoints + speakerScores?.speaker_opp?.totalPoints || 0,
           comments: notes
         };
-        
+
         // Find the winning team in the tournament teams
         const winningTeamObject = debate.teams?.find(team => team._id.toString() === winningTeamId);
-        
+
         if (winningTeamObject) {
           // Initialize properties if they don't exist
           winningTeamObject.wins = winningTeamObject.wins || 0;
           winningTeamObject.points = winningTeamObject.points || 0;
-          
+
           // Increment wins count
           winningTeamObject.wins += 1;
-          
+
           // Add points to the winning team (based on their own scores)
           if (debate.teams.some(team => team._id.toString() === winningTeamId && team.members.some(m => m.role === 'leader' && m.userId)) ||
               winningTeamObject._id.toString() === relevantPosting.team1.toString()) {
             // It's team1/Government team
             winningTeamObject.points += relevantPosting.evaluation.team1Score;
           } else {
-            // It's team2/Opposition team  
+            // It's team2/Opposition team
             winningTeamObject.points += relevantPosting.evaluation.team2Score;
           }
-          
+
           // console.log(`Updated winning team: ${winningTeamObject.name}, Wins: ${winningTeamObject.wins}, Points: ${winningTeamObject.points}`); // Removed debug log
         } else {
           // Keep log for not found
@@ -199,7 +200,7 @@ exports.submitApfEvaluation = async (req, res) => {
           losingTeamObject.losses = (losingTeamObject.losses || 0) + 1;
           // Add 1 participation point for the losing team
           losingTeamObject.points = (losingTeamObject.points || 0) + 1;
-          
+
           // console.log(`Updated losing team: ${losingTeamObject.name}, Losses: ${losingTeamObject.losses}, Points: ${losingTeamObject.points}`); // Removed debug log
         } else {
            // Keep log for not found
@@ -254,8 +255,8 @@ exports.submitApfEvaluation = async (req, res) => {
         // console.log('Available posting IDs:', debate.postings.map(p => p._id.toString())); // Removed debug log
       }
     }
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       message: 'Evaluation submitted successfully',
       evaluation
     });
@@ -269,15 +270,15 @@ exports.submitApfEvaluation = async (req, res) => {
 exports.getJudgeAssignedDebates = async (req, res) => {
   try {
     // console.log('Fetching judge assignments for user:', req.user._id); // Removed debug log
-    
+
     // Find tournaments where the user is a judge through participants array
     // OR where the user is directly assigned as a judge to a posting
     const tournaments = await Debate.find({
       $or: [
         // Check if user is in participants array as a judge
         {
-          'participants': { 
-            $elemMatch: { 
+          'participants': {
+            $elemMatch: {
               _id: req.user._id,
               role: 'judge'
             }
@@ -309,38 +310,38 @@ exports.getJudgeAssignedDebates = async (req, res) => {
       select: 'username email _id'
     })
     .sort({ startDate: 1 });
-    
+
     // console.log(`Found ${tournaments.length} tournaments for judge`); // Removed debug log
-    
+
     // Get all APF postings where this judge is assigned
     const assignedGames = [];
-    
+
     for (const tournament of tournaments) {
       // console.log(`Processing tournament: ${tournament.title}, ID: ${tournament._id}`); // Removed debug log
       // console.log(`Tournament has ${tournament.teams?.length || 0} teams and ${tournament.postings?.length || 0} postings`); // Removed debug log
-      
+
       if (tournament.postings && tournament.postings.length > 0) {
         // Filter postings where this judge is assigned
-        const judgePostings = tournament.postings.filter(posting => 
-          posting.judges.some(judge => 
+        const judgePostings = tournament.postings.filter(posting =>
+          posting.judges.some(judge =>
             // Handle both populated and unpopulated judges
             (typeof judge === 'object' ? judge._id.toString() : judge.toString()) === req.user._id.toString()
           )
         );
-        
+
         // console.log(`Found ${judgePostings.length} postings assigned to this judge`); // Removed debug log
-        
+
         for (const posting of judgePostings) {
           // console.log(`Processing posting: ${posting._id}, Teams: ${posting.team1} vs ${posting.team2}`); // Removed debug log
-          
+
           // Find team details with debug logging
           const team1 = tournament.teams.find(t => t._id.toString() === posting.team1.toString());
           const team2 = tournament.teams.find(t => t._id.toString() === posting.team2.toString());
-          
+
           // console.log(`Team1 found: ${!!team1}, Team2 found: ${!!team2}`); // Removed debug log
           // if (team1) console.log(`Team1 name: ${team1.name}, members: ${team1.members?.length || 0}`); // Removed debug log
           if (team2) console.log(`Team2 name: ${team2.name}, members: ${team2.members?.length || 0}`);
-          
+
           // Check if both teams were found before proceeding
           if (!team1 || !team2) {
             console.warn(`[getJudgeAssignedDebates] Skipping posting ${posting._id} in tournament ${tournament._id} due to missing team data. Team1 found: ${!!team1}, Team2 found: ${!!team2}`);
@@ -352,20 +353,20 @@ exports.getJudgeAssignedDebates = async (req, res) => {
             leader: null,
             speaker: null
           };
-          
+
           let team2Members = {
             leader: null,
-            speaker: null 
+            speaker: null
           };
-          
+
           // Process team 1 members
           if (team1 && team1.members && team1.members.length > 0) {
             const leaderMember = team1.members.find(m => m.role === 'leader');
             const speakerMember = team1.members.find(m => m.role === 'speaker');
-            
+
             // console.log(`Team1 leader member:`, leaderMember); // Removed debug log
             // console.log(`Team1 speaker member:`, speakerMember); // Removed debug log
-            
+
             if (leaderMember && leaderMember.userId) {
               // If userId is already populated, use it directly
               if (typeof leaderMember.userId === 'object') {
@@ -379,7 +380,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
               }
               // console.log(`Team1 leader user data:`, team1Members.leader); // Removed debug log
             }
-            
+
             if (speakerMember && speakerMember.userId) {
               // If userId is already populated, use it directly
               if (typeof speakerMember.userId === 'object') {
@@ -394,15 +395,15 @@ exports.getJudgeAssignedDebates = async (req, res) => {
               // console.log(`Team1 speaker user data:`, team1Members.speaker); // Removed debug log
             }
           }
-          
+
           // Process team 2 members
           if (team2 && team2.members && team2.members.length > 0) {
             const leaderMember = team2.members.find(m => m.role === 'leader');
             const speakerMember = team2.members.find(m => m.role === 'speaker');
-            
+
             // console.log(`Team2 leader member:`, leaderMember); // Removed debug log
             // console.log(`Team2 speaker member:`, speakerMember); // Removed debug log
-            
+
             if (leaderMember && leaderMember.userId) {
               // If userId is already populated, use it directly
               if (typeof leaderMember.userId === 'object') {
@@ -416,7 +417,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
               }
               // console.log(`Team2 leader user data:`, team2Members.leader); // Removed debug log
             }
-            
+
             if (speakerMember && speakerMember.userId) {
               // If userId is already populated, use it directly
               if (typeof speakerMember.userId === 'object') {
@@ -431,7 +432,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
               // console.log(`Team2 speaker user data:`, team2Members.speaker); // Removed debug log
             }
           }
-          
+
           // Find other judges assigned to this posting
           const otherJudges = posting.judges
             .filter(judgeId => {
@@ -447,12 +448,12 @@ exports.getJudgeAssignedDebates = async (req, res) => {
                   role: judgeId.judgeRole || 'Judge'
                 };
               }
-              
+
               // Otherwise, look for judge data in participants
-              const judgeData = tournament.participants.find(p => 
+              const judgeData = tournament.participants.find(p =>
                 p._id.toString() === judgeId.toString()
               );
-              
+
               return judgeData ? {
                 id: judgeData._id,
                 name: judgeData.username,
@@ -464,21 +465,21 @@ exports.getJudgeAssignedDebates = async (req, res) => {
               };
             })
             .filter(judge => judge !== null);
-          
+
           // Check if judge has already submitted an evaluation
           const isEvaluated = posting.status === 'completed';
-          
+
           // Prepare data for formatted leader and speaker objects
           const formatUserObject = (user) => {
             if (!user) return null;
-            
+
             // Handle populated user object
             if (user._id) {
               return {
                 id: user._id,
                 name: user.username || 'Unknown User'
               };
-            } 
+            }
             // Handle user ID string (fallback)
             else if (typeof user === 'string') {
               return {
@@ -486,10 +487,10 @@ exports.getJudgeAssignedDebates = async (req, res) => {
                 name: 'Unknown User'
               };
             }
-            
+
             return null;
           };
-          
+
           // Format the posting for the judge panel
           assignedGames.push({
             id: posting._id,
@@ -523,7 +524,7 @@ exports.getJudgeAssignedDebates = async (req, res) => {
         }
       }
     }
-    
+
     // console.log(`Returning ${assignedGames.length} assigned games for judge`); // Removed debug log
     res.json(assignedGames);
   } catch (error) {
@@ -536,16 +537,16 @@ exports.getJudgeAssignedDebates = async (req, res) => {
 exports.getApfEvaluation = async (req, res) => {
   try {
     const { evaluationId } = req.params;
-    
+
     const evaluation = await ApfEvaluation.findById(evaluationId)
       .populate('debateId', 'title description startDate teams')
       .populate('judgeId', 'username')
       .populate('winningTeam', 'name');
-      
+
     if (!evaluation) {
       return res.status(404).json({ message: 'Evaluation not found' });
     }
-    
+
     res.json(evaluation);
   } catch (error) {
     console.error('Error getting APF evaluation:', error);

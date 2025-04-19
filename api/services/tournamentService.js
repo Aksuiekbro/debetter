@@ -73,14 +73,16 @@ class TournamentService {
        tournamentSettings: {
          maxDebaters: 32,
          maxJudges: 8,
-         currentDebaters: creator.role === 'judge' ? 0 : 1,
-         currentJudges: creator.role === 'judge' ? 1 : 0,
+         currentDebaters: 0, // Creator is always an organizer now
+         currentJudges: 0,
        },
        teams: [],
        postings: [],
        // Explicitly add the new fields from the input
-       tournamentFormats: debateInput.tournamentFormats,
-       eligibilityCriteria: debateInput.eligibilityCriteria,
+       tournamentFormats: debateInput.tournamentFormats || ['BP'], // Default to British Parliamentary
+       leagueType: debateInput.leagueType || 'open', // Default to open league
+       customRegistrationFields: false, // Default to no custom fields
+       eligibilityCriteria: debateInput.eligibilityCriteria || '',
        registrationDeadline: debateInput.registrationDeadline,
      };
      return data;
@@ -121,32 +123,32 @@ class TournamentService {
   }
 
   // Adds a participant to the tournament
-  async addParticipant(debate, user) {
-      // Determine the tournament role based on the user's main role
-      // TODO: Allow specifying role during join if needed (e.g., Observer)
-      const tournamentRole = user.role === 'judge' ? 'Judge' : 'Debater';
-      debate.participants.push({
+  async addParticipant(debate, user, role = 'Debater') {
+      // Determine the tournament role based on the provided role or default to Debater
+      const tournamentRole = ['Debater', 'Judge', 'Observer'].includes(role) ? role : 'Debater';
+
+      // Create participant object with empty customFields Map
+      const participant = {
         userId: user._id,
         tournamentRole: tournamentRole,
+        customFields: new Map(),
         // teamId: null // Team is assigned later
-      });
+      };
+
+      debate.participants.push(participant);
 
       // Update counters
-      if (user.role === 'judge') {
+      if (tournamentRole === 'Judge') {
         debate.tournamentSettings.currentJudges = (debate.tournamentSettings.currentJudges || 0) + 1;
-      } else {
+      } else if (tournamentRole === 'Debater') {
         debate.tournamentSettings.currentDebaters = (debate.tournamentSettings.currentDebaters || 0) + 1;
       }
-
-      // TODO: Check if tournament is ready to start (maybe move this logic)
-      // if (debate.validateTournamentStart()) {
-      //   debate.initializeTournamentBracket();
-      // }
+      // Observer role doesn't affect counters
 
       await debate.save();
       // Return updated counts or the debate object
       const updatedCounts = debate.getParticipantCounts();
-      return { ...updatedCounts, debateId: debate._id };
+      return { ...updatedCounts, debateId: debate._id, participant };
   }
 
   // Removes a participant from the tournament
@@ -325,7 +327,7 @@ class TournamentService {
     await updatedDebate.save();
 
     // No specific return value needed, controller sends success message
-    return; 
+    return;
   }
 
 

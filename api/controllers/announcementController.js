@@ -2,6 +2,7 @@ const announcementService = require('../services/announcementService');
 const Debate = require('../models/Debate'); // Use Debate model for permission checks
 const catchAsync = require('../utils/catchAsync'); // Assuming you have a catchAsync utility
 const AppError = require('../utils/appError'); // Assuming you have an AppError utility
+const socketService = require('../services/socketService'); // Import socket service for real-time updates
 
 // Authorization Middleware Helper (can be refactored into separate middleware if used elsewhere)
 const checkTournamentAdmin = async (tournamentId, userId, userRole) => {
@@ -58,6 +59,9 @@ exports.create = catchAsync(async (req, res, next) => {
         userId
     );
 
+    // Emit socket event for real-time updates
+    socketService.emitAnnouncementCreated(tournamentId, announcement);
+
     res.status(201).json({
         status: 'success',
         data: {
@@ -104,6 +108,9 @@ exports.update = catchAsync(async (req, res, next) => {
         return next(new AppError('Announcement not found.', 404)); // Service might throw, but double-check
     }
 
+    // Emit socket event for real-time updates
+    socketService.emitAnnouncementUpdated(tournamentId, announcement);
+
     res.status(200).json({
         status: 'success',
         data: {
@@ -124,6 +131,9 @@ exports.delete = catchAsync(async (req, res, next) => {
     // (Similar check as in update)
 
     await announcementService.deleteAnnouncement(announcementId);
+
+    // Emit socket event for real-time updates
+    socketService.emitAnnouncementDeleted(tournamentId, announcementId);
 
     res.status(204).json({ // 204 No Content for successful deletion
         status: 'success',
@@ -154,6 +164,12 @@ exports.uploadImage = catchAsync(async (req, res, next) => {
         req.file.originalname,
         req.file.mimetype
     );
+
+    // Get the updated announcement with the new image URL
+    const updatedAnnouncement = await announcementService.getAnnouncementById(announcementId);
+
+    // Emit socket event for real-time updates
+    socketService.emitAnnouncementUpdated(tournamentId, updatedAnnouncement);
 
     res.status(200).json({
         status: 'success',

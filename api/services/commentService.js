@@ -43,6 +43,17 @@ const getCommentsByAnnouncement = async (announcementId) => {
 };
 
 /**
+ * Retrieves a single comment by its ID.
+ * @param {string} commentId - The ID of the comment.
+ * @returns {Promise<object|null>} The comment document or null if not found.
+ */
+const getCommentById = async (commentId) => {
+    const comment = await Comment.findById(commentId)
+        .populate('createdBy', 'username name profilePhotoUrl');
+    return comment;
+};
+
+/**
  * Deletes a comment by its ID.
  * @param {string} commentId - The ID of the comment to delete.
  * @param {string} userId - The ID of the user attempting to delete the comment.
@@ -51,25 +62,25 @@ const getCommentsByAnnouncement = async (announcementId) => {
  */
 const deleteComment = async (commentId, userId, userRole) => {
     const comment = await Comment.findById(commentId);
-    
+
     if (!comment) {
         throw new AppError('Comment not found.', 404);
     }
-    
-    // Check if the user is the comment creator or has admin role
+
+    // Check if the user is the comment creator or has admin/organizer role
     const isCreator = comment.createdBy.toString() === userId.toString();
-    const isAdmin = userRole === 'admin';
-    
-    if (!isCreator && !isAdmin) {
+    const isAdminOrOrganizer = userRole === 'admin' || userRole === 'organizer';
+
+    if (!isCreator && !isAdminOrOrganizer) {
         throw new AppError('You do not have permission to delete this comment.', 403);
     }
-    
+
     // Remove the comment reference from the announcement
     await Announcement.findByIdAndUpdate(
         comment.announcement,
         { $pull: { comments: commentId } }
     );
-    
+
     // Delete the comment
     await Comment.findByIdAndDelete(commentId);
 };
@@ -77,5 +88,6 @@ const deleteComment = async (commentId, userId, userRole) => {
 module.exports = {
     createComment,
     getCommentsByAnnouncement,
+    getCommentById,
     deleteComment,
 };

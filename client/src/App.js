@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import telegramTheme from './theme/telegramTheme';
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
 import Home from './components/Home';
@@ -24,27 +25,7 @@ import NotificationSettings from './components/NotificationSettings'; // Import 
 import ActiveJudgeInterface from './components/ActiveJudgeInterface'; // Import the new interface
 import JudgeLeaderboard from './components/JudgeLeaderboard'; // Import JudgeLeaderboard
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#32CD32', // lime green
-    },
-    secondary: {
-      main: '#76ff03', // lighter lime
-    },
-    background: {
-      default: '#f0f7f0', // light lime tinted background
-    }
-  },
-  typography: {
-    h2: {
-      fontWeight: 600,
-    },
-    h4: {
-      fontWeight: 500,
-    }
-  }
-});
+// Using the imported Telegram-inspired theme
 
 // Layout component that includes Navbar and Outlet for nested routes
 const MainLayout = () => {
@@ -58,14 +39,14 @@ const MainLayout = () => {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={telegramTheme}>
       <CssBaseline />
       <Router>
         <div className="App">
           <Routes>
             {/* Landing page route */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-            
+
             {/* All other routes with Navbar */}
             <Route element={<MainLayout />}>
               <Route path="/home" element={<Home />} />

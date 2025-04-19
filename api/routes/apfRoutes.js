@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { 
+const {
     getApfTabulation,
     submitApfEvaluation,
     getJudgeAssignedDebates,
-    getApfEvaluation, // Added comma here
-    getDebaterFeedback // Added for debater feedback
+    getApfEvaluation,
+    getDebaterFeedback,
+    getRoundResults // Add the new round results endpoint
 } = require('../controllers/apfController');
 const { submitFeedback: submitJudgeFeedback } = require('../controllers/judgeFeedbackController'); // Import new controller
 const { protect } = require('../middleware/authMiddleware');
@@ -13,6 +14,10 @@ const { protect } = require('../middleware/authMiddleware');
 // APF tabulation routes
 router.get('/tabulation', getApfTabulation);
 router.get('/tabulation/:tournamentId', getApfTabulation);
+
+// Round results routes
+router.get('/round-results', getRoundResults);
+router.get('/round-results/:tournamentId', getRoundResults);
 
 // Judge assignment routes
 router.get('/assignments', protect, getJudgeAssignedDebates);

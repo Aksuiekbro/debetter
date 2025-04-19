@@ -45,6 +45,14 @@ const { getParticipantStandings } = require('../controllers/debateController'); 
 const announcementController = require('../controllers/announcementController'); // Import announcement controller
 const commentController = require('../controllers/commentController'); // Import comment controller
 const scheduleRoutes = require('./scheduleRoutes'); // Import schedule routes
+const registrationFieldRoutes = require('./registrationFieldRoutes'); // Import registration field routes
+const checkInRoutes = require('./checkInRoutes'); // Import check-in routes
+const resultsRoutes = require('./resultsRoutes'); // Import results routes
+const matchPostingsRoutes = require('./matchPostingsRoutes'); // Import match postings routes
+const pairingRoutes = require('./pairingRoutes'); // Import pairing routes
+const ballotRoutes = require('./ballotRoutes'); // Import ballot routes
+const entrantRoutes = require('./entrantRoutes'); // Import entrant routes
+const judgeRoutes = require('./judgeRoutes'); // Import judge routes
 const themeController = require('../controllers/themeController'); // Import theme controller
 const { protect, isOrganizer } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware'); // Middleware for handling file uploads
@@ -143,6 +151,38 @@ router.delete('/:id/announcements/comments/:commentId', commentController.delete
 // protect middleware is already applied globally above
 // scheduleRoutes handles its own specific auth/role checks internally via controller
 router.use('/:id/schedule', scheduleRoutes);
+
+// Registration Field Routes (nested under /:id which represents tournamentId)
+// registrationFieldRoutes handles its own specific auth/role checks internally
+router.use('/:id/registration-fields', registrationFieldRoutes);
+
+// Check-in Routes (nested under /:id which represents tournamentId)
+// checkInRoutes handles its own specific auth/role checks internally
+router.use('/:id/check-in', checkInRoutes);
+
+// Results Routes (nested under /:id which represents tournamentId)
+// resultsRoutes handles its own specific auth/role checks internally
+router.use('/:id/results', resultsRoutes);
+
+// Match Postings Routes (nested under /:id which represents tournamentId)
+// matchPostingsRoutes handles its own specific auth/role checks internally
+router.use('/:id/match-postings', matchPostingsRoutes);
+
+// Pairing Routes (nested under /:id which represents tournamentId)
+// pairingRoutes handles its own specific auth/role checks internally
+router.use('/:id/pairings', pairingRoutes);
+
+// Ballot Routes (nested under /:id which represents tournamentId)
+// ballotRoutes handles its own specific auth/role checks internally
+router.use('/:id/ballots', ballotRoutes);
+
+// Entrant Routes (nested under /:id which represents tournamentId)
+// entrantRoutes handles its own specific auth/role checks internally
+router.use('/:id/entrants', entrantRoutes);
+
+// Judge Routes (nested under /:id which represents tournamentId)
+// judgeRoutes handles its own specific auth/role checks internally
+router.use('/:id/judges', judgeRoutes);
 
 
 // Tournament Map Routes
