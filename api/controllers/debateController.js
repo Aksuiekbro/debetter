@@ -16,26 +16,26 @@ const transcriptService = require('../services/transcriptService');
 exports.getDebates = async (req, res) => {
   try {
     const { search, sortBy } = req.query;
-    
+
     // Build filter object
     let filter = {};
-    
+
     // Handle multiple filter values as arrays
     if (req.query.categories) {
       const categories = req.query.categories.split(',');
       filter.category = { $in: categories };
     }
-    
+
     if (req.query.status) {
       const statuses = req.query.status.split(',');
       filter.status = { $in: statuses };
     }
-    
+
     if (req.query.difficulty) {
       const difficulties = req.query.difficulty.split(',');
       filter.difficulty = { $in: difficulties };
     }
-    
+
     // Add search filter if search query exists
     if (search) {
       filter.$or = [
@@ -43,7 +43,7 @@ exports.getDebates = async (req, res) => {
         { description: { $regex: search, $options: 'i' } }
       ];
     }
-    
+
     // Build sort object
     let sort = {};
     switch (sortBy) {
@@ -62,7 +62,7 @@ exports.getDebates = async (req, res) => {
       default:
         sort = { createdAt: -1 };
     }
-    
+
     const debates = await Debate.find(filter)
       .sort(sort)
       .populate('creator', 'username')
@@ -104,14 +104,14 @@ const initializeTournamentRounds = (participants) => {
   const rounds = [];
   // For a 32-participant tournament, we need 5 rounds (Round of 32, 16, 8, 4, and Finals)
   const totalRounds = 5;
-  
+
   for (let i = 0; i < totalRounds; i++) {
     rounds.push({
       round: i + 1,
       matches: []
     });
   }
-  
+
   // Initialize first round matches with empty slots
   const firstRound = rounds[0];
   for (let i = 0; i < 16; i++) { // 16 matches for 32 participants
@@ -123,7 +123,7 @@ const initializeTournamentRounds = (participants) => {
       status: 'pending'
     });
   }
-  
+
   return rounds;
 };
 
@@ -132,6 +132,11 @@ exports.createDebate = async (req, res) => {
   try {
     const debateInput = req.body;
     const creator = req.user; // User object from auth middleware
+
+    // Ensure creator is an organizer
+    if (creator.role !== 'organizer') {
+      return res.status(403).json({ message: 'Only organizers can create tournaments.' });
+    }
 
     // --- Start: Enforce tournament-only creation ---
     if (!debateInput.format) {
@@ -143,44 +148,41 @@ exports.createDebate = async (req, res) => {
     }
     // --- End: Enforce tournament-only creation ---
 
-    let preparedData;
+    // Validate tournament-specific requirements using the service
+    tournamentService.validateTournamentCreation(debateInput.startDate, debateInput.registrationDeadline);
 
-    // If tournament, validate and prepare specific data using the service
-    if (debateInput.format === 'tournament') {
-      // Validate tournament-specific requirements using the service
-      tournamentService.validateTournamentCreation(debateInput.startDate, debateInput.registrationDeadline);
-      // Prepare tournament-specific data structure using the service
-      preparedData = tournamentService.prepareTournamentData(debateInput, creator);
-    } else {
-      // Prepare data for a standard debate
-      preparedData = {
-        ...debateInput, // title, description, category, etc.
-        creator: creator._id,
-        status: 'upcoming',
-        participants: [{ // Creator automatically joins as Organizer
-          userId: creator._id,
-          tournamentRole: 'Organizer' // Assign a default role for the creator
-        }],
-        // Ensure fields not applicable to standard debates are undefined
-        mode: undefined,
-        registrationDeadline: undefined,
-        tournamentSettings: undefined,
-        tournamentRounds: undefined,
-        teams: undefined,
-        postings: undefined,
-      };
+    // Validate tournament formats
+    if (debateInput.tournamentFormats && !Array.isArray(debateInput.tournamentFormats)) {
+      return res.status(400).json({ message: 'Tournament formats must be an array.' });
     }
+
+    // Validate league type
+    const validLeagueTypes = ['school', 'university', 'open', 'other'];
+    if (debateInput.leagueType && !validLeagueTypes.includes(debateInput.leagueType)) {
+      return res.status(400).json({ message: 'Invalid league type. Must be one of: school, university, open, other.' });
+    }
+
+    // Prepare tournament-specific data structure using the service
+    const preparedData = tournamentService.prepareTournamentData(debateInput, creator);
 
     // Create the debate using the debate service
     const debate = await debateService.createDebate(preparedData);
 
     // Respond with the created debate object
-    res.status(201).json(debate);
+    res.status(201).json({
+      status: 'success',
+      data: {
+        debate
+      }
+    });
 
   } catch (error) {
     console.error('Create debate error:', error);
     // Send specific error messages from validation/preparation if available
-    res.status(400).json({ message: error.message || 'Failed to create debate' });
+    res.status(400).json({
+      status: 'error',
+      message: error.message || 'Failed to create debate'
+    });
   }
 };
 
@@ -260,14 +262,14 @@ exports.leaveDebate = async (req, res) => {
 exports.getDebate = async (req, res) => {
   try {
     const debateId = req.params.id;
-    
+
     if (!debateId) {
       return res.status(400).json({ message: 'Debate ID is required' });
     }
 
     try {
       const debate = await debateService.getDebateById(debateId);
-      
+
       if (!debate) {
         return res.status(404).json({ message: 'Debate not found' });
       }
@@ -277,20 +279,20 @@ exports.getDebate = async (req, res) => {
       res.json(debate);
     } catch (serviceError) {
       console.error('Service error getting debate:', serviceError);
-      
+
       if (serviceError.message === 'Invalid debate ID format') {
         return res.status(400).json({ message: 'Invalid debate ID format' });
       }
       if (serviceError.message === 'Debate not found') {
         return res.status(404).json({ message: 'Debate not found' });
       }
-      
+
       // For other service errors, return a 500
       throw serviceError;
     }
   } catch (error) {
     console.error('Error in getDebate controller:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to get debate details',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -407,7 +409,7 @@ exports.getUserDebates = async (req, res) => {
             // Find the team objects referenced in the posting
             const team1 = debate.teams?.find(t => t._id.toString() === posting.team1?.toString());
             const team2 = debate.teams?.find(t => t._id.toString() === posting.team2?.toString());
-            
+
             // Add team names to the posting for easier access
             if (team1) {
               posting.team1Name = team1.name;
@@ -417,7 +419,7 @@ exports.getUserDebates = async (req, res) => {
               posting.team2Name = team2.name;
               posting.team2Members = team2.members;
             }
-            
+
             return posting;
           });
         }
@@ -442,7 +444,7 @@ exports.updateDebate = async (req, res) => {
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
-    
+
     // Check if user is the creator
     if (debate.creator.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Only debate creator can update settings' });
@@ -464,7 +466,7 @@ exports.updateDebate = async (req, res) => {
 
     // Save the updated debate
     const updatedDebate = await debate.save();
-    
+
     // Return populated debate data
     const populatedDebate = await Debate.findById(updatedDebate._id)
       .populate('creator', 'username')
@@ -555,7 +557,7 @@ exports.saveTranscript = async (req, res) => {
       .populate('rooms.transcription.speaker', 'username');
     const updatedRoom = updatedDebate.rooms.id(room._id);
 
-    res.json({ 
+    res.json({
       message: 'Transcript saved successfully',
       transcription: updatedRoom.transcription
     });
@@ -606,12 +608,12 @@ exports.analyzeFinalDebate = async (req, res) => {
     debate.status = 'completed';
     debate.analysis = analysis;
     debate.endedAt = new Date();
-    
+
     // Mark room as inactive
     if (activeRoom) {
       activeRoom.isActive = false;
     }
-    
+
     await debate.save();
 
     res.json({ analysis });
@@ -626,7 +628,7 @@ exports.analyzeInterim = async (req, res) => {
     const debate = await Debate.findById(req.params.id)
       .populate('rooms.transcription.speaker', 'username')
       .populate('participants', 'username role');
-    
+
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
@@ -679,7 +681,7 @@ exports.generateTournamentBracket = async (req, res) => {
 
     // Get all debaters (non-judge participants)
     const debaters = debate.participants.filter(p => p.role !== 'judge');
-    
+
     if (debaters.length < 2) {
       return res.status(400).json({ message: 'Not enough debaters to start tournament' });
     }
@@ -690,7 +692,7 @@ exports.generateTournamentBracket = async (req, res) => {
     // Calculate number of rounds needed
     const numRounds = Math.ceil(Math.log2(shuffledDebaters.length));
     const totalSlots = Math.pow(2, numRounds);
-    
+
     // Create first round matches
     const firstRound = [];
     for (let i = 0; i < totalSlots; i += 2) {
@@ -712,7 +714,7 @@ exports.generateTournamentBracket = async (req, res) => {
     for (let round = 2; round <= numRounds; round++) {
       const numMatches = Math.pow(2, numRounds - round);
       const matches = [];
-      
+
       for (let match = 1; match <= numMatches; match++) {
         matches.push({
           round: round,
@@ -722,7 +724,7 @@ exports.generateTournamentBracket = async (req, res) => {
           completed: false
         });
       }
-      
+
       tournamentRounds.push({
         roundNumber: round,
         matches: matches
@@ -765,7 +767,7 @@ exports.updateTournamentMatch = async (req, res) => {
           const nextRound = debate.tournamentRounds.find(r => r.roundNumber === round.roundNumber + 1);
           const nextMatchNumber = Math.ceil(match.matchNumber / 2);
           const nextMatch = nextRound.matches.find(m => m.matchNumber === nextMatchNumber);
-          
+
           if (nextMatch) {
             // Place winner in appropriate slot of next match
             if (match.matchNumber % 2 === 1) {
@@ -802,30 +804,30 @@ exports.updateTournamentMatch = async (req, res) => {
 exports.validateTournamentOperation = async (req, res, next) => {
   try {
     const debate = await Debate.findById(req.params.id);
-    
+
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
-    
+
     // For tournaments, check if registration is still open
     if (debate.format === 'tournament' && debate.status !== 'upcoming') {
-      return res.status(400).json({ 
-        message: 'Cannot join or leave a tournament that has already started or ended' 
+      return res.status(400).json({
+        message: 'Cannot join or leave a tournament that has already started or ended'
       });
     }
-    
+
     // For tournaments, check if registration deadline has passed
     if (debate.format === 'tournament' && debate.registrationDeadline) {
       const now = new Date();
       const deadline = new Date(debate.registrationDeadline);
-      
+
       if (now > deadline) {
-        return res.status(400).json({ 
-          message: 'Registration deadline has passed for this tournament' 
+        return res.status(400).json({
+          message: 'Registration deadline has passed for this tournament'
         });
       }
     }
-    
+
     // All checks passed, proceed to the next middleware
     next();
   } catch (error) {
@@ -839,36 +841,36 @@ exports.assignTeams = async (req, res) => {
   try {
     const { propositionTeam, oppositionTeam } = req.body;
     const debate = await Debate.findById(req.params.id);
-    
+
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
-    
+
     // Verify user is creator or has permission to assign teams
     if (debate.creator.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Only the debate creator can assign teams' });
     }
-    
+
     // Validate team members are participants
     const allTeamMembers = [...propositionTeam, ...oppositionTeam];
     const allParticipantIds = debate.participants.map(p => p._id.toString());
-    
+
     const invalidMembers = allTeamMembers.filter(id => !allParticipantIds.includes(id.toString()));
     if (invalidMembers.length > 0) {
-      return res.status(400).json({ 
-        message: 'Some team members are not participants in this debate' 
+      return res.status(400).json({
+        message: 'Some team members are not participants in this debate'
       });
     }
-    
+
     // Assign teams
     debate.teams = {
       propositionTeam,
       oppositionTeam
     };
-    
+
     const updatedDebate = await debate.save();
     res.json(updatedDebate);
-    
+
   } catch (error) {
     console.error('Error assigning teams:', error);
     res.status(500).json({ message: error.message });
@@ -881,24 +883,24 @@ exports.analyzeSpeech = async (req, res) => {
     const { speechText, speakerId } = req.body;
     const debate = await Debate.findById(req.params.id)
       .populate('participants', 'username role');
-    
+
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
-    
+
     // Validate that the speaker is a participant in the debate
     const isSpeakerParticipant = debate.participants.some(
       p => p._id.toString() === speakerId
     );
-    
+
     if (!isSpeakerParticipant) {
       return res.status(400).json({ message: 'Speaker is not a participant in this debate' });
     }
-    
+
     // Use the AI service to analyze the speech
     const analysisResult = await analyzeDebateSpeech(speechText);
-    
-    res.json({ 
+
+    res.json({
       analysis: analysisResult,
       timestamp: new Date()
     });
@@ -913,31 +915,31 @@ exports.updateTournamentBrackets = async (req, res) => {
   try {
     const { brackets } = req.body;
     const debate = await Debate.findById(req.params.id);
-    
+
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
-    
+
     if (debate.format !== 'tournament') {
       return res.status(400).json({ message: 'This is not a tournament debate' });
     }
-    
+
     // Verify user is creator or organizer
     if (debate.creator.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Only the tournament creator can update brackets' });
     }
-    
+
     // Update tournament brackets
     debate.tournamentRounds = brackets;
-    
+
     // Check if tournament is complete (final match has a winner)
     const finalRound = brackets[brackets.length - 1];
-    if (finalRound && finalRound.matches && 
+    if (finalRound && finalRound.matches &&
         finalRound.matches[0] && finalRound.matches[0].completed) {
       debate.status = 'completed';
       debate.winner = finalRound.matches[0].winner;
     }
-    
+
     await debate.save();
     res.json(debate);
   } catch (error) {
@@ -1105,21 +1107,21 @@ exports.registerParticipants = async (req, res) => {
 exports.generateTestData = async (req, res) => {
   try {
     const debate = await Debate.findById(req.params.id);
-    
+
     if (!debate) {
       return res.status(404).json({ message: 'Tournament not found' });
     }
-    
+
     // Fetch test judges and debaters from the database, ensuring we don't exceed limits
     // Limit judges to 7 to leave room for potential organizer/creator
     const testJudges = await User.find({ role: 'judge', isTestAccount: true }).limit(7);
     const testDebaters = await User.find({ role: 'user', isTestAccount: true }).limit(32);
-    
+
     // console.log(`Found ${testJudges.length} test judges and ${testDebaters.length} test debaters`); // Removed debug log
-    
+
     // Start with completely empty participants array - no creator included
     const participants = [];
-    
+
     // Add judges (maximum exactly 7 to avoid hitting the 8 judge limit)
     for (const judge of testJudges) {
       participants.push({
@@ -1129,12 +1131,12 @@ exports.generateTestData = async (req, res) => {
         judgeRole: judge.judgeRole || 'Judge'
       });
     }
-    
+
     // Add debaters (maximum exactly 32)
     let debaterCount = 0;
     for (const debater of testDebaters) {
       if (debaterCount >= 32) break;
-      
+
       participants.push({
         _id: debater._id,
         username: debater.username,
@@ -1142,19 +1144,19 @@ exports.generateTestData = async (req, res) => {
       });
       debaterCount++;
     }
-    
+
     // Log the counts before saving
     const judgeCount = participants.filter(p => p.role === 'judge').length;
     const debaterCount2 = participants.filter(p => p.role === 'debater').length;
     // console.log(`Preparing to save ${judgeCount} judges and ${debaterCount2} debaters`); // Removed debug log
-    
+
     // Update the debate with the test participants - completely replace existing participants
     debate.participants = participants;
-    
+
     // Save with error handling
     try {
       await debate.save();
-      
+
       res.json({
         message: 'Test participants registered successfully',
         debate: {
@@ -1167,18 +1169,18 @@ exports.generateTestData = async (req, res) => {
       });
     } catch (saveError) {
       console.error('Error saving debate with test participants:', saveError);
-      res.status(400).json({ 
+      res.status(400).json({
         message: 'Failed to save test data',
         error: saveError.message,
         stack: saveError.stack
       });
     }
-    
+
   } catch (error) {
     console.error('Error generating test data:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: error.message,
-      stack: error.stack 
+      stack: error.stack
     });
   }
 };
@@ -1320,7 +1322,7 @@ exports.createApfBatchPostings = async (req, res) => {
 // Helper function to send notifications for a game
 async function sendGameNotifications(debate, game, debateId, batchName) {
   const judgeIds = game.judges.map(j => j.id);
-  
+
   // Send notifications to judges
   for (const judgeId of judgeIds) {
     const judge = await User.findById(judgeId);
@@ -1328,7 +1330,7 @@ async function sendGameNotifications(debate, game, debateId, batchName) {
       if (!judge.notifications) {
         judge.notifications = [];
       }
-      
+
       const notification = {
         type: 'game_assignment',
         debate: debateId,
@@ -1336,16 +1338,16 @@ async function sendGameNotifications(debate, game, debateId, batchName) {
         seen: false,
         createdAt: new Date()
       };
-      
+
       judge.notifications.push(notification);
       await judge.save();
     }
   }
-  
+
   // Send notifications to team members
   const team1 = debate.teams.find(t => t._id.toString() === game.team1.id);
   const team2 = debate.teams.find(t => t._id.toString() === game.team2.id);
-  
+
   if (team1 && team1.members) {
     for (const member of team1.members) {
       if (member.userId) {
@@ -1354,7 +1356,7 @@ async function sendGameNotifications(debate, game, debateId, batchName) {
           if (!teamMember.notifications) {
             teamMember.notifications = [];
           }
-          
+
           const notification = {
             type: 'game_assignment',
             debate: debateId,
@@ -1362,14 +1364,14 @@ async function sendGameNotifications(debate, game, debateId, batchName) {
             seen: false,
             createdAt: new Date()
           };
-          
+
           teamMember.notifications.push(notification);
           await teamMember.save();
         }
       }
     }
   }
-  
+
   if (team2 && team2.members) {
     for (const member of team2.members) {
       if (member.userId) {
@@ -1378,7 +1380,7 @@ async function sendGameNotifications(debate, game, debateId, batchName) {
           if (!teamMember.notifications) {
             teamMember.notifications = [];
           }
-          
+
           const notification = {
             type: 'game_assignment',
             debate: debateId,
@@ -1386,21 +1388,21 @@ async function sendGameNotifications(debate, game, debateId, batchName) {
             seen: false,
             createdAt: new Date()
           };
-          
+
           teamMember.notifications.push(notification);
           await teamMember.save();
         }
       }
     }
   }
-  
+
   // Find the posting and mark notifications as sent
-  const postingIndex = debate.postings.findIndex(p => 
-    p.team1.toString() === game.team1.id && 
+  const postingIndex = debate.postings.findIndex(p =>
+    p.team1.toString() === game.team1.id &&
     p.team2.toString() === game.team2.id &&
     p.batchName === batchName
   );
-  
+
   if (postingIndex !== -1) {
     debate.postings[postingIndex].notifications.judgesNotified = true;
     debate.postings[postingIndex].notifications.sentAt = new Date();
@@ -1558,9 +1560,9 @@ exports.uploadMap = async (req, res) => {
       userId.toString() // Ensure userId is passed as string
     );
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: 'Map uploaded successfully.',
-      mapImageUrl: mapUrl 
+      mapImageUrl: mapUrl
     });
 
   } catch (error) {
@@ -1591,7 +1593,7 @@ exports.getMap = async (req, res) => {
     const mapUrl = await debateService.getTournamentMapUrl(debateId);
 
     // Service returns null if no map or if not a tournament, which is fine
-    res.status(200).json({ mapImageUrl: mapUrl }); 
+    res.status(200).json({ mapImageUrl: mapUrl });
 
   } catch (error) {
     console.error('Error getting tournament map URL:', error);

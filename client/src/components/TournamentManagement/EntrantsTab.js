@@ -12,9 +12,13 @@ import {
   TableRow,
   Paper,
   IconButton,
-  TextField
+  TextField,
+  Switch,
+  FormControlLabel,
+  Tooltip,
+  Chip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckCircleIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
 // Assume EntrantDialog and DeleteConfirmationDialog will be created later
@@ -30,6 +34,8 @@ const EntrantsTab = ({
   teams = [], // Add teams prop to map teamId to name
   currentUser, // Added prop
   tournamentCreatorId, // Added prop
+  onCheckInEntrant, // New prop for checking in entrants
+  onCheckOutEntrant, // New prop for checking out entrants
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,6 +110,9 @@ const EntrantsTab = ({
               <TableCell>{t('entrantsTab.headerClub', { defaultValue: 'Club' })}</TableCell>
               <TableCell>{t('entrantsTab.headerRole', { defaultValue: 'Role' })}</TableCell>
               <TableCell>{t('entrantsTab.headerTeam', { defaultValue: 'Team' })}</TableCell>
+              {isOrganizerOrAdmin && (
+                <TableCell align="center">{t('entrantsTab.headerStatus', { defaultValue: 'Check-in Status' })}</TableCell>
+              )}
               {isOrganizerOrAdmin && <TableCell align="right">{t('entrantsTab.headerActions', { defaultValue: 'Actions' })}</TableCell>}
             </TableRow>
           </TableHead>
@@ -126,6 +135,31 @@ const EntrantsTab = ({
                   <TableCell>{entrant.tournamentRole}</TableCell>
                   <TableCell>{teamName}</TableCell> {/* Display team name */}
                   {isOrganizerOrAdmin && (
+                    <TableCell align="center">
+                      {entrant.isPresent ? (
+                        <Tooltip title={t('entrantsTab.checkedIn', { defaultValue: 'Checked In' })}>
+                          <Chip
+                            icon={<CheckCircleIcon />}
+                            label={t('entrantsTab.present', { defaultValue: 'Present' })}
+                            color="success"
+                            variant="outlined"
+                            onClick={() => onCheckOutEntrant(entrant.userId)}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title={t('entrantsTab.notCheckedIn', { defaultValue: 'Not Checked In' })}>
+                          <Chip
+                            icon={<CancelIcon />}
+                            label={t('entrantsTab.absent', { defaultValue: 'Absent' })}
+                            color="error"
+                            variant="outlined"
+                            onClick={() => onCheckInEntrant(entrant.userId)}
+                          />
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  )}
+                  {isOrganizerOrAdmin && (
                     <TableCell align="right">
                       <IconButton
                         color="primary"
@@ -146,7 +180,7 @@ const EntrantsTab = ({
             })}
             {filteredEntrants.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isOrganizerOrAdmin ? 7 : 6} align="center"> {/* Adjust colspan based on Actions column */}
+                <TableCell colSpan={isOrganizerOrAdmin ? 8 : 6} align="center"> {/* Adjust colspan based on Status and Actions columns */}
                   {entrants.length > 0 ? t('entrantsTab.noMatch', { defaultValue: 'No entrants match search' }) : t('entrantsTab.noEntrants', { defaultValue: 'No entrants found' }) }
                 </TableCell>
               </TableRow>

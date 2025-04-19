@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next'; // Import useTranslation
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom'; // Commented out as it's not currently used
 import {
   Container,
   Typography,
@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import { useTournamentData } from '../hooks/useTournamentData';
 import { useTournamentUIManager } from '../hooks/useTournamentUIManager';
 import { useEntrantManagement } from '../hooks/useEntrantManagement';
+import { useEntrantCheckIn } from '../hooks/useEntrantCheckIn';
 import { useTeamManagement } from '../hooks/useTeamManagement';
 import { useJudgeManagement } from '../hooks/useJudgeManagement';
 import { useApfPostingManagement } from '../hooks/useApfPostingManagement';
@@ -25,9 +26,14 @@ import EntrantsTab from './TournamentManagement/EntrantsTab';
 import TeamsTab from './TournamentManagement/TeamsTab';
 import JudgesTab from './TournamentManagement/JudgesTab';
 import PostingTab from './TournamentManagement/PostingTab';
+import TournamentPostingTab from './TournamentManagement/TournamentPostingTab'; // Import new tournament posting tab
 import StandingsTab from './TournamentManagement/StandingsTab';
 import BracketTab from './TournamentManagement/BracketTab';
 import AnnouncementsTab from './TournamentManagement/AnnouncementsTab'; // Added import
+import CustomRegistrationFields from './TournamentManagement/CustomRegistrationFields'; // Import custom fields component
+import CheckInTab from './TournamentManagement/CheckInTab'; // Import check-in component
+import ResultsTab from './TournamentManagement/ResultsTab'; // Import results component
+import MatchPostingsTab from './TournamentManagement/MatchPostingsTab'; // Import match postings component
 
 // Import Dialog Components
 import DeleteConfirmationDialog from './TournamentManagement/DeleteConfirmationDialog';
@@ -53,7 +59,7 @@ function TabPanel(props) {
 }
 
 const TournamentManagement = () => {
-  const navigate = useNavigate(); // Keep navigate if needed for other actions
+  // const navigate = useNavigate(); // Commented out as it's not currently used
   const { t } = useTranslation(); // Initialize useTranslation
 
   // --- Initialize Hooks ---
@@ -78,7 +84,8 @@ const TournamentManagement = () => {
   const judgeManager = useJudgeManagement(
     dataManager.judges,
     dataManager.setJudges, // Pass setter for local updates
-    uiManager.showNotification
+    uiManager.showNotification,
+    dataManager.refreshData // Pass refresh function
   );
   const apfManager = useApfPostingManagement(
     dataManager.tournamentId,
@@ -86,6 +93,12 @@ const TournamentManagement = () => {
     dataManager.judges, // Needed for dialog/card
     uiManager.showNotification,
     dataManager.refreshPostings // Pass specific refresh function
+  );
+
+  // Initialize entrant check-in hook
+  const entrantCheckIn = useEntrantCheckIn(
+    dataManager.refreshData, // Pass the main refresh function
+    uiManager.showNotification
   );
 
   // --- Loading and Error States ---
@@ -124,8 +137,13 @@ const TournamentManagement = () => {
           <Tab label={t('tournamentManagement.tabs.teams', 'Teams')} />
           <Tab label={t('tournamentManagement.tabs.judges', 'Judges')} />
           <Tab label={t('tournamentManagement.tabs.posting', 'Posting')} />
+          <Tab label={t('tournamentManagement.tabs.tournamentPosting', 'Tournament Posting')} />
+          <Tab label={t('tournamentManagement.tabs.matchPostings', 'Match Postings')} />
           <Tab label={t('tournamentManagement.tabs.standings', 'Standings')} />
+          <Tab label={t('tournamentManagement.tabs.results', 'Results')} />
           <Tab label={t('tournamentManagement.tabs.bracket', 'Bracket')} />
+          <Tab label={t('tournamentManagement.tabs.checkIn', 'Check-In')} />
+          <Tab label={t('tournamentManagement.tabs.registrationFields', 'Registration Fields')} />
         </Tabs>
       </Box>
 
@@ -150,6 +168,8 @@ const TournamentManagement = () => {
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
           teams={dataManager.teams} // Pass teams data for name lookup
+          onCheckInEntrant={entrantCheckIn.checkInEntrant} // Pass check-in function
+          onCheckOutEntrant={entrantCheckIn.checkOutEntrant} // Pass check-out function
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={2}> {/* Index updated */}
@@ -196,16 +216,37 @@ const TournamentManagement = () => {
           tournamentCreatorId={tournamentCreatorId}
         />
       </TabPanel>
-       <TabPanel value={uiManager.tabValue} index={5}> {/* Index updated */}
-        <StandingsTab
-          teams={dataManager.teams} // Pass teams potentially updated by standings fetch
-          onRefreshStandings={dataManager.refreshStandings}
-          loading={dataManager.loading} // Use main loading or add specific one
+      <TabPanel value={uiManager.tabValue} index={5}> {/* Tournament Posting Tab */}
+        <TournamentPostingTab
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={6}> {/* Index updated */}
+      <TabPanel value={uiManager.tabValue} index={6}> {/* Match Postings Tab */}
+        <MatchPostingsTab
+          currentUser={currentUser}
+        />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={7}> {/* Standings Tab */}
+        <StandingsTab
+          teams={dataManager.teams} // Pass teams potentially updated by standings fetch
+          onRefreshStandings={async () => {
+            await dataManager.refreshStandings();
+            uiManager.showNotification('Standings refreshed successfully', 'success');
+          }}
+          loading={dataManager.loadingStandings} // Use the specific loading state for standings
+          error={dataManager.standingsError} // Pass the specific error state for standings
+          currentUser={currentUser}
+          tournamentCreatorId={tournamentCreatorId}
+        />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={8}> {/* Results Tab */}
+        <ResultsTab
+          currentUser={currentUser}
+          tournamentId={dataManager.tournamentId}
+        />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={9}> {/* Bracket Tab */}
         <BracketTab
           tournamentRounds={dataManager.tournament?.tournamentRounds || []}
           entrants={dataManager.entrants} // Pass entrants data
@@ -223,6 +264,18 @@ const TournamentManagement = () => {
           initializing={dataManager.initializingBracket}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+        />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={10}> {/* Check-In Tab */}
+        <CheckInTab
+          tournamentId={dataManager.tournamentId}
+          currentUser={currentUser}
+        />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={11}> {/* Custom Registration Fields Tab */}
+        <CustomRegistrationFields
+          tournament={dataManager.tournament}
+          currentUser={currentUser}
         />
       </TabPanel>
 

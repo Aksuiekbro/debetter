@@ -27,10 +27,10 @@ class TeamService {
 
     // Check if either member is already in another team
     const existingTeams = debate.teams || [];
-    const isLeaderInTeam = existingTeams.some(team => 
+    const isLeaderInTeam = existingTeams.some(team =>
       team.members.some(member => member.userId.toString() === leaderId.toString())
     );
-    const isSpeakerInTeam = existingTeams.some(team => 
+    const isSpeakerInTeam = existingTeams.some(team =>
       team.members.some(member => member.userId.toString() === speakerId.toString())
     );
 
@@ -41,7 +41,7 @@ class TeamService {
 
   // Creates a new team within a tournament
   async createTeam(tournamentId, teamData) {
-    const { name, leader, speaker } = teamData;
+    const { name, leader, speaker, club, city, institution } = teamData;
     const debate = await Debate.findById(tournamentId).populate('participants');
     if (!debate) throw new Error('Tournament not found');
     if (debate.format !== 'tournament') throw new Error('Debate is not a tournament');
@@ -55,6 +55,10 @@ class TeamService {
         { userId: leader, role: 'leader' },
         { userId: speaker, role: 'speaker' }
       ],
+      club: club || '',
+      city: city || '',
+      institution: institution || '',
+      isPresent: false,
       wins: 0,
       losses: 0,
       points: 0
@@ -76,7 +80,7 @@ class TeamService {
 
   // Updates an existing team in a tournament
   async updateTeam(tournamentId, teamId, teamUpdateData) {
-    const { name, leader, speaker } = teamUpdateData;
+    const { name, leader, speaker, club, city, institution, isPresent } = teamUpdateData;
     const debate = await Debate.findById(tournamentId).populate('participants');
     if (!debate) throw new Error('Tournament not found');
     if (!debate.teams || !Array.isArray(debate.teams)) throw new Error('Tournament has no teams');
@@ -95,6 +99,13 @@ class TeamService {
         { userId: leader, role: 'leader' },
         { userId: speaker, role: 'speaker' }
       ],
+      club: club !== undefined ? club : existingTeam.club || '',
+      city: city !== undefined ? city : existingTeam.city || '',
+      institution: institution !== undefined ? institution : existingTeam.institution || '',
+      // Update presence status if provided, otherwise keep existing
+      isPresent: isPresent !== undefined ? isPresent : existingTeam.isPresent || false,
+      // If marking as present and wasn't before, add timestamp
+      checkedInAt: isPresent && !existingTeam.isPresent ? new Date() : existingTeam.checkedInAt,
       // Preserve existing stats explicitly
       wins: existingTeam.wins || 0,
       losses: existingTeam.losses || 0,
@@ -120,23 +131,27 @@ class TeamService {
 
       const shuffledDebaters = [...debaters].sort(() => Math.random() - 0.5);
       const newTeams = [];
-      
+
       // Clear existing teams first
       debate.teams = [];
-      
+
       for (let i = 0; i < shuffledDebaters.length; i += 2) {
           if (i + 1 >= shuffledDebaters.length) break; // Skip last one if odd number
 
           const leader = shuffledDebaters[i];
           const speaker = shuffledDebaters[i + 1];
-          
+
           // Double check that neither is a judge or organizer
-          if (leader.role === 'judge' || speaker.role === 'judge' || 
+          if (leader.role === 'judge' || speaker.role === 'judge' ||
               leader.role === 'organizer' || speaker.role === 'organizer') {
             console.error('Attempted to create team with invalid role:', { leader, speaker });
             continue; // Skip this pair and move to next
           }
-          
+
+          // Try to get club/city/institution from user profiles
+          const leaderUser = await User.findById(leader._id).lean();
+          const speakerUser = await User.findById(speaker._id).lean();
+
           newTeams.push({
               _id: new mongoose.Types.ObjectId(),
               name: `Team ${Math.floor(i / 2) + 1}`,
@@ -144,6 +159,13 @@ class TeamService {
                   { userId: leader._id, role: 'leader' },
                   { userId: speaker._id, role: 'speaker' }
               ],
+              // Use club from leader if available
+              club: leaderUser?.club || '',
+              // Use city from leader if available
+              city: leaderUser?.city || '',
+              // Use institution from leader if available
+              institution: leaderUser?.institution || '',
+              isPresent: false,
               wins: 0, losses: 0, points: 0 // Initialize stats
           });
       }
@@ -164,8 +186,9 @@ class TeamService {
     const debate = await Debate.findById(tournamentId)
                                .populate({
                                  path: 'teams.members.userId',
-                                 select: 'username _id email' // Select fields you need
+                                 select: 'username _id email club city institution' // Include additional fields
                                })
+                               .populate('teams.checkedInBy', 'username _id') // Populate check-in user
                                .lean(); // Use lean for performance if only reading
 
     if (!debate) throw new Error('Tournament not found');
@@ -193,6 +216,45 @@ class TeamService {
     return { success: true, message: 'Team deleted successfully' };
   }
 
+  // Check in a team (mark as present)
+  async checkInTeam(tournamentId, teamId, userId) {
+    const debate = await Debate.findById(tournamentId);
+    if (!debate) throw new Error('Tournament not found');
+    if (!debate.teams || !Array.isArray(debate.teams)) throw new Error('Tournament has no teams');
+
+    const teamIndex = debate.teams.findIndex(team => team._id.toString() === teamId);
+    if (teamIndex === -1) throw new Error('Team not found in tournament');
+
+    // Update team presence status
+    debate.teams[teamIndex].isPresent = true;
+    debate.teams[teamIndex].checkedInAt = new Date();
+    debate.teams[teamIndex].checkedInBy = userId;
+
+    debate.markModified('teams'); // Important for updating nested arrays
+    await debate.save();
+
+    return debate.teams[teamIndex];
+  }
+
+  // Check out a team (mark as not present)
+  async checkOutTeam(tournamentId, teamId) {
+    const debate = await Debate.findById(tournamentId);
+    if (!debate) throw new Error('Tournament not found');
+    if (!debate.teams || !Array.isArray(debate.teams)) throw new Error('Tournament has no teams');
+
+    const teamIndex = debate.teams.findIndex(team => team._id.toString() === teamId);
+    if (teamIndex === -1) throw new Error('Team not found in tournament');
+
+    // Update team presence status
+    debate.teams[teamIndex].isPresent = false;
+    debate.teams[teamIndex].checkedInAt = null;
+    // We keep the checkedInBy field for audit purposes
+
+    debate.markModified('teams'); // Important for updating nested arrays
+    await debate.save();
+
+    return debate.teams[teamIndex];
+  }
 }
 
 module.exports = new TeamService();

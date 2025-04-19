@@ -2,6 +2,7 @@ const commentService = require('../services/commentService');
 const announcementService = require('../services/announcementService');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const socketService = require('../services/socketService'); // Import socket service for real-time updates
 
 /**
  * Create a new comment for an announcement
@@ -11,8 +12,15 @@ exports.createComment = catchAsync(async (req, res, next) => {
     const { content } = req.body;
     const userId = req.user.id;
 
+    if (!content || content.trim() === '') {
+        return next(new AppError('Comment content cannot be empty', 400));
+    }
+
     // Validate the announcement exists
-    await announcementService.getAnnouncementById(announcementId);
+    const announcement = await announcementService.getAnnouncementById(announcementId);
+    if (!announcement) {
+        return next(new AppError('Announcement not found', 404));
+    }
 
     // Create the comment
     const comment = await commentService.createComment(
@@ -21,10 +29,19 @@ exports.createComment = catchAsync(async (req, res, next) => {
         userId
     );
 
+    // Get the tournament ID for the announcement
+    const tournamentId = announcement.tournament;
+
+    // Emit socket event for real-time updates
+    socketService.emitCommentCreated(tournamentId, announcementId, comment);
+
+    // Return the populated comment with user info
+    const populatedComment = await commentService.getCommentById(comment._id);
+
     res.status(201).json({
         status: 'success',
         data: {
-            comment,
+            comment: populatedComment,
         },
     });
 });
@@ -58,8 +75,23 @@ exports.deleteComment = catchAsync(async (req, res, next) => {
     const userId = req.user.id;
     const userRole = req.user.role;
 
+    // Get the comment to find its announcement and tournament
+    const comment = await commentService.getCommentById(commentId);
+    if (!comment) {
+        return next(new AppError('Comment not found.', 404));
+    }
+
+    const announcementId = comment.announcement;
+
+    // Get the tournament ID for the announcement
+    const announcement = await announcementService.getAnnouncementById(announcementId);
+    const tournamentId = announcement.tournament;
+
     // Delete the comment
     await commentService.deleteComment(commentId, userId, userRole);
+
+    // Emit socket event for real-time updates
+    socketService.emitCommentDeleted(tournamentId, announcementId, commentId);
 
     res.status(204).json({
         status: 'success',

@@ -26,6 +26,10 @@ const scheduleItemSchema = new Schema({
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true
+  },
+  metadata: {
+      type: Schema.Types.Mixed,
+      default: {}
   }
 }, {
   timestamps: true // Adds createdAt and updatedAt automatically

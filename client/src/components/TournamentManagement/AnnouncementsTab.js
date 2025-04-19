@@ -38,7 +38,7 @@ function a11yProps(index) {
 
 const AnnouncementsTab = ({ currentUser, tournamentCreatorId, tournament }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState(0); // 0: Schedule, 1: Map, 2: Feed
+  const [activeTab, setActiveTab] = useState(0); // 0: Feed, 1: Schedule, 2: Map
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -73,14 +73,6 @@ const AnnouncementsTab = ({ currentUser, tournamentCreatorId, tournament }) => {
         <TabPanel value={activeTab} index={2}>
           <MapView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={tournament} />
         </TabPanel>
-
-        {/* Debug info */}
-        <Box sx={{ mt: 2, p: 2, border: '1px dashed #ccc' }}>
-          <Typography variant="caption">Debug Info:</Typography>
-          <pre style={{ fontSize: '0.7rem' }}>
-            {JSON.stringify({ activeTab, currentUser, tournamentCreatorId }, null, 2)}
-          </pre>
-        </Box>
       </Paper>
     </Box>
   );

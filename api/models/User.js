@@ -21,15 +21,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'judge', 'organizer', 'admin'],
-    default: 'user'
-  },
-  judgeRole: {
-    type: String,
-    enum: ['Head Judge', 'Judge', 'Assistant Judge'],
-    required: function() {
-      return this.role === 'judge';
-    }
+    enum: ['participant', 'organizer'],
+    default: 'participant'
   },
   phoneNumber: { type: String, trim: true },
   club: { type: String, trim: true },
@@ -120,7 +113,7 @@ userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {
     return next();
   }
-  
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -135,9 +128,9 @@ userSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Method to check if user is admin
-userSchema.methods.isAdmin = function() {
-  return this.role === 'admin' || this.isFirstOrganizer;
+// Method to check if user is organizer
+userSchema.methods.isOrganizer = function() {
+  return this.role === 'organizer';
 };
 
 module.exports = mongoose.model('User', userSchema);

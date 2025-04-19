@@ -316,8 +316,8 @@ class PostingService {
       .populate({
         path: 'postings',
         populate: [
-          { path: 'team1', select: 'name members', populate: { path: 'members.userId', select: 'username _id' } },
-          { path: 'team2', select: 'name members', populate: { path: 'members.userId', select: 'username _id' } },
+          { path: 'team1', select: 'name members club city institution', populate: { path: 'members.userId', select: 'username _id' } },
+          { path: 'team2', select: 'name members club city institution', populate: { path: 'members.userId', select: 'username _id' } },
           { path: 'judges', select: 'username _id role' },
           { path: 'createdBy', select: 'username _id' },
           { path: 'evaluations.judge', select: 'username _id' } // Populate judge in evaluations if needed
@@ -336,6 +336,18 @@ class PostingService {
     }
     if (filters.batchName) {
       postings = postings.filter(p => p.batchName === filters.batchName);
+    }
+    if (filters.round) {
+      postings = postings.filter(p => p.round === parseInt(filters.round, 10));
+    }
+    if (filters.roundType) {
+      postings = postings.filter(p => p.roundType === filters.roundType);
+    }
+    if (filters.confirmed !== undefined) {
+      postings = postings.filter(p => p.confirmed === filters.confirmed);
+    }
+    if (filters.published !== undefined) {
+      postings = postings.filter(p => p.published === filters.published);
     }
     // Add more filters as needed
 
@@ -499,6 +511,324 @@ class PostingService {
     return '/uploads/placeholder-ballot.jpg';
   }
 
+  /**
+   * Generate match postings for a tournament round
+   * @param {string} tournamentId - The ID of the tournament
+   * @param {Object} options - Options for generating postings
+   * @param {number} options.round - The round number
+   * @param {string} options.roundType - The round type ('preliminary' or 'playoff')
+   * @param {boolean} options.avoidRematches - Whether to avoid rematches
+   * @param {boolean} options.avoidSameClub - Whether to avoid same-club matchups
+   * @returns {Promise<Array>} Array of generated postings
+   */
+  async generateMatchPostings(tournamentId, options) {
+    const {
+      round = 1,
+      roundType = 'preliminary',
+      avoidRematches = true,
+      avoidSameClub = true
+    } = options || {};
+
+    const tournament = await Debate.findById(tournamentId)
+      .populate('participants.userId', 'username _id')
+      .populate('postings')
+      .lean();
+
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    if (tournament.format !== 'tournament') {
+      throw new Error('Not a tournament');
+    }
+
+    // Get teams that are marked as present
+    const presentTeams = tournament.teams.filter(team => team.isPresent);
+
+    if (presentTeams.length < 2) {
+      throw new Error('Not enough present teams to generate postings');
+    }
+
+    // Get judges that are marked as present
+    const presentJudges = tournament.participants.filter(
+      p => p.tournamentRole === 'Judge' && p.isPresent
+    );
+
+    if (presentJudges.length === 0) {
+      throw new Error('No judges are marked as present');
+    }
+
+    // Get previous postings for this tournament
+    const previousPostings = tournament.postings || [];
+
+    // Shuffle teams randomly
+    const shuffledTeams = [...presentTeams].sort(() => Math.random() - 0.5);
+
+    // Create a map of previous matchups for quick lookup
+    const previousMatchups = new Map();
+
+    if (avoidRematches) {
+      previousPostings.forEach(posting => {
+        const team1Id = posting.team1.toString();
+        const team2Id = posting.team2.toString();
+
+        if (!previousMatchups.has(team1Id)) {
+          previousMatchups.set(team1Id, new Set());
+        }
+        previousMatchups.get(team1Id).add(team2Id);
+
+        if (!previousMatchups.has(team2Id)) {
+          previousMatchups.set(team2Id, new Set());
+        }
+        previousMatchups.get(team2Id).add(team1Id);
+      });
+    }
+
+    // Create a map of team clubs for quick lookup
+    const teamClubs = new Map();
+
+    if (avoidSameClub) {
+      shuffledTeams.forEach(team => {
+        teamClubs.set(team._id.toString(), team.club);
+      });
+    }
+
+    // Generate matchups
+    const matchups = [];
+    const assignedTeams = new Set();
+
+    // First pass: try to create optimal matchups
+    for (let i = 0; i < shuffledTeams.length; i++) {
+      if (assignedTeams.has(shuffledTeams[i]._id.toString())) {
+        continue;
+      }
+
+      let bestMatch = null;
+      let bestMatchScore = -1;
+
+      for (let j = i + 1; j < shuffledTeams.length; j++) {
+        if (assignedTeams.has(shuffledTeams[j]._id.toString())) {
+          continue;
+        }
+
+        const team1Id = shuffledTeams[i]._id.toString();
+        const team2Id = shuffledTeams[j]._id.toString();
+
+        // Calculate match score (higher is better)
+        let score = 0;
+
+        // Avoid rematches if requested
+        if (avoidRematches) {
+          const hasPreviousMatch = previousMatchups.has(team1Id) &&
+                                  previousMatchups.get(team1Id).has(team2Id);
+          if (!hasPreviousMatch) {
+            score += 2;
+          }
+        }
+
+        // Avoid same-club matchups if requested
+        if (avoidSameClub) {
+          const team1Club = teamClubs.get(team1Id);
+          const team2Club = teamClubs.get(team2Id);
+
+          if (team1Club && team2Club && team1Club !== team2Club) {
+            score += 1;
+          }
+        }
+
+        if (score > bestMatchScore) {
+          bestMatchScore = score;
+          bestMatch = j;
+        }
+      }
+
+      // If we found a match, add it
+      if (bestMatch !== null) {
+        matchups.push({
+          team1: shuffledTeams[i]._id,
+          team2: shuffledTeams[bestMatch]._id
+        });
+
+        assignedTeams.add(shuffledTeams[i]._id.toString());
+        assignedTeams.add(shuffledTeams[bestMatch]._id.toString());
+      }
+    }
+
+    // Second pass: assign any remaining teams
+    const remainingTeams = shuffledTeams.filter(
+      team => !assignedTeams.has(team._id.toString())
+    );
+
+    for (let i = 0; i < remainingTeams.length; i += 2) {
+      if (i + 1 < remainingTeams.length) {
+        matchups.push({
+          team1: remainingTeams[i]._id,
+          team2: remainingTeams[i + 1]._id
+        });
+      } else {
+        // Odd number of teams, add a bye or handle as needed
+        console.log(`Team ${remainingTeams[i].name} has a bye for round ${round}`);
+      }
+    }
+
+    // Assign judges and rooms to matchups
+    const shuffledJudges = [...presentJudges].sort(() => Math.random() - 0.5);
+    const postings = [];
+
+    for (let i = 0; i < matchups.length; i++) {
+      const judgeIndex = i % shuffledJudges.length;
+      const judge = shuffledJudges[judgeIndex];
+
+      postings.push({
+        team1: matchups[i].team1,
+        team2: matchups[i].team2,
+        location: `Room ${i + 1}`,
+        judges: [judge.userId._id],
+        theme: 'TBD', // Theme will be set separately
+        status: 'scheduled',
+        round,
+        roundType,
+        matchNumber: i + 1,
+        confirmed: false,
+        published: false,
+        createdAt: new Date(),
+        createdBy: null // Will be set when saving
+      });
+    }
+
+    return postings;
+  }
+
+  /**
+   * Save generated match postings to the database
+   * @param {string} tournamentId - The ID of the tournament
+   * @param {Array} postings - Array of postings to save
+   * @param {string} userId - ID of the user creating the postings
+   * @returns {Promise<Object>} Updated tournament with new postings
+   */
+  async saveMatchPostings(tournamentId, postings, userId) {
+    const tournament = await Debate.findById(tournamentId);
+
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    // Add creator to each posting
+    const postingsWithCreator = postings.map(posting => ({
+      ...posting,
+      createdBy: userId
+    }));
+
+    // Add postings to tournament
+    tournament.postings.push(...postingsWithCreator);
+
+    // Save tournament
+    await tournament.save();
+
+    return tournament;
+  }
+
+  /**
+   * Confirm postings for a tournament round
+   * @param {string} tournamentId - The ID of the tournament
+   * @param {number} round - The round number
+   * @param {string} roundType - The round type ('preliminary' or 'playoff')
+   * @returns {Promise<Object>} Updated tournament with confirmed postings
+   */
+  async confirmMatchPostings(tournamentId, round, roundType = 'preliminary') {
+    const tournament = await Debate.findById(tournamentId);
+
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    // Find postings for the specified round
+    const postingIndices = tournament.postings.reduce((indices, posting, index) => {
+      if (posting.round === round && posting.roundType === roundType && !posting.confirmed) {
+        indices.push(index);
+      }
+      return indices;
+    }, []);
+
+    if (postingIndices.length === 0) {
+      throw new Error(`No unconfirmed postings found for round ${round}`);
+    }
+
+    // Confirm postings
+    postingIndices.forEach(index => {
+      tournament.postings[index].confirmed = true;
+    });
+
+    // Save tournament
+    await tournament.save();
+
+    return tournament;
+  }
+
+  /**
+   * Publish confirmed postings for a tournament round
+   * @param {string} tournamentId - The ID of the tournament
+   * @param {number} round - The round number
+   * @param {string} roundType - The round type ('preliminary' or 'playoff')
+   * @returns {Promise<Object>} Updated tournament with published postings
+   */
+  async publishMatchPostings(tournamentId, round, roundType = 'preliminary') {
+    const tournament = await Debate.findById(tournamentId);
+
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    // Find confirmed postings for the specified round
+    const postingIndices = tournament.postings.reduce((indices, posting, index) => {
+      if (posting.round === round && posting.roundType === roundType && posting.confirmed && !posting.published) {
+        indices.push(index);
+      }
+      return indices;
+    }, []);
+
+    if (postingIndices.length === 0) {
+      throw new Error(`No confirmed unpublished postings found for round ${round}`);
+    }
+
+    // Publish postings
+    const now = new Date();
+    postingIndices.forEach(index => {
+      tournament.postings[index].published = true;
+      tournament.postings[index].publishedAt = now;
+    });
+
+    // Save tournament
+    await tournament.save();
+
+    return tournament;
+  }
+
+  /**
+   * Get the maximum round number for a tournament
+   * @param {string} tournamentId - The ID of the tournament
+   * @param {string} roundType - The round type ('preliminary' or 'playoff')
+   * @returns {Promise<number>} The maximum round number
+   */
+  async getMaxRound(tournamentId, roundType = 'preliminary') {
+    const tournament = await Debate.findById(tournamentId).lean();
+
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    const postings = tournament.postings || [];
+
+    // Filter by round type
+    const filteredPostings = postings.filter(posting => posting.roundType === roundType);
+
+    if (filteredPostings.length === 0) {
+      return 0;
+    }
+
+    // Get the maximum round number
+    return Math.max(...filteredPostings.map(posting => posting.round));
+  }
 }
 
 module.exports = new PostingService();

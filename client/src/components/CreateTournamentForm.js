@@ -26,17 +26,19 @@ const CreateTournamentForm = () => {
   const [name, setName] = useState('');
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [date, setDate] = useState(null); // Renamed for clarity: this is the Start Date
+  const [endDate, setEndDate] = useState(null); // Add end date
   const [registrationDeadline, setRegistrationDeadline] = useState(null); // Add state for registration deadline
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [eligibility, setEligibility] = useState('');
   const [category, setCategory] = useState(''); // Add state for category
   const [difficulty, setDifficulty] = useState(''); // Add state for difficulty
+  const [leagueType, setLeagueType] = useState('open'); // Add state for league type
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const availableFormats = ['APD', 'BP', 'LD']; // Available debate formats
+  const availableFormats = ['APD', 'BP', 'LD', 'WSDC', 'Other']; // Available debate formats
 
   const handleFormatChange = (event) => {
     const { value, checked } = event.target;
@@ -56,12 +58,14 @@ const CreateTournamentForm = () => {
       format: 'tournament',
       tournamentFormats: selectedFormats, // Use 'tournamentFormats' key
       startDate: date instanceof Date && !isNaN(date.getTime()) ? date.toISOString() : null, // Use 'startDate' key (Start Date)
+      endDate: endDate instanceof Date && !isNaN(endDate.getTime()) ? endDate.toISOString() : null, // Add end date
       registrationDeadline: registrationDeadline instanceof Date && !isNaN(registrationDeadline.getTime()) ? registrationDeadline.toISOString() : null, // Add registration deadline
       location,
       description,
       eligibilityCriteria: eligibility, // Use 'eligibilityCriteria' key
       category, // Add category
       difficulty, // Add difficulty
+      leagueType, // Add league type
     };
 
     try {
@@ -72,12 +76,14 @@ const CreateTournamentForm = () => {
       setName('');
       setSelectedFormats([]);
       setDate(null); // Clear Start Date
+      setEndDate(null); // Clear End Date
       setRegistrationDeadline(null); // Clear Registration Deadline
       setLocation('');
       setDescription('');
       setEligibility('');
       setCategory(''); // Clear category
       setDifficulty(''); // Clear difficulty
+      setLeagueType('open'); // Reset league type
     } catch (err) {
       console.error("Error creating tournament:", err);
       setError(err.response?.data?.message || t('createTournamentForm.errorMessageDefault', 'Failed to create tournament. Please try again.'));
@@ -163,10 +169,17 @@ const CreateTournamentForm = () => {
         </FormControl>
 
         <DatePicker
-          label={t('createTournamentForm.dateLabel', 'Date')}
+          label={t('createTournamentForm.startDateLabel', 'Start Date')}
           value={date}
           onChange={(newDate) => setDate(newDate)}
           renderInput={(params) => <TextField {...params} fullWidth required sx={{ mb: 2 }} disabled={loading} inputProps={{ ...params.inputProps, "data-testid": "tournament-start-date-input" }} />}
+        />
+
+        <DatePicker
+          label={t('createTournamentForm.endDateLabel', 'End Date')}
+          value={endDate}
+          onChange={(newDate) => setEndDate(newDate)}
+          renderInput={(params) => <TextField {...params} fullWidth required sx={{ mb: 2 }} disabled={loading} inputProps={{ ...params.inputProps, "data-testid": "tournament-end-date-input" }} />}
         />
 
         <DatePicker
@@ -200,6 +213,23 @@ const CreateTournamentForm = () => {
           inputProps={{ "data-testid": "tournament-description-input" }}
         />
 
+        {/* League Type Select */}
+        <FormControl fullWidth required sx={{ mb: 2 }} disabled={loading}>
+          <InputLabel id="league-type-select-label">{t('createTournamentForm.leagueTypeLabel', 'League Type')}</InputLabel>
+          <Select
+            labelId="league-type-select-label"
+            value={leagueType}
+            label={t('createTournamentForm.leagueTypeLabel', 'League Type')}
+            onChange={(e) => setLeagueType(e.target.value)}
+            inputProps={{ "data-testid": "tournament-league-type-select" }}
+          >
+            <MenuItem value="school">{t('createTournamentForm.leagueType.school', 'School')}</MenuItem>
+            <MenuItem value="university">{t('createTournamentForm.leagueType.university', 'University')}</MenuItem>
+            <MenuItem value="open">{t('createTournamentForm.leagueType.open', 'Open')}</MenuItem>
+            <MenuItem value="other">{t('createTournamentForm.leagueType.other', 'Other')}</MenuItem>
+          </Select>
+        </FormControl>
+
         <TextField
           label={t('createTournamentForm.eligibilityLabel', 'Eligibility Criteria')}
           variant="outlined"
@@ -212,6 +242,10 @@ const CreateTournamentForm = () => {
           disabled={loading}
           inputProps={{ "data-testid": "tournament-eligibility-input" }}
         />
+
+        <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+          {t('createTournamentForm.customFieldsNote', 'Note: After creating the tournament, you can add custom registration fields for participants.')}
+        </Typography>
 
         <Button
           type="submit"

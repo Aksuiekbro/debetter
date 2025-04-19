@@ -18,7 +18,7 @@ const TeamDialog = ({
   onClose,
   onSubmit, // Corresponds to handleSubmitTeam
   isEditing,
-  teamForm, // The form state { name, leader, speaker } from useTeamManagement
+  teamForm, // The form state { name, leader, speaker, club, city, institution, isPresent } from useTeamManagement
   onFormChange, // Corresponds to handleTeamFormChange
   entrants = [], // Needed for dropdown options
   loading = false // Loading state from useTeamManagement
@@ -96,6 +96,45 @@ const TeamDialog = ({
             ))}
           </Select>
         </FormControl>
+
+        <TextField
+          margin="dense"
+          name="club"
+          label={t('teamDialog.clubLabel', { defaultValue: 'Club' })}
+          type="text"
+          fullWidth
+          variant="outlined"
+          value={teamForm.club || ''}
+          onChange={onFormChange}
+          sx={{ mb: 2, mt: 2 }}
+          disabled={loading}
+        />
+
+        <TextField
+          margin="dense"
+          name="city"
+          label={t('teamDialog.cityLabel', { defaultValue: 'City' })}
+          type="text"
+          fullWidth
+          variant="outlined"
+          value={teamForm.city || ''}
+          onChange={onFormChange}
+          sx={{ mb: 2 }}
+          disabled={loading}
+        />
+
+        <TextField
+          margin="dense"
+          name="institution"
+          label={t('teamDialog.institutionLabel', { defaultValue: 'Institution' })}
+          type="text"
+          fullWidth
+          variant="outlined"
+          value={teamForm.institution || ''}
+          onChange={onFormChange}
+          sx={{ mb: 2 }}
+          disabled={loading}
+        />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>{t('teamDialog.cancelButton', { defaultValue: 'Cancel' })}</Button>

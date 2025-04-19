@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import {
   Box, Typography, Button, CircularProgress, Alert,
   List, ListItem, ListItemText, Divider, Paper, IconButton,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -18,6 +19,7 @@ const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => { // 
   // const { user } = useAuth(); // Passed as prop
 
   const [scheduleItems, setScheduleItems] = useState([]);
+  const [pairings, setPairings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editItem, setEditItem] = useState(null); // Item being edited/created
@@ -41,8 +43,15 @@ const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => { // 
       return;
     }
     try {
-      const response = await api.client.get(`/api/debates/${tournamentId}/schedule`);
-      setScheduleItems(response.data || []); // Ensure it's an array
+      // Fetch schedule items
+      const scheduleResponse = await api.client.get(`/api/debates/${tournamentId}/schedule`);
+      setScheduleItems(scheduleResponse.data || []); // Ensure it's an array
+
+      // Fetch published pairings
+      const pairingsResponse = await api.client.get(`/api/debates/${tournamentId}/pairings`, {
+        params: { published: 'true' }
+      });
+      setPairings(pairingsResponse.data.data.pairings || []);
     } catch (err) {
       console.error("Error fetching schedule:", err);
       setError(t('scheduleView.fetchError'));
@@ -130,37 +139,110 @@ const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => { // 
       {loading && <CircularProgress />}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {!loading && !error && scheduleItems.length === 0 && (
+      {!loading && !error && scheduleItems.length === 0 && pairings.length === 0 && (
         <Typography>{t('scheduleView.noItems')}</Typography>
       )}
 
+      {/* Display published pairings */}
+      {!loading && !error && pairings.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            {t('scheduleView.pairingsTitle', { defaultValue: 'Tournament Pairings' })}
+          </Typography>
+
+          {/* Group pairings by round and roundType */}
+          {Object.entries(pairings.reduce((acc, pairing) => {
+            const key = `${pairing.roundType}-${pairing.round}`;
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(pairing);
+            return acc;
+          }, {})).map(([key, roundPairings]) => {
+            const [roundType, round] = key.split('-');
+            const roundName = roundType === 'preliminary'
+              ? `${t('scheduleView.preliminaryRound', { defaultValue: 'Preliminary Round' })} ${round}`
+              : (round === '1' ? t('scheduleView.eighthFinals', { defaultValue: '1/8 Finals' }) :
+                 round === '2' ? t('scheduleView.quarterFinals', { defaultValue: 'Quarter Finals' }) :
+                 round === '3' ? t('scheduleView.semiFinals', { defaultValue: 'Semi Finals' }) :
+                 round === '4' ? t('scheduleView.finals', { defaultValue: 'Finals' }) :
+                 `${t('scheduleView.playoffRound', { defaultValue: 'Playoff Round' })} ${round}`);
+
+            return (
+              <Paper key={key} sx={{ mb: 2, overflow: 'hidden' }}>
+                <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    {roundName}
+                  </Typography>
+                </Box>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{t('scheduleView.team1', { defaultValue: 'Team 1' })}</TableCell>
+                        <TableCell>{t('scheduleView.team2', { defaultValue: 'Team 2' })}</TableCell>
+                        <TableCell>{t('scheduleView.judge', { defaultValue: 'Judge' })}</TableCell>
+                        <TableCell>{t('scheduleView.room', { defaultValue: 'Room' })}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {roundPairings.map(pairing => (
+                        <TableRow key={pairing._id}>
+                          <TableCell>{pairing.team1?.name || t('scheduleView.unknown', { defaultValue: 'Unknown' })}</TableCell>
+                          <TableCell>
+                            {pairing.isBye
+                              ? t('scheduleView.bye', { defaultValue: 'BYE' })
+                              : pairing.team2?.name || t('scheduleView.unknown', { defaultValue: 'Unknown' })}
+                          </TableCell>
+                          <TableCell>
+                            {pairing.judges?.length > 0
+                              ? pairing.judges[0]?.username || pairing.judges[0]?.name || t('scheduleView.unknown', { defaultValue: 'Unknown' })
+                              : t('scheduleView.noJudge', { defaultValue: 'No Judge' })}
+                          </TableCell>
+                          <TableCell>{pairing.location || t('scheduleView.noRoom', { defaultValue: 'No Room' })}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            );
+          })}
+        </Box>
+      )}
+
+      {/* Display regular schedule items */}
       {!loading && !error && scheduleItems.length > 0 && (
-        <List component={Paper} sx={{ mb: 2 }}>
-          {scheduleItems.map((item, index) => (
-            <React.Fragment key={item._id}>
-              <ListItem
-                secondaryAction={
-                  isOrganizerOrAdmin ? (
-                    <>
-                      <IconButton edge="end" aria-label="edit" onClick={() => handleOpenDialog(item)} disabled={isSubmitting}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteItem(item._id)} disabled={isSubmitting} sx={{ ml: 1 }}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </>
-                  ) : null
-                }
-              >
-                <ListItemText
-                  primary={`${item.time} - ${item.event}`}
-                  secondary={item.location || t('scheduleView.noLocation')}
-                />
-              </ListItem>
-              {index < scheduleItems.length - 1 && <Divider />}
-            </React.Fragment>
-          ))}
-        </List>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            {t('scheduleView.scheduleTitle', { defaultValue: 'Schedule' })}
+          </Typography>
+
+          <List component={Paper}>
+            {scheduleItems.map((item, index) => (
+              <React.Fragment key={item._id}>
+                <ListItem
+                  secondaryAction={
+                    isOrganizerOrAdmin ? (
+                      <>
+                        <IconButton edge="end" aria-label="edit" onClick={() => handleOpenDialog(item)} disabled={isSubmitting}>
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteItem(item._id)} disabled={isSubmitting} sx={{ ml: 1 }}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </>
+                    ) : null
+                  }
+                >
+                  <ListItemText
+                    primary={`${new Date(item.time).toLocaleString()} - ${item.eventDescription || item.event}`}
+                    secondary={item.location || t('scheduleView.noLocation')}
+                  />
+                </ListItem>
+                {index < scheduleItems.length - 1 && <Divider />}
+              </React.Fragment>
+            ))}
+          </List>
+        </Box>
       )}
 
       {/* Create/Edit Dialog */}
