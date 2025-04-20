@@ -184,7 +184,7 @@ const Home = () => {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
+    <Container sx={{ mt: 4, mb: 6 }}>
       {/* Hero Section */}
       <Box sx={{ 
         mb: 6, 

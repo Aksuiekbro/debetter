@@ -20,8 +20,8 @@ class WebSocketService {
     }
 
     // Get the base URL from the API config
-    const baseURL = api.baseURL || 'http://localhost:5000';
-    
+    const baseURL = api.baseUrl || 'http://localhost:5001';
+
     // Create socket connection
     this.socket = io(baseURL, {
       withCredentials: true,

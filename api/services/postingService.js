@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 const Debate = require('../models/Debate');
+const Tournament = require('../models/Tournament');
+const Pairing = require('../models/Pairing');
+const Team = require('../models/Team');
+const AppError = require('../utils/appError');
+
 const User = require('../models/User');
 // Import notification service or helpers if extracted
 
@@ -311,10 +316,12 @@ class PostingService {
     // TODO: Add method for deleting a posting if needed
 
   // Gets postings for a debate, with population and filtering
-  async getPostingsForDebate(debateId, filters = {}) {
-    const debate = await Debate.findById(debateId)
+  async getPostingsForTournament(tournamentId, filters = {}) { // Rename function and parameter
+    // console.log(`[PostingService] getPostingsForDebate called with debateId: ${debateId}`); // Remove log
+
+    const tournament = await Tournament.findById(tournamentId) // Use Tournament model and tournamentId
       .populate({
-        path: 'postings',
+        path: 'postings', // Assuming postings are directly on the tournament model
         populate: [
           { path: 'team1', select: 'name members club city institution', populate: { path: 'members.userId', select: 'username _id' } },
           { path: 'team2', select: 'name members club city institution', populate: { path: 'members.userId', select: 'username _id' } },
@@ -325,10 +332,12 @@ class PostingService {
       })
       .lean(); // Use lean for performance
 
-    if (!debate) throw new Error('Tournament not found');
-    if (debate.format !== 'tournament') throw new Error('Debate is not a tournament');
+    // console.log(`[PostingService] Result of Debate.findById(${debateId}):`, debate); // Remove log
 
-    let postings = debate.postings || [];
+    if (!tournament) throw new Error('Tournament not found'); // Check tournament object
+    // if (debate.format !== 'tournament') throw new Error('Debate is not a tournament'); // Remove check irrelevant for Tournament
+
+    let postings = tournament.postings || []; // Access postings from tournament object
 
     // Apply filters if any
     if (filters.status) {

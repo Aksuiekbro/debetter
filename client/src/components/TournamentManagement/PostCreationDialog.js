@@ -141,11 +141,15 @@ const PostCreationDialog = ({ tournamentId, onPostCreated, buttonPosition = 'bot
 
     try {
       // First create the post
+      // Add a token to the request if it doesn't exist
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       const response = await api.client.post(`/api/debates/${tournamentId}/announcements`, {
         title,
         content,
         backgroundColor
-      });
+      }, { headers });
 
       // Check if the response has the expected structure
       if (!response.data || !response.data.data || !response.data.data.announcement) {
@@ -159,12 +163,17 @@ const PostCreationDialog = ({ tournamentId, onPostCreated, buttonPosition = 'bot
         const formData = new FormData();
         formData.append('image', image);
 
+        // Add token to image upload request
+        const token = localStorage.getItem('token');
+        const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+
         await api.client.post(
           `/api/debates/${tournamentId}/announcements/${announcementId}/image`,
           formData,
           {
             headers: {
-              'Content-Type': 'multipart/form-data'
+              'Content-Type': 'multipart/form-data',
+              ...authHeader
             }
           }
         );

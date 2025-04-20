@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
+import { useAuth } from './contexts/AuthContext'; // Import useAuth
 import telegramTheme from './theme/telegramTheme';
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
@@ -24,6 +25,7 @@ import DebaterFeedbackDisplay from './components/DebaterFeedbackDisplay';
 import NotificationSettings from './components/NotificationSettings'; // Import NotificationSettings
 import ActiveJudgeInterface from './components/ActiveJudgeInterface'; // Import the new interface
 import JudgeLeaderboard from './components/JudgeLeaderboard'; // Import JudgeLeaderboard
+import TestFeed from './components/TournamentManagement/TestFeed'; // Import TestFeed component
 
 // Using the imported Telegram-inspired theme
 
@@ -38,6 +40,13 @@ const MainLayout = () => {
 };
 
 function App() {
+  const { user, loading } = useAuth(); // Get user and loading state
+
+  // Optional: Render loading state or null while auth check is in progress
+  // if (loading) {
+  //   return <div>Loading...</div>; // Or a spinner component
+  // }
+
   return (
     <ThemeProvider theme={telegramTheme}>
       <CssBaseline />
@@ -58,7 +67,14 @@ function App() {
               <Route path="/my-debates" element={<MyDebates />} />
               <Route path="/tournaments" element={<Tournaments />} />
               <Route path="/tournaments/:id" element={<TournamentDetail />} />
-              <Route path="/tournaments/:id/manage" element={<TournamentManagement />} />
+              <Route
+                path="/tournaments/:id/manage"
+                element={
+                  !loading && user?.role === 'organizer'
+                  ? <TournamentManagement />
+                  : <Navigate to="/home" replace />
+                }
+              />
               <Route path="/tournaments/:id/judge-leaderboard" element={<JudgeLeaderboard />} />
               <Route path="/create-tournament" element={<CreateTournamentForm />} />
               <Route
@@ -77,6 +93,7 @@ function App() {
               {/* Add Notification Settings Route */}
               <Route path="/settings/notifications" element={<NotificationSettings />} />
               <Route path="/judge/:debateId/:postingId" element={<ActiveJudgeInterface />} />
+              <Route path="/test-feed" element={<TestFeed />} />
            </Route>
           </Routes>
         </div>

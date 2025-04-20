@@ -124,7 +124,6 @@ exports.getProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
     // Return all relevant user details, including new judge-specific fields
     res.json({
       _id: user._id,
@@ -158,41 +157,33 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     // Destructure all potential fields from the request body
-    const { username, email, phoneNumber, bio, interests, judgingStyle } = req.body; // Destructure judgingStyle
-    const user = await User.findById(req.user._id);
+    const { username, email, phoneNumber, bio, interests, judgingStyle } = req.body;
+    const updateFields = {};
 
-    if (!user) {
+    // Build the update object dynamically based on provided fields
+    if (username !== undefined) updateFields.username = username;
+    if (email !== undefined) updateFields.email = email; // Consider adding validation here if needed
+    if (phoneNumber !== undefined) updateFields.phoneNumber = phoneNumber;
+    if (bio !== undefined) updateFields.bio = bio;
+    if (interests !== undefined) updateFields.interests = interests;
+    if (judgingStyle !== undefined) updateFields.judgingStyle = judgingStyle;
+
+    // Check if there are any fields to update
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: 'No fields provided for update.' });
+    }
+
+    // Use findByIdAndUpdate to update only specified fields
+    // runValidators: true ensures validation runs only on the fields in updateFields
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateFields },
+      { new: true, runValidators: true, context: 'query' } // context: 'query' is important for some validators
+    );
+
+    if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    // Update fields if they are provided in the request
-    if (username !== undefined) {
-      // TODO: Add validation if username needs to be unique
-      user.username = username;
-    }
-    if (email !== undefined) {
-      // TODO: Add validation if email needs to be unique and format is correct
-      // const existingUser = await User.findOne({ email: email });
-      // if (existingUser && existingUser._id.toString() !== user._id.toString()) {
-      //   return res.status(400).json({ message: 'Email already in use' });
-      // }
-      user.email = email;
-    }
-    if (phoneNumber !== undefined) {
-      // TODO: Add validation for phone number format if needed
-      user.phoneNumber = phoneNumber;
-    }
-    if (bio !== undefined) {
-      user.bio = bio;
-    }
-    if (interests !== undefined) {
-      user.interests = interests;
-    }
-    if (judgingStyle !== undefined) { // Add judgingStyle update logic
-      user.judgingStyle = judgingStyle;
-    }
-
-    const updatedUser = await user.save();
     // Respond with the updated user profile, including the new fields
     res.json({
       _id: updatedUser._id,

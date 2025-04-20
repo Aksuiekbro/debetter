@@ -299,6 +299,43 @@ exports.getDebate = async (req, res) => {
   }
 };
 
+
+// Get teams for a specific debate
+exports.getDebateTeams = async (req, res) => {
+  try {
+    const { debateId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(debateId)) {
+      return res.status(400).json({ message: 'Invalid Debate ID format' });
+    }
+
+    // Find the debate and populate the teams and their members
+    const debate = await Debate.findById(debateId)
+      .populate({
+        path: 'teams', // Populate the 'teams' array field in the Debate model
+        populate: {
+          path: 'members.userId', // Populate the 'userId' within the 'members' array of each team
+          select: 'username name email _id' // Select specific user fields
+        }
+      })
+      .lean(); // Use lean for performance as we are only reading
+
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
+
+    // Return the populated teams array
+    res.status(200).json({ status: 'success', data: debate.teams || [] }); // Return empty array if no teams
+
+  } catch (error) {
+    console.error('Error in getDebateTeams:', error);
+    if (error.name === 'CastError') {
+        return res.status(400).json({ message: 'Invalid ID format provided.' });
+    }
+    res.status(500).json({ message: 'Failed to get debate teams', error: error.message });
+  }
+};
+
 // Get details for a specific posting within a debate
 exports.getPostingDetails = async (req, res) => {
   try {

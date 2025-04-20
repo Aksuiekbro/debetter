@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema({
     default: Date.now
   },
   bio: String,
+  interests: [String], // Array of strings for interests
   debates: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Debate'

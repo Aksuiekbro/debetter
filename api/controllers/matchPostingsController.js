@@ -183,7 +183,7 @@ exports.getMatchPostings = async (req, res) => {
       filters.published = published === 'true';
     }
     
-    const postings = await postingService.getPostingsForDebate(tournamentId, filters);
+    const postings = await postingService.getPostingsForTournament(tournamentId, filters);
     
     res.status(200).json({
       status: 'success',

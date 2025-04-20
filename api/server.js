@@ -32,8 +32,8 @@ const io = new Server(httpServer, {
 // Pass the io instance to the notification service
 setIoInstance(io);
 
-// Initialize the socket service
-socketService.initialize(httpServer);
+// Initialize the socket service with the existing Socket.IO instance
+socketService.initialize(io);
 
 // Socket.IO Authentication Middleware
 io.use((socket, next) => {
