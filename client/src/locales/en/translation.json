@@ -74,4 +74,14 @@
       "placeholder": "No awards listed"
     }
   }
+,
+  "tournamentPostingTab": {
+    "judge": "Judge",
+    "noJudge": "No Judge",
+    "room": "Room",
+    "addPairing": "Add Pairing",
+    "currentPairings": "Current Pairings",
+    "noPairingsYet": "No pairings created yet",
+    "savePairings": "Save Pairings"
+  }
 }

@@ -616,7 +616,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
                 </InputLabel>
                 <Select
                   labelId="active-round-select-label"
-                  value={`${activeRoundType}-${activeRound}`}
+                  value={rounds.some(r => `${r.type}-${r.number}` === `${activeRoundType}-${activeRound}`) ? `${activeRoundType}-${activeRound}` : ''}
                   label={t('tournamentPostingTab.activeRound', { defaultValue: 'Active Round' })}
                   onChange={handleRoundChange}
                 >

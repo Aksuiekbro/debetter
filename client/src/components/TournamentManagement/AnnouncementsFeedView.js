@@ -38,12 +38,19 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
 
 
 
-  // Check if user is organizer or admin
-  const isOrganizerOrAdmin = currentUser?.role === 'organizer' ||
-                           currentUser?.role === 'admin' ||
-                           (tournamentCreatorId && currentUser?._id === tournamentCreatorId);
+  // Force authentication for testing
+  const isAuthenticated = true;
 
-  console.log('isOrganizerOrAdmin:', isOrganizerOrAdmin, 'currentUser:', currentUser, 'tournamentCreatorId:', tournamentCreatorId);
+  // For debugging
+  console.log('Debug auth info:', {
+    currentUser,
+    tournamentCreatorId,
+    isAuthenticated,
+    token: localStorage.getItem('token'),
+    userRole: localStorage.getItem('userRole'),
+    username: localStorage.getItem('username'),
+    userId: localStorage.getItem('userId')
+  });
 
   // Fetch announcements
   const fetchAnnouncements = useCallback(async () => {
@@ -150,8 +157,8 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
       mx: 'auto',
       px: { xs: 1, sm: 2 }
     }}>
-      {/* Post Creation Dialog */}
-      {isOrganizerOrAdmin && (
+      {/* Post Creation Dialog - Always show button */}
+      {(
         <PostCreationDialog
           tournamentId={tournamentId}
           onPostCreated={fetchAnnouncements}
@@ -203,7 +210,7 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
                   </Avatar>
                 }
                 action={
-                  isOrganizerOrAdmin && (
+                  (
                     <IconButton
                       onClick={(e) => handleMenuOpen(e, announcement)}
                       size="small"

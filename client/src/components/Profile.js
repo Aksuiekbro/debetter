@@ -380,6 +380,42 @@ const Profile = () => {
         </Grid>
       </Paper>
 
+      {/* User Info Input Fields (Moved) */}
+      <TextField
+        autoFocus
+        margin="dense"
+        id="username"
+        label={t('profile.editDialog.usernameLabel', 'Username')}
+        type="text"
+        fullWidth
+        variant="outlined"
+        value={editForm.username}
+        onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+        sx={{ mb: 2 }}
+      />
+      <TextField
+        margin="dense"
+        id="email"
+        label={t('profile.editDialog.emailLabel', 'Email')}
+        type="email"
+        fullWidth
+        variant="outlined"
+        value={editForm.email}
+        onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+        sx={{ mb: 2 }}
+      />
+      <TextField
+        margin="dense"
+        id="phoneNumber"
+        label={t('profile.editDialog.phoneLabel', 'Phone Number')}
+        type="tel"
+        fullWidth
+        variant="outlined"
+        value={editForm.phoneNumber}
+        onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+        sx={{ mb: 2 }}
+      />
+
       {/* Metrics and Navigation */}
       <Paper elevation={3} sx={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -453,40 +489,6 @@ const Profile = () => {
           {currentTab === 1 && (
             <Typography>{t('profile.tabs.winsPlaceholder', 'Your winning debates will appear here')}</Typography>
           )}
-          <TextField
-            autoFocus
-            margin="dense"
-            id="username"
-            label={t('profile.editDialog.usernameLabel', 'Username')}
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={editForm.username}
-            onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            id="email"
-            label={t('profile.editDialog.emailLabel', 'Email')}
-            type="email"
-            fullWidth
-            variant="outlined"
-            value={editForm.email}
-            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            id="phoneNumber"
-            label={t('profile.editDialog.phoneLabel', 'Phone Number')}
-            type="tel"
-            fullWidth
-            variant="outlined"
-            value={editForm.phoneNumber}
-            onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
-            sx={{ mb: 2 }}
-          />
           {currentTab === 2 && (
             <Typography>{t('profile.tabs.ongoingPlaceholder', 'Your ongoing debates will appear here')}</Typography>
           )}

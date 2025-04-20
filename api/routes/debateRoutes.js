@@ -40,6 +40,7 @@ const {
     uploadAudio, // Import for uploading audio
     uploadBallot, // Import for uploading ballot
     getJudgeLeaderboard, // Import for judge leaderboard
+    getDebateTeams, // Import for getting teams of a debate
 } = require('../controllers/debateController');
 const { getParticipantStandings } = require('../controllers/debateController'); // Import for participant standings
 const announcementController = require('../controllers/announcementController'); // Import announcement controller
@@ -72,6 +73,7 @@ const validateParticipantData = (req, res, next) => {
 router.get('/', getDebates);
 router.get('/:id', getDebate);
 
+router.get('/:debateId/teams', getDebateTeams); // Route to get teams for a specific debate
 // Protected routes
 router.use(protect);
 router.post('/', createDebate);

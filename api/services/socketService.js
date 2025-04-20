@@ -7,19 +7,13 @@ class SocketService {
     this.initialized = false;
   }
 
-  // Initialize the socket service with the HTTP server
-  initialize(server) {
+  // Initialize the socket service with an existing Socket.IO instance
+  initialize(io) {
     if (this.initialized) {
       return this.io;
     }
 
-    this.io = socketIO(server, {
-      cors: {
-        origin: process.env.CLIENT_URL || 'http://localhost:3000',
-        methods: ['GET', 'POST'],
-        credentials: true
-      }
-    });
+    this.io = io;
 
     // Set up connection event handler
     this.io.on('connection', (socket) => {
@@ -28,7 +22,7 @@ class SocketService {
       // Handle joining tournament room
       socket.on('join:tournament', ({ tournamentId }) => {
         if (!tournamentId) return;
-        
+
         const roomName = `tournament:${tournamentId}`;
         socket.join(roomName);
         console.log(`Socket ${socket.id} joined room: ${roomName}`);
@@ -37,7 +31,7 @@ class SocketService {
       // Handle leaving tournament room
       socket.on('leave:tournament', ({ tournamentId }) => {
         if (!tournamentId) return;
-        
+
         const roomName = `tournament:${tournamentId}`;
         socket.leave(roomName);
         console.log(`Socket ${socket.id} left room: ${roomName}`);

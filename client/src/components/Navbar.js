@@ -19,6 +19,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import LanguageSwitcher from './ui/LanguageSwitcher'; // Import the new component
 import NotificationCenter from './NotificationCenter'; // Import NotificationCenter
 
@@ -66,24 +67,24 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 const Navbar = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const { user, isAuthenticated, loading } = useAuth(); // Use AuthContext
   const [anchorEl, setAnchorEl] = useState(null);
-  const userRole = localStorage.getItem('userRole');
+  // const userRole = localStorage.getItem('userRole'); // Remove direct localStorage access for role
 
-  useEffect(() => {
-    const checkAuth = () => {
-      setIsAuthenticated(!!localStorage.getItem('token'));
-    };
+  // useEffect(() => { // Auth state is now managed by AuthContext
+  //   const checkAuth = () => {
+  //     setIsAuthenticated(!!localStorage.getItem('token'));
+  //   };
     
-    window.addEventListener('auth-change', checkAuth);
-    window.addEventListener('storage', checkAuth);
-    checkAuth(); // Check on mount
+  //   window.addEventListener('auth-change', checkAuth);
+  //   window.addEventListener('storage', checkAuth);
+  //   checkAuth(); // Check on mount
     
-    return () => {
-      window.removeEventListener('auth-change', checkAuth);
-      window.removeEventListener('storage', checkAuth);
-    };
-  }, []);
+  //   return () => {
+  //     window.removeEventListener('auth-change', checkAuth);
+  //     window.removeEventListener('storage', checkAuth);
+  //   };
+  // }, []);
   
   const handleProfileClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -139,14 +140,16 @@ const Navbar = () => {
               >
                 {t('navbar.tournaments')}
               </Button>
-              <Button
-                color="inherit"
-                onClick={() => navigate('/create-tournament')}
-                data-testid="create-tournament-nav-button" // Add test ID
-              >
-                {t('navbar.create_tournament', 'Create Tournament')}
-              </Button>
-              { (userRole === 'judge' || userRole === 'admin') && (
+              { !loading && user?.role === 'organizer' && ( // Check for organizer role
+                <Button
+                  color="inherit"
+                  onClick={() => navigate('/create-tournament')}
+                  data-testid="create-tournament-nav-button" // Add test ID
+                >
+                  {t('navbar.create_tournament', 'Create Tournament')}
+                </Button>
+              )}
+              { !loading && (user?.role === 'judge' || user?.role === 'admin') && ( // Use user from context
                 <Button
                   color="inherit"
                   onClick={() => navigate('/judge-panel')}
