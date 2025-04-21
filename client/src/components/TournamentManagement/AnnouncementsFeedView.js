@@ -157,12 +157,12 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
       mx: 'auto',
       px: { xs: 1, sm: 2 }
     }}>
-      {/* Post Creation Dialog - Always show button */}
+      {/* Post Creation Dialog - Render as FAB */}
       {(
         <PostCreationDialog
           tournamentId={tournamentId}
           onPostCreated={fetchAnnouncements}
-          buttonPosition="inline"
+          buttonPosition="bottom-right" // Changed from "inline"
         />
       )}
 

@@ -46,19 +46,39 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  // Placeholder login function
+  // Login function
   const login = async (email, password) => {
-    // Placeholder: Replace with actual API call
-    console.log("Placeholder: Logging in with", email);
-    // Example: const response = await axios.post('/api/users/login', { email, password });
-    // localStorage.setItem('token', response.data.token);
-    // setUser(response.data.user);
-    // setIsAuthenticated(true);
-    localStorage.setItem('token', 'fake_token'); // Example
-    const loggedInUser = { name: "Placeholder User", role: "user", _id: "placeholder_id" }; // Example user
-    setUser(loggedInUser);
-    console.log('[AuthContext] User state updated (login):', loggedInUser);
-    setIsAuthenticated(true);
+    setLoading(true);
+    try {
+      // Actual API call to backend login endpoint
+      const response = await axios.post('/api/users/login', { email, password });
+
+      // Store token and set authenticated state using backend response
+      localStorage.setItem('token', response.data.token);
+      // Ensure the user object structure matches what the context expects
+      const loggedInUser = {
+        _id: response.data._id,
+        username: response.data.username,
+        email: response.data.email,
+        role: response.data.role // Use the role from the backend response
+      };
+      setUser(loggedInUser);
+      console.log('[AuthContext] User state updated (login):', loggedInUser);
+      setIsAuthenticated(true);
+      return { success: true };
+    } catch (error) {
+      console.error('Login error:', error);
+      // Clear any potentially stale token on login failure
+      localStorage.removeItem('token');
+      setUser(null);
+      setIsAuthenticated(false);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Login failed'
+      };
+    } finally {
+      setLoading(false);
+    }
   };
   // Add this register function
   const register = async (username, email, password, role)  => {
