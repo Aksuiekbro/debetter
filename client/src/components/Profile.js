@@ -256,7 +256,7 @@ const Profile = () => {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => navigate('/host-debate')}
+              onClick={() => navigate('/host')} // Corrected path
               fullWidth
             >
               {t('profile.button.addNewDebate', 'Add new debate')}

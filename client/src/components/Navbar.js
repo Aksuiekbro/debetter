@@ -134,12 +134,15 @@ const Navbar = () => {
                 My Debates
               </Button>
               */}
-              <Button
-                color="inherit"
-                onClick={() => navigate('/tournaments')}
-              >
-                {t('navbar.tournaments')}
-              </Button>
+              {/* Role check (case-insensitive, checking role after user exists): Show only to organizer/admin */}
+              { !loading && user && user.role && ['organizer', 'admin'].includes(user.role.toLowerCase()) && (
+                <Button
+                  color="inherit"
+                  onClick={() => navigate('/tournaments')}
+                >
+                  {t('navbar.tournaments')}
+                </Button>
+              )}
               { !loading && user?.role === 'organizer' && ( // Check for organizer role
                 <Button
                   color="inherit"

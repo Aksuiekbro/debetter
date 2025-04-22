@@ -5,7 +5,7 @@ const registrationFieldService = require('../services/registrationFieldService')
  */
 exports.createField = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const userId = req.user._id;
     
     const field = await registrationFieldService.createField(
@@ -34,7 +34,7 @@ exports.createField = async (req, res) => {
  */
 exports.getFields = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     
     const fields = await registrationFieldService.getFieldsByTournament(tournamentId);
     
@@ -108,7 +108,7 @@ exports.deleteField = async (req, res) => {
  */
 exports.saveFieldValues = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const userId = req.user._id;
     
     const participant = await registrationFieldService.saveParticipantFieldValues(

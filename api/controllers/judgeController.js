@@ -5,7 +5,8 @@ const judgeService = require('../services/judgeService');
  */
 exports.getJudges = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    // Use the correct parameter name 'id' from the parent route
+    const { id: tournamentId } = req.params; 
     
     const judges = await judgeService.getJudgesForTournament(tournamentId);
     

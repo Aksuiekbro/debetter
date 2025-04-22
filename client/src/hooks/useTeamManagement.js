@@ -111,22 +111,27 @@ export const useTeamManagement = (
   }, []);
 
   const confirmDeleteTeam = useCallback(async () => {
+    if (!deleteItemId) return; // Ensure there's an ID to delete
     setLoadingTeams(true);
-    // TODO: Implement API call for deleting a team if endpoint exists
-    // For now, simulate local deletion and show notification
     try {
-      // Example: await fetch(`${api.baseUrl}/api/debates/teams/${deleteItemId}`, { method: 'DELETE', headers: getAuthHeaders() });
-      // console.warn("API endpoint for team deletion not implemented. Simulating local deletion."); // Removed dev note
+      // Implement the actual API call for deleting a team
+      const response = await fetch(`${api.baseUrl}/api/debates/${tournamentId}/teams/${deleteItemId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+      });
 
-      // Optimistic update (remove locally) - remove if API call is added
-      setTeams(prevTeams => prevTeams.filter(t => t.id !== deleteItemId));
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to delete team');
+      }
 
-      showNotification('Team deleted successfully (simulated)', 'success');
+      showNotification('Team deleted successfully', 'success');
       handleCloseDeleteDialog();
-      // await refreshData(); // Uncomment if API call is added
+      await refreshData(); // Refresh data after successful deletion
 
     } catch (error) {
       console.error('Error deleting team:', error);
+      // Ensure error message is displayed
       showNotification('Failed to delete team', 'error');
     } finally {
       setLoadingTeams(false);

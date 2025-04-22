@@ -319,9 +319,10 @@ class PostingService {
   async getPostingsForTournament(tournamentId, filters = {}) { // Rename function and parameter
     // console.log(`[PostingService] getPostingsForDebate called with debateId: ${debateId}`); // Remove log
 
-    const tournament = await Tournament.findById(tournamentId) // Use Tournament model and tournamentId
+    // Use the Debate model to find the tournament/debate document
+    const debate = await Debate.findById(tournamentId) 
       .populate({
-        path: 'postings', // Assuming postings are directly on the tournament model
+        path: 'postings', // Postings are nested within the Debate model
         populate: [
           { path: 'team1', select: 'name members club city institution', populate: { path: 'members.userId', select: 'username _id' } },
           { path: 'team2', select: 'name members club city institution', populate: { path: 'members.userId', select: 'username _id' } },
@@ -334,10 +335,10 @@ class PostingService {
 
     // console.log(`[PostingService] Result of Debate.findById(${debateId}):`, debate); // Remove log
 
-    if (!tournament) throw new Error('Tournament not found'); // Check tournament object
-    // if (debate.format !== 'tournament') throw new Error('Debate is not a tournament'); // Remove check irrelevant for Tournament
+    if (!debate) throw new Error('Tournament not found'); // Check the fetched debate object
+    // if (debate.format !== 'tournament') throw new Error('Debate is not a tournament'); // This check might be relevant depending on context
 
-    let postings = tournament.postings || []; // Access postings from tournament object
+    let postings = debate.postings || []; // Access postings from the debate object
 
     // Apply filters if any
     if (filters.status) {

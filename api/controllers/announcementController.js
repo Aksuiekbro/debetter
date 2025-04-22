@@ -5,7 +5,8 @@ const AppError = require('../utils/appError'); // Assuming you have an AppError 
 const socketService = require('../services/socketService'); // Import socket service for real-time updates
 
 // Authorization Middleware Helper (can be refactored into separate middleware if used elsewhere)
-const checkTournamentAdmin = async (tournamentId, userId, userRole) => {
+// Note: This helper receives the ID correctly, but the calling functions need fixing
+const checkTournamentAdmin = async (tournamentId, userId, userRole) => { 
     console.log('Checking tournament admin permissions:', { tournamentId, userId, userRole });
 
     try {
@@ -46,7 +47,7 @@ const checkTournamentAdmin = async (tournamentId, userId, userRole) => {
 };
 
 exports.create = catchAsync(async (req, res, next) => {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const userId = req.user.id; // Assuming user ID is attached by 'protect' middleware
     const userRole = req.user.role; // Assuming user role is attached
 
@@ -71,7 +72,7 @@ exports.create = catchAsync(async (req, res, next) => {
 });
 
 exports.getAllForTournament = catchAsync(async (req, res, next) => {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
 
     // No authorization needed for viewing announcements generally
     const announcements = await announcementService.getAnnouncementsByTournament(tournamentId);
@@ -86,7 +87,7 @@ exports.getAllForTournament = catchAsync(async (req, res, next) => {
 });
 
 exports.update = catchAsync(async (req, res, next) => {
-    const { tournamentId, announcementId } = req.params;
+    const { id: tournamentId, announcementId } = req.params; // Use 'id' from route param
     const userId = req.user.id;
     const userRole = req.user.role;
 
@@ -120,7 +121,7 @@ exports.update = catchAsync(async (req, res, next) => {
 });
 
 exports.delete = catchAsync(async (req, res, next) => {
-    const { tournamentId, announcementId } = req.params;
+    const { id: tournamentId, announcementId } = req.params; // Use 'id' from route param
     const userId = req.user.id;
     const userRole = req.user.role;
 
@@ -145,7 +146,7 @@ exports.delete = catchAsync(async (req, res, next) => {
  * Upload an image for an announcement
  */
 exports.uploadImage = catchAsync(async (req, res, next) => {
-    const { tournamentId, announcementId } = req.params;
+    const { id: tournamentId, announcementId } = req.params; // Use 'id' from route param
     const userId = req.user.id;
     const userRole = req.user.role;
 
