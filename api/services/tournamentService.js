@@ -146,9 +146,17 @@ class TournamentService {
       // Observer role doesn't affect counters
 
       await debate.save();
-      // Return updated counts or the debate object
-      const updatedCounts = debate.getParticipantCounts();
-      return { ...updatedCounts, debateId: debate._id, participant };
+
+      // Re-fetch the debate with populated participants to return the updated state
+      const updatedDebate = await Debate.findById(debate._id)
+                                        .populate({
+                                            path: 'participants.userId',
+                                            select: 'username role _id' // Ensure _id is populated
+                                        })
+                                        .populate('creator', 'username') // Populate creator if needed
+                                        .lean(); // Use lean if no further modifications needed
+
+      return updatedDebate; // Return the full updated debate object
   }
 
   // Removes a participant from the tournament

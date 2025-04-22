@@ -10,8 +10,9 @@ const catchAsync = require('../utils/catchAsync');
  * Get all pairings for a tournament
  */
 exports.getPairings = catchAsync(async (req, res, next) => {
-  const { tournamentId } = req.params;
+  const { id: tournamentId } = req.params; // Use 'id' from route param
   const { published, round, roundType } = req.query;
+  // console.log(`[getPairings] Fetching pairings for tournament: ${tournamentId} with query:`, req.query); // Log input - Removed log
 
   // Build query
   const query = { tournament: tournamentId };
@@ -35,7 +36,14 @@ exports.getPairings = catchAsync(async (req, res, next) => {
   const pairings = await Pairing.find(query)
     .populate('team1', 'name club')
     .populate('team2', 'name club')
-    .populate('judges', 'username name');
+    .populate('judges', 'username name')
+    .catch(err => { // Add specific catch for the query/populate
+      console.error(`[getPairings] Error during Pairing.find or populate for tournament ${tournamentId}:`, err);
+      // Re-throw the error to be caught by catchAsync
+      throw new AppError(`Database error fetching pairings: ${err.message}`, 500); 
+    });
+
+  console.log(`[getPairings] Found ${pairings.length} pairings for tournament: ${tournamentId}`); // Log success
 
   res.status(200).json({
     status: 'success',
@@ -49,7 +57,7 @@ exports.getPairings = catchAsync(async (req, res, next) => {
  * Generate random pairings for a tournament round
  */
 exports.randomizePairings = catchAsync(async (req, res, next) => {
-  const { tournamentId } = req.params;
+  const { id: tournamentId } = req.params; // Use 'id' from route param
   const { round, roundType, avoidRematches, avoidSameClub } = req.body;
 
   // Validate input
@@ -198,7 +206,7 @@ exports.randomizePairings = catchAsync(async (req, res, next) => {
  * Submit pairings for a tournament round
  */
 exports.submitPairings = catchAsync(async (req, res, next) => {
-  const { tournamentId } = req.params;
+  const { id: tournamentId } = req.params; // Use 'id' from route param
   const { round, roundType, pairings } = req.body;
   const userId = req.user.id;
 

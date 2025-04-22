@@ -41,7 +41,12 @@ const EntrantsTab = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   // Determine if the current user is an organizer or admin for this tournament
-  const isOrganizerOrAdmin = currentUser && (currentUser.role === 'admin' || currentUser._id === tournamentCreatorId);
+  // Allow 'organizer' role in addition to admin or creator
+  const isOrganizerOrAdmin = currentUser && (
+    currentUser.role === 'admin' ||
+    currentUser.role === 'organizer' || // Added check for 'organizer' role
+    currentUser._id === tournamentCreatorId
+  );
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value.toLowerCase());

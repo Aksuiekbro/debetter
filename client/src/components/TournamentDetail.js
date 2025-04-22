@@ -123,8 +123,8 @@ const TournamentDetail = () => {
     setRegistrationError(null);
     setRegistrationSuccess(false);
     try {
-      // NOTE: Assuming the endpoint is /api/tournaments/:id/join, not /api/debates/:id/join
-      const response = await fetch(`${api.baseUrl}/api/tournaments/${id}/join`, {
+      // Corrected endpoint to use /api/debates/:id/join
+      const response = await fetch(`${api.baseUrl}/api/debates/${id}/join`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -160,10 +160,14 @@ const TournamentDetail = () => {
                         tournament?.teams?.some(team => team.members?.includes(user._id))); // Check participants and team members
 
   // Determine if user can manage the tournament
-  const isUserDataValid = user && user._id && user._id !== 'placeholder_id'; // Add check for placeholder
-  const isTournamentDataValid = tournament && tournament.creator;
-  const canManage = isUserDataValid && isTournamentDataValid &&
-                    (user.role === 'admin' || user._id === tournament.creator._id); // CORRECT COMPARISON
+  const isUserDataValid = user && user._id && user._id !== 'placeholder_id';
+  const isTournamentDataValid = tournament && tournament.creator; // Creator field must exist
+  // Check if user is admin, creator, or listed in the organizers array
+  const canManage = isUserDataValid && isTournamentDataValid && (
+                    user.role === 'admin' ||
+                    user._id === tournament.creator._id ||
+                    (Array.isArray(tournament.organizers) && tournament.organizers.some(orgId => orgId === user._id))
+                  );
 
 
   return (
@@ -303,4 +307,4 @@ const TournamentDetail = () => {
   );
 };
 
-export default TournamentDetail; 
+export default TournamentDetail;

@@ -189,6 +189,7 @@ const debateSchema = new Schema({
       checkedInBy: { type: Schema.Types.ObjectId, ref: 'User' }
   }],
   creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  organizers: [{ type: Schema.Types.ObjectId, ref: 'User' }], // Added organizers array
   maxParticipants: { type: Number, default: function() { return this.format === 'tournament' ? 32 : 6; } },
   createdAt: { type: Date, default: Date.now },
   rooms: [roomSchema],

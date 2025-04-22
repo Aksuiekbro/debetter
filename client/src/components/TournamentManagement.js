@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react'; // Import useState
 import { useTranslation } from 'react-i18next'; // Import useTranslation
 // import { useNavigate } from 'react-router-dom'; // Commented out as it's not currently used
 import {
@@ -34,6 +34,7 @@ import CustomRegistrationFields from './TournamentManagement/CustomRegistrationF
 import CheckInTab from './TournamentManagement/CheckInTab'; // Import check-in component
 import ResultsTab from './TournamentManagement/ResultsTab'; // Import results component
 import MatchPostingsTab from './TournamentManagement/MatchPostingsTab'; // Import match postings component
+import OrganizerManagementTab from './TournamentManagement/OrganizerManagementTab'; // Placeholder for the new tab component
 
 // Import Dialog Components
 import DeleteConfirmationDialog from './TournamentManagement/DeleteConfirmationDialog';
@@ -66,6 +67,7 @@ const TournamentManagement = () => {
   const { currentUser } = useAuth(); // Get current user
   const uiManager = useTournamentUIManager();
   const dataManager = useTournamentData(); // Fetches core data
+  const [selectedOrganizers, setSelectedOrganizers] = useState([]); // State for the organizer management UI (will be populated later)
 
   // Pass necessary state/setters/handlers from dataManager and uiManager to management hooks
   // Pass refreshData from dataManager to entrantManager
@@ -144,6 +146,8 @@ const TournamentManagement = () => {
           <Tab label={t('tournamentManagement.tabs.bracket', 'Bracket')} />
           <Tab label={t('tournamentManagement.tabs.checkIn', 'Check-In')} />
           <Tab label={t('tournamentManagement.tabs.registrationFields', 'Registration Fields')} />
+          {/* Add Organizers Tab - Conditionally render based on creator? Or always show but disable content? Show always for now. */}
+          <Tab label={t('tournamentManagement.tabs.organizers', 'Organizers')} />
         </Tabs>
       </Box>
 
@@ -277,6 +281,23 @@ const TournamentManagement = () => {
           tournament={dataManager.tournament}
           currentUser={currentUser}
         />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={12}> {/* New Organizers Tab Panel */}
+         {/* Conditionally render the management UI only for the creator */}
+         {currentUser?._id === tournamentCreatorId ? (
+           <OrganizerManagementTab
+             tournamentId={dataManager.tournamentId}
+             currentOrganizers={dataManager.tournament?.organizers || []} // Pass current organizer IDs
+             allParticipants={[...dataManager.entrants, ...dataManager.judges]} // Combine entrants and judges as potential organizers
+             showNotification={uiManager.showNotification}
+             refreshData={dataManager.refreshData} // Pass refresh to update tournament data after changes
+             currentUser={currentUser} // Pass current user for potential checks inside
+           />
+         ) : (
+           <Typography sx={{ p: 2, fontStyle: 'italic' }}>
+             {t('organizerManagement.notCreator', 'Only the tournament creator can manage organizers.')}
+           </Typography>
+         )}
       </TabPanel>
 
       {/* --- Render Dialogs --- */}

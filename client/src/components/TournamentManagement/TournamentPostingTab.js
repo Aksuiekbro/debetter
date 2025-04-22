@@ -119,18 +119,26 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
   const fetchTournamentData = async () => {
     setLoading(true);
     setError(null);
+    let tournamentData; // Declare here to use across steps
     try {
       // Fetch teams
       const teamsResponse = await api.client.get(`/api/debates/${tournamentId}/teams`);
-      setTeams(teamsResponse.data.data.teams || []);
+      setTeams(teamsResponse.data.data || []); // Adjust based on actual API response structure
 
       // Fetch tournament details to get rounds information
       const tournamentResponse = await api.client.get(`/api/debates/${tournamentId}`);
-      const tournamentData = tournamentResponse.data.data.tournament;
+      // Ensure tournamentData is correctly assigned
+      // Assuming the structure is { status: 'success', data: { debate: { ... } } } or similar
+      tournamentData = tournamentResponse.data?.data?.debate || tournamentResponse.data?.data || tournamentResponse.data;
+      if (!tournamentData) {
+          // This case might happen if the /api/debates/:id route returns success but no data.debate
+          throw new Error("Tournament data structure is unexpected or missing after fetching details.");
+      }
+
 
       // Fetch judges
       const judgesResponse = await api.client.get(`/api/debates/${tournamentId}/judges`);
-      setJudges(judgesResponse.data.data.judges || []);
+      setJudges(judgesResponse.data.data.judges || []); // Assuming structure { data: { judges: [] } }
 
       // Determine rounds based on tournament format
       // For APB Lincoln-Douglas format, we'll have preliminary rounds and playoff rounds
@@ -164,7 +172,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
 
       // Fetch existing pairings
       const pairingsResponse = await api.client.get(`/api/debates/${tournamentId}/pairings`);
-      const pairingsData = pairingsResponse.data.data.pairings || [];
+      const pairingsData = pairingsResponse.data.data.pairings || []; // Assuming structure { data: { pairings: [] } }
 
       // Organize pairings by round
       const pairingsByRound = {};
@@ -185,9 +193,24 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
 
       setPairings(pairingsByRound);
       setSubmittedRounds(submittedRoundsSet);
+
     } catch (err) {
       console.error('Error fetching tournament data:', err);
-      setError(err.response?.data?.message || 'Failed to load tournament data');
+      let specificErrorMessage = 'Failed to load tournament data.';
+      // Check if it's an Axios error with a 404 response
+      if (err.response && err.response.status === 404) {
+        specificErrorMessage = `Tournament with ID ${tournamentId} not found. Please check the ID or navigate from the tournaments list.`;
+      } else if (err.response) {
+        // Other API errors
+        specificErrorMessage = `API Error (${err.response.status}): ${err.response.data?.message || 'An unknown API error occurred.'}`;
+      } else if (err.request) {
+        // Network error
+        specificErrorMessage = 'Network error: Could not connect to the server.';
+      } else {
+        // Other errors (e.g., processing data in the try block)
+        specificErrorMessage = `An unexpected error occurred: ${err.message}`;
+      }
+      setError(specificErrorMessage);
     } finally {
       setLoading(false);
     }

@@ -5,7 +5,7 @@ const Debate = require('../models/Debate');
 // Get check-in status for a tournament (teams and judges)
 exports.getCheckInStatus = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     
     // Get teams with their check-in status
     const teams = await teamService.getTeamsForDebate(tournamentId);
@@ -61,7 +61,7 @@ exports.getCheckInStatus = async (req, res) => {
 // Check in a team
 exports.checkInTeam = async (req, res) => {
   try {
-    const { tournamentId, teamId } = req.params;
+    const { id: tournamentId, teamId } = req.params; // Use 'id' from route param
     const userId = req.user._id;
     
     const team = await teamService.checkInTeam(tournamentId, teamId, userId);
@@ -88,7 +88,7 @@ exports.checkInTeam = async (req, res) => {
 // Check out a team
 exports.checkOutTeam = async (req, res) => {
   try {
-    const { tournamentId, teamId } = req.params;
+    const { id: tournamentId, teamId } = req.params; // Use 'id' from route param
     
     const team = await teamService.checkOutTeam(tournamentId, teamId);
     
@@ -113,7 +113,7 @@ exports.checkOutTeam = async (req, res) => {
 // Check in a judge
 exports.checkInJudge = async (req, res) => {
   try {
-    const { tournamentId, judgeId } = req.params;
+    const { id: tournamentId, judgeId } = req.params; // Use 'id' from route param
     const userId = req.user._id;
     
     const judge = await judgeService.checkInJudge(tournamentId, judgeId, userId);
@@ -140,7 +140,7 @@ exports.checkInJudge = async (req, res) => {
 // Check out a judge
 exports.checkOutJudge = async (req, res) => {
   try {
-    const { tournamentId, judgeId } = req.params;
+    const { id: tournamentId, judgeId } = req.params; // Use 'id' from route param
     
     const judge = await judgeService.checkOutJudge(tournamentId, judgeId);
     

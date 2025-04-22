@@ -66,7 +66,11 @@ exports.getDebates = async (req, res) => {
     const debates = await Debate.find(filter)
       .sort(sort)
       .populate('creator', 'username')
-      .populate('participants', 'username role');
+      // Populate userId within participants, selecting necessary fields including _id
+      .populate({
+          path: 'participants.userId',
+          select: 'username role _id'
+      });
 
     // Transform the debates to include the correct counts
     const transformedDebates = debates.map(debate => {
@@ -195,21 +199,11 @@ exports.joinDebate = async (req, res) => {
     // The service method throws specific errors if validation fails.
     const { debate } = await tournamentService.validateJoinTournament(debateId, user._id);
 
-    // Add participant using the service
-    const result = await tournamentService.addParticipant(debate, user);
+    // Add participant using the service, which now returns the updated debate object
+    const updatedDebate = await tournamentService.addParticipant(debate, user);
 
-    // Respond with success and updated counts/info
-    // Note: The service currently returns counts. If the full debate object is needed,
-    // the service method or this controller needs adjustment.
-    // For now, returning a success message and the counts.
-    res.json({
-        message: 'Successfully joined tournament',
-        debateId: result.debateId,
-        currentDebaters: result.debaters,
-        currentJudges: result.judges,
-        maxDebaters: result.maxDebaters,
-        maxJudges: result.maxJudges
-    });
+    // Respond with the updated debate object
+    res.json(updatedDebate);
 
   } catch (error) {
     console.error('Join debate error:', error);
@@ -415,7 +409,8 @@ exports.getUserDebates = async (req, res) => {
   try {
     const createdDebates = await Debate.find({ creator: req.user._id })
       .populate('creator', 'username role')
-      .populate('participants', 'username role createdAt')
+      // Correct population for participants.userId
+      .populate({ path: 'participants.userId', select: 'username role _id' })
       .populate('teams.members.userId', 'username email _id')
       .populate({ // Populate judges within postings
         path: 'postings',
@@ -429,7 +424,8 @@ exports.getUserDebates = async (req, res) => {
       creator: { $ne: req.user._id }
     })
       .populate('creator', 'username role')
-      .populate('participants', 'username role createdAt')
+      // Correct population for participants.userId
+      .populate({ path: 'participants.userId', select: 'username role _id' })
       .populate('teams.members.userId', 'username email _id')
       .populate({ // Populate judges within postings
         path: 'postings',
@@ -507,7 +503,8 @@ exports.updateDebate = async (req, res) => {
     // Return populated debate data
     const populatedDebate = await Debate.findById(updatedDebate._id)
       .populate('creator', 'username')
-      .populate('participants', 'username role judgeRole')
+      // Correct population for participants.userId
+      .populate({ path: 'participants.userId', select: 'username role judgeRole _id' })
       .lean();
 
     res.json(populatedDebate);
@@ -2022,5 +2019,65 @@ exports.getParticipantStandings = async (req, res) => {
     }
     // Generic error response
     res.status(500).json({ message: error.message || 'Failed to calculate participant standings' });
+  }
+};
+
+// Update the list of organizers for a tournament (Creator only)
+exports.updateOrganizers = async (req, res) => {
+  try {
+    const tournamentId = req.params.id;
+    const { organizerIds } = req.body; // Expecting an array of User IDs
+    const requestingUserId = req.user.id; // From protect middleware
+
+    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
+      return res.status(400).json({ message: 'Invalid Tournament ID format' });
+    }
+    if (!Array.isArray(organizerIds)) {
+      return res.status(400).json({ message: 'organizerIds must be an array' });
+    }
+
+    // Fetch the tournament, selecting creator and organizers fields
+    const tournament = await Debate.findById(tournamentId).select('creator organizers');
+
+    if (!tournament) {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+
+    // Authorization: Only the original creator can modify the organizers list
+    if (tournament.creator.toString() !== requestingUserId) {
+      return res.status(403).json({ message: 'Only the tournament creator can update the organizers list' });
+    }
+
+    // Optional: Validate that provided IDs correspond to existing users
+    const validUserIds = [];
+    if (organizerIds.length > 0) {
+        const users = await User.find({ '_id': { $in: organizerIds } }).select('_id');
+        users.forEach(u => validUserIds.push(u._id));
+        // Check if any provided IDs were invalid (optional)
+        // const invalidIds = organizerIds.filter(id => !validUserIds.some(validId => validId.toString() === id));
+        // if (invalidIds.length > 0) {
+        //     console.warn(`Invalid user IDs provided for organizers: ${invalidIds.join(', ')}`);
+        // }
+    }
+
+    // Update the organizers array with validated IDs
+    tournament.organizers = validUserIds;
+
+    // Save the updated tournament
+    await tournament.save();
+
+    // Populate organizer details for the response
+    const updatedTournament = await Debate.findById(tournamentId)
+                                        .populate('organizers', 'username email _id')
+                                        .lean();
+
+    res.status(200).json({
+      message: 'Organizers updated successfully',
+      organizers: updatedTournament.organizers // Return the populated list
+    });
+
+  } catch (error) {
+    console.error('Error updating organizers:', error);
+    res.status(500).json({ message: error.message || 'Failed to update organizers' });
   }
 };

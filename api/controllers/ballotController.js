@@ -7,7 +7,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 exports.submitBallot = async (req, res) => {
   try {
-    const { tournamentId, postingId } = req.params;
+    const { id: tournamentId, postingId } = req.params; // Use 'id' from route param
     const ballotData = req.body;
     const userId = req.user._id;
     
@@ -39,7 +39,7 @@ exports.submitBallot = async (req, res) => {
  */
 exports.getBallot = async (req, res) => {
   try {
-    const { tournamentId, postingId } = req.params;
+    const { id: tournamentId, postingId } = req.params; // Use 'id' from route param
     
     const ballot = await ballotService.getBallot(tournamentId, postingId);
     
@@ -63,7 +63,7 @@ exports.getBallot = async (req, res) => {
  */
 exports.getAllBallots = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { round, roundType, submitted } = req.query;
     
     const filters = {};
@@ -103,7 +103,7 @@ exports.getAllBallots = async (req, res) => {
  */
 exports.uploadBallotImage = async (req, res) => {
   try {
-    const { tournamentId, postingId } = req.params;
+    const { id: tournamentId, postingId } = req.params; // Use 'id' from route param
     
     if (!req.file) {
       return res.status(400).json({
@@ -140,7 +140,7 @@ exports.uploadBallotImage = async (req, res) => {
  */
 exports.addParticipantFeedback = async (req, res) => {
   try {
-    const { tournamentId, postingId } = req.params;
+    const { id: tournamentId, postingId } = req.params; // Use 'id' from route param
     const feedbackData = req.body;
     const userId = req.user._id;
     
@@ -172,7 +172,7 @@ exports.addParticipantFeedback = async (req, res) => {
  */
 exports.getParticipantFeedback = async (req, res) => {
   try {
-    const { tournamentId, postingId } = req.params;
+    const { id: tournamentId, postingId } = req.params; // Use 'id' from route param
     
     const feedback = await ballotService.getParticipantFeedback(
       tournamentId,

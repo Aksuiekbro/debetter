@@ -141,7 +141,7 @@ const Home = () => {
   };
 
   const handleCreateDebate = () => {
-    navigate('/host-debate');
+    navigate('/host'); // Corrected path
   };
 
   const handleViewDebate = (id) => {

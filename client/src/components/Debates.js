@@ -131,16 +131,20 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
         </Button>
         {currentUser && (
           <>
-            {debate.creator?._id === currentUser._id ? (
-              <Button 
-                size="small" 
-                color="primary" 
+            {debate.creator?._id === currentUser._id ? ( // Add the opening parenthesis back
+              <Button
+                size="small"
+                color="primary"
                 variant="contained"
-                onClick={() => navigate(debate.format === 'tournament' ? `/tournaments/${debate._id}/manage` : `/debates/${debate._id}/manage`)}
+                onClick={() => navigate(debate.format === 'tournament' ? `/tournaments/${debate._id}/manage` : `/debates/${debate._id}/manage`)} // Use correct path for tournament
               >
-                {t('debatesList.card.manageButton', 'Manage Debate')}
+                {t('debatesList.card.manageButton', 'Manage')} {/* Shorten text slightly */}
               </Button>
-            ) : debate.participants.some(p => p._id === currentUser._id) ? (
+            ) : debate.participants.some(p => {
+                  // Check if p.userId is populated (object with _id) or just an ID string
+                  const participantUserId = (typeof p.userId === 'object' && p.userId !== null) ? p.userId._id : p.userId;
+                  return currentUser && participantUserId && currentUser._id && participantUserId.toString() === currentUser._id.toString();
+                }) ? ( // Flexible check
               <Button 
                 size="small" 
                 color="secondary" 
@@ -287,7 +291,14 @@ const Debates = () => {
       });
 
       if (response.ok) {
-        fetchDebates();
+        // Backend now returns the updated debate object directly
+        const updatedDebate = await response.json(); 
+        // Update the specific debate in the local state
+        setDebates(prevDebates => 
+          prevDebates.map(debate => 
+            debate._id === debateId ? updatedDebate : debate
+          )
+        );
       } else {
         const error = await response.json();
         alert(error.message);

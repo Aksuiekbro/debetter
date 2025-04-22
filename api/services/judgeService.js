@@ -22,21 +22,30 @@ class JudgeService {
     // Filter and transform the participants to get only judges
     const judges = debate.participants
       .filter(p => p.tournamentRole === 'Judge')
-      .map(p => ({
-        id: p._id,
-        userId: p.userId._id,
-        name: p.userId.username,
-        email: p.userId.email,
-        club: p.club || p.userId.club || '',
-        judgeStatus: p.judgeStatus || p.userId.experience || '',
-        judgeRank: p.judgeRank || 'Novice', // Include the judge rank
-        yearsExperience: p.yearsExperience || 0, // Include years of experience
-        courseLevel: p.courseLevel || '', // Include course level
-        phoneNumber: p.userId.phoneNumber || '',
-        isPresent: p.isPresent || false,
-        checkedInAt: p.checkedInAt,
-        checkedInBy: p.checkedInBy
-      }));
+      .map(p => {
+        // Add check for missing/unpopulated userId
+        if (!p.userId) {
+          console.error(`[JudgeService] Data inconsistency: Participant ${p._id} with role 'Judge' is missing populated user data (userId is null or undefined) for tournament ${tournamentId}. Skipping this judge.`);
+          return null; // Skip this entry
+        }
+        // If userId exists, proceed with mapping
+        return {
+          id: p._id, // This is the participant subdocument ID
+          userId: p.userId._id, // This is the User document ID
+          name: p.userId.username,
+          email: p.userId.email,
+          club: p.club || p.userId.club || '',
+          judgeStatus: p.judgeStatus || p.userId.experience || '',
+          judgeRank: p.judgeRank || 'Novice', // Include the judge rank
+          yearsExperience: p.yearsExperience || 0, // Include years of experience
+          courseLevel: p.courseLevel || '', // Include course level
+          phoneNumber: p.userId.phoneNumber || '',
+          isPresent: p.isPresent || false,
+          checkedInAt: p.checkedInAt,
+          checkedInBy: p.checkedInBy // This might be null if not checked in
+        };
+      })
+      .filter(judge => judge !== null); // Filter out any null entries caused by missing userId
 
     return judges;
   }

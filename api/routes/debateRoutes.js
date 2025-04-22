@@ -41,10 +41,11 @@ const {
     uploadBallot, // Import for uploading ballot
     getJudgeLeaderboard, // Import for judge leaderboard
     getDebateTeams, // Import for getting teams of a debate
+    updateOrganizers, // Import the new controller function
 } = require('../controllers/debateController');
 const { getParticipantStandings } = require('../controllers/debateController'); // Import for participant standings
-const announcementController = require('../controllers/announcementController'); // Import announcement controller
-const commentController = require('../controllers/commentController'); // Import comment controller
+const announcementRoutes = require('./announcementRoutes'); // Import announcement ROUTES
+const commentRoutes = require('./commentRoutes'); // Import comment ROUTES
 const scheduleRoutes = require('./scheduleRoutes'); // Import schedule routes
 const registrationFieldRoutes = require('./registrationFieldRoutes'); // Import registration field routes
 const checkInRoutes = require('./checkInRoutes'); // Import check-in routes
@@ -55,7 +56,8 @@ const ballotRoutes = require('./ballotRoutes'); // Import ballot routes
 const entrantRoutes = require('./entrantRoutes'); // Import entrant routes
 const judgeRoutes = require('./judgeRoutes'); // Import judge routes
 const themeController = require('../controllers/themeController'); // Import theme controller
-const { protect, isOrganizer } = require('../middleware/authMiddleware');
+const { protect, isOrganizer: isAdminOrGlobalOrganizer } = require('../middleware/authMiddleware'); // Renamed for clarity
+const { isTournamentOrganizer } = require('../middleware/tournamentAuthMiddleware'); // Import specific tournament auth
 const upload = require('../middleware/uploadMiddleware'); // Middleware for handling file uploads
 
 // Middleware to validate participant registration
@@ -75,139 +77,86 @@ router.get('/:id', getDebate);
 
 router.get('/:debateId/teams', getDebateTeams); // Route to get teams for a specific debate
 // Protected routes
-router.use(protect);
-router.post('/', createDebate);
+router.use(protect); // Apply basic authentication to all subsequent routes
+
+// Creating a new debate/tournament - Requires global organizer/admin role
+router.post('/', isAdminOrGlobalOrganizer, createDebate);
+
+// User-specific routes (no specific tournament role needed beyond being logged in)
 router.get('/user/mydebates', getUserDebates);
-router.put('/:id', updateDebate);
+router.post('/:id/join', joinDebate); // Joining doesn't require organizer role
+router.post('/:id/leave', leaveDebate); // Leaving doesn't require organizer role
 
-// Routes requiring tournament validation
-router.post('/:id/join', protect, joinDebate); // Added protect middleware, removed undefined validateTournamentOperation
-router.post('/:id/leave', protect, leaveDebate); // Added protect middleware, removed undefined validateTournamentOperation
+// Routes requiring specific tournament organizer/creator permissions
+router.put('/:id', isTournamentOrganizer, updateDebate); // Updating tournament details
+router.post('/:id/teams', isTournamentOrganizer, assignTeams); // Assigning teams (if manual)
+router.post('/:id/rooms', isTournamentOrganizer, startRoom); // Starting a room (likely organizer action)
+router.post('/:id/transcription', isTournamentOrganizer, saveTranscript); // Saving transcript (might depend on who controls recording)
+router.post('/:id/analyze/final', isTournamentOrganizer, analyzeFinalDebate); // Final analysis trigger
+router.post('/:id/analyze/interim', isTournamentOrganizer, analyzeInterim); // Interim analysis trigger
+router.post('/:id/tournament/brackets', isTournamentOrganizer, updateTournamentBrackets); // Manual bracket update
+router.post('/:id/initialize-bracket', isTournamentOrganizer, generateTournamentBracket); // Initial bracket generation
+router.post('/:id/tournament/match/update', isTournamentOrganizer, updateTournamentMatch); // Updating match results (judges might do this via specific ballot routes?)
 
-// Tournament specific routes
-router.post('/:id/teams', assignTeams);
-router.post('/:id/rooms', startRoom);
-// router.post('/:id/speech/analyze', analyzeSpeech); // Commented out - analyzeSpeech is not defined/exported
-router.post('/:id/transcription', saveTranscript);
-router.post('/:id/analyze/final', analyzeFinalDebate);
-router.post('/:id/analyze/interim', analyzeInterim);
-router.post('/:id/tournament/brackets', updateTournamentBrackets);
-router.post('/:id/tournament/bracket/generate', generateTournamentBracket);
-router.post('/:id/initialize-bracket', protect, generateTournamentBracket);
-router.post('/:id/tournament/match/update', updateTournamentMatch);
-// router.put('/:id/tournament/participants', updateParticipants); // Commented out - updateParticipants is not defined/exported
-router.post('/teams', createTeam);
-router.put('/teams/:teamId', updateTeam);
-router.delete('/:id/teams/:teamId', protect, isOrganizer, deleteTeam); // Route to delete a team from a tournament
+// Team Management within a specific tournament
+router.post('/:id/teams', isTournamentOrganizer, createTeam); // Create team *for* a specific tournament
+router.put('/:id/teams/:teamId', isTournamentOrganizer, updateTeam); // Update team *within* a specific tournament
+router.delete('/:id/teams/:teamId', isTournamentOrganizer, deleteTeam); // Delete team *from* a specific tournament
 
-// Route to update a specific participant's details within a tournament
+// Participant Management within a specific tournament
+router.post('/:id/participants', isTournamentOrganizer, addParticipant); // Add participant
+router.put('/:id/participants/:participantUserId', isTournamentOrganizer, updateParticipant); // Update participant
+router.delete('/:id/participants/:participantUserId', isTournamentOrganizer, deleteParticipant); // Delete participant
 
-// Route to add a participant to a tournament
-router.post('/:id/participants', isOrganizer, addParticipant);
-router.put('/:id/participants/:participantUserId', isOrganizer, updateParticipant);
-// Route to delete a specific participant from a tournament
-router.delete('/:id/participants/:participantUserId', isOrganizer, deleteParticipant);
+// Posting Management within a specific tournament
+router.post('/:id/postings', isTournamentOrganizer, createApfPosting);
+router.post('/:id/batch-postings', isTournamentOrganizer, createApfBatchPostings);
+router.put('/:id/postings/:postingId/status', isTournamentOrganizer, updateApfPostingStatus);
+router.post('/:id/postings/:postingId/reminders', isTournamentOrganizer, sendApfGameReminder);
+// Uploads might be done by judges/admins as well, consider separate middleware if needed
+router.post('/:id/postings/:postingId/audio', isTournamentOrganizer, upload.single('audio'), uploadAudio);
+router.post('/:id/postings/:postingId/ballot', isTournamentOrganizer, upload.single('ballot'), uploadBallot);
 
-// Route to get the judge leaderboard for a tournament
-router.get('/:id/judges/leaderboard', getJudgeLeaderboard);
+// Special registration route - needs organizer access
+router.post('/:id/register-participants', isTournamentOrganizer, validateParticipantData, registerParticipants);
+
+// Test data generation - organizer only
+router.post('/:id/generate-test-data', isTournamentOrganizer, generateTestData);
+
+// Map Management - organizer only
+router.post('/:id/map', isTournamentOrganizer, upload.single('mapImage'), uploadMap);
+router.delete('/:id/map', isTournamentOrganizer, deleteMap);
+
+// Theme Management - organizer only
+router.post('/:id/themes', isTournamentOrganizer, themeController.createTheme);
+router.put('/:id/themes/:themeId', isTournamentOrganizer, themeController.updateTheme);
+router.delete('/:id/themes/:themeId', isTournamentOrganizer, themeController.deleteTheme);
+
+// Organizer Management - Creator Only (Specific check needed in controller/service)
+router.put('/:id/organizers', updateOrganizers); // Add route for updating organizers
+
+// Publicly accessible GET routes (or routes needing only base auth)
+router.get('/:id/judges/leaderboard', getJudgeLeaderboard); // Public leaderboard view
 
 // Route to get participant standings for a tournament
 router.get('/:id/participant-standings', getParticipantStandings);
 
-// Team registration route
-// router.post('/:id/register-team', registerTeam);
+router.get('/:id/participant-standings', getParticipantStandings); // Public standings view
+router.get('/:id/postings/:postingId', getPostingDetails); // Public posting details view
+router.get('/:id/map', getMap); // Public map view
+router.get('/:id/themes', themeController.getThemes); // Public themes view
 
-// Team randomization route
-// router.post('/:id/randomize-teams', randomizeTeams); // Commented out - randomizeTeams is not defined/exported
-
-// APF Game posting routes
-router.post('/:id/postings', isOrganizer, createApfPosting);
-router.post('/:id/batch-postings', isOrganizer, createApfBatchPostings);
-router.get('/:id/postings/:postingId', getPostingDetails); // Added route for fetching specific posting details
-router.put('/:id/postings/:postingId/status', isOrganizer, updateApfPostingStatus);
-router.post('/:id/postings/:postingId/reminders', isOrganizer, sendApfGameReminder);
-// Routes for uploading audio and ballot images for a specific posting
-router.post('/:id/postings/:postingId/audio', upload.single('audio'), uploadAudio);
-router.post('/:id/postings/:postingId/ballot', upload.single('ballot'), uploadBallot);
-
-// Special route for tournament participant registration
-router.post('/:id/register-participants', validateParticipantData, registerParticipants);
-
-// Organizer only routes
-router.post('/:id/generate-test-data', isOrganizer, generateTestData);
-
-// Tournament Announcement Routes (nested under /:id which represents tournamentId)
-// protect middleware is already applied globally above
-router.post('/:id/announcements', announcementController.create); // Auth check inside controller
-router.get('/:id/announcements', announcementController.getAllForTournament); // Publicly viewable by authenticated users
-router.put('/:id/announcements/:announcementId', announcementController.update); // Auth check inside controller
-router.delete('/:id/announcements/:announcementId', announcementController.delete); // Auth check inside controller
-router.post('/:id/announcements/:announcementId/image', upload.single('image'), announcementController.uploadImage); // Upload image for announcement
-
-// Comment routes for announcements
-router.post('/:id/announcements/:announcementId/comments', commentController.createComment); // Create a comment
-router.get('/:id/announcements/:announcementId/comments', commentController.getCommentsByAnnouncement); // Get all comments for an announcement
-router.delete('/:id/announcements/comments/:commentId', commentController.deleteComment); // Delete a comment
-
-// Tournament Schedule Routes (nested under /:id which represents tournamentId)
-// protect middleware is already applied globally above
-// scheduleRoutes handles its own specific auth/role checks internally via controller
+// Routes using nested routers (assuming they handle their own auth internally or inherit 'protect')
+router.use('/:id/announcements', announcementRoutes); // Use the imported routes directly
+router.use('/:id/announcements/:announcementId/comments', commentRoutes); // Use the imported routes directly
 router.use('/:id/schedule', scheduleRoutes);
-
-// Registration Field Routes (nested under /:id which represents tournamentId)
-// registrationFieldRoutes handles its own specific auth/role checks internally
 router.use('/:id/registration-fields', registrationFieldRoutes);
-
-// Check-in Routes (nested under /:id which represents tournamentId)
-// checkInRoutes handles its own specific auth/role checks internally
 router.use('/:id/check-in', checkInRoutes);
-
-// Results Routes (nested under /:id which represents tournamentId)
-// resultsRoutes handles its own specific auth/role checks internally
 router.use('/:id/results', resultsRoutes);
-
-// Match Postings Routes (nested under /:id which represents tournamentId)
-// matchPostingsRoutes handles its own specific auth/role checks internally
 router.use('/:id/match-postings', matchPostingsRoutes);
-
-// Pairing Routes (nested under /:id which represents tournamentId)
-// pairingRoutes handles its own specific auth/role checks internally
 router.use('/:id/pairings', pairingRoutes);
-
-// Ballot Routes (nested under /:id which represents tournamentId)
-// ballotRoutes handles its own specific auth/role checks internally
 router.use('/:id/ballots', ballotRoutes);
-
-// Entrant Routes (nested under /:id which represents tournamentId)
-// entrantRoutes handles its own specific auth/role checks internally
 router.use('/:id/entrants', entrantRoutes);
-
-// Judge Routes (nested under /:id which represents tournamentId)
-// judgeRoutes handles its own specific auth/role checks internally
 router.use('/:id/judges', judgeRoutes);
-
-
-// Tournament Map Routes
-// protect middleware is already applied globally above
-router.post('/:id/map', isOrganizer, upload.single('mapImage'), uploadMap); // Organizer check + Multer for single file upload
-router.get('/:id/map', getMap); // Get map URL (protected globally)
-router.delete('/:id/map', isOrganizer, deleteMap); // Organizer check
-
-
-// Theme management routes
-// Base path: /api/debates/:id/themes
-// 'protect' middleware is already applied globally
-
-// Get all themes for a tournament
-router.get('/:id/themes', themeController.getThemes);
-
-// Create a new theme for a tournament (Organizer/Admin only)
-router.post('/:id/themes', isOrganizer, themeController.createTheme);
-
-// Update a specific theme for a tournament (Organizer/Admin only)
-router.put('/:id/themes/:themeId', isOrganizer, themeController.updateTheme);
-
-// Delete a specific theme for a tournament (Organizer/Admin only)
-router.delete('/:id/themes/:themeId', isOrganizer, themeController.deleteTheme);
 
 module.exports = router;

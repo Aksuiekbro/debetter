@@ -8,7 +8,8 @@ const socketService = require('../services/socketService'); // Import socket ser
  * Create a new comment for an announcement
  */
 exports.createComment = catchAsync(async (req, res, next) => {
-    const { announcementId } = req.params;
+    // Access both announcementId and the parent's :id (tournamentId)
+    const { id: tournamentId, announcementId } = req.params; 
     const { content } = req.body;
     const userId = req.user.id;
 
@@ -29,10 +30,7 @@ exports.createComment = catchAsync(async (req, res, next) => {
         userId
     );
 
-    // Get the tournament ID for the announcement
-    const tournamentId = announcement.tournament;
-
-    // Emit socket event for real-time updates
+    // Emit socket event for real-time updates - tournamentId is now available directly
     socketService.emitCommentCreated(tournamentId, announcementId, comment);
 
     // Return the populated comment with user info
@@ -71,7 +69,8 @@ exports.getCommentsByAnnouncement = catchAsync(async (req, res, next) => {
  * Delete a comment
  */
 exports.deleteComment = catchAsync(async (req, res, next) => {
-    const { commentId } = req.params;
+    // Access tournamentId, announcementId, and commentId from params
+    const { id: tournamentId, announcementId, commentId } = req.params; 
     const userId = req.user.id;
     const userRole = req.user.role;
 
@@ -81,13 +80,7 @@ exports.deleteComment = catchAsync(async (req, res, next) => {
         return next(new AppError('Comment not found.', 404));
     }
 
-    const announcementId = comment.announcement;
-
-    // Get the tournament ID for the announcement
-    const announcement = await announcementService.getAnnouncementById(announcementId);
-    const tournamentId = announcement.tournament;
-
-    // Delete the comment
+    // Delete the comment (service likely needs commentId, userId, userRole)
     await commentService.deleteComment(commentId, userId, userRole);
 
     // Emit socket event for real-time updates

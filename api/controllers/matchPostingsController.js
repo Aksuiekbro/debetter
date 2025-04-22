@@ -5,7 +5,7 @@ const postingService = require('../services/postingService');
  */
 exports.generateMatchPostings = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { 
       round, 
       roundType = 'preliminary',
@@ -50,7 +50,7 @@ exports.generateMatchPostings = async (req, res) => {
  */
 exports.saveMatchPostings = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { postings } = req.body;
     const userId = req.user._id;
     
@@ -88,7 +88,7 @@ exports.saveMatchPostings = async (req, res) => {
  */
 exports.confirmMatchPostings = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { round, roundType = 'preliminary' } = req.body;
     
     if (!round) {
@@ -125,7 +125,7 @@ exports.confirmMatchPostings = async (req, res) => {
  */
 exports.publishMatchPostings = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { round, roundType = 'preliminary' } = req.body;
     
     if (!round) {
@@ -162,7 +162,7 @@ exports.publishMatchPostings = async (req, res) => {
  */
 exports.getMatchPostings = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { round, roundType, confirmed, published } = req.query;
     
     const filters = {};
@@ -206,7 +206,7 @@ exports.getMatchPostings = async (req, res) => {
  */
 exports.getMaxRound = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { roundType = 'preliminary' } = req.query;
     
     const maxRound = await postingService.getMaxRound(tournamentId, roundType);

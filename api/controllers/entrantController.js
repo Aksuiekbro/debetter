@@ -5,7 +5,7 @@ const entrantService = require('../services/entrantService');
  */
 exports.getEntrants = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     
     const entrants = await entrantService.getEntrantsForTournament(tournamentId);
     
@@ -43,7 +43,7 @@ exports.getEntrants = async (req, res) => {
  */
 exports.checkInEntrant = async (req, res) => {
   try {
-    const { tournamentId, entrantId } = req.params;
+    const { id: tournamentId, entrantId } = req.params; // Use 'id' from route param
     const userId = req.user._id;
     
     const entrant = await entrantService.checkInEntrant(tournamentId, entrantId, userId);
@@ -71,7 +71,7 @@ exports.checkInEntrant = async (req, res) => {
  */
 exports.checkOutEntrant = async (req, res) => {
   try {
-    const { tournamentId, entrantId } = req.params;
+    const { id: tournamentId, entrantId } = req.params; // Use 'id' from route param
     
     const entrant = await entrantService.checkOutEntrant(tournamentId, entrantId);
     

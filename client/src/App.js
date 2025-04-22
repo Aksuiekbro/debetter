@@ -19,12 +19,13 @@ import ApfTabulation from './components/ApfTabulation';
 import ApfJudgeEvaluation from './components/ApfJudgeEvaluation';
 import TeamRegistrationForm from './components/TeamRegistrationForm';
 import PostingDetails from './components/PostingDetails';
-import LandingPage from './components/LandingPage';
+// import LandingPage from './components/LandingPage'; // Removed unused import
 import CreateTournamentForm from './components/CreateTournamentForm';
 import DebaterFeedbackDisplay from './components/DebaterFeedbackDisplay';
 import NotificationSettings from './components/NotificationSettings'; // Import NotificationSettings
 import ActiveJudgeInterface from './components/ActiveJudgeInterface'; // Import the new interface
 import JudgeLeaderboard from './components/JudgeLeaderboard'; // Import JudgeLeaderboard
+import HostDebate from './components/HostDebate'; // Import HostDebate component
 import TestFeed from './components/TournamentManagement/TestFeed'; // Import TestFeed component
 
 // Using the imported Telegram-inspired theme
@@ -69,10 +70,10 @@ function App() {
               <Route path="/tournaments/:id" element={<TournamentDetail />} />
               <Route
                 path="/tournaments/:id/manage"
-                element={
-                  !loading && user?.role === 'organizer'
+                element={ // Simplified: Only check if user is logged in. Backend middleware handles specific authorization.
+                  !loading && user
                   ? <TournamentManagement />
-                  : <Navigate to="/home" replace />
+                  : <Navigate to="/login" replace /> // Redirect to login if not authenticated
                 }
               />
               <Route path="/tournaments/:id/judge-leaderboard" element={<JudgeLeaderboard />} />
@@ -93,6 +94,8 @@ function App() {
               {/* Add Notification Settings Route */}
               <Route path="/settings/notifications" element={<NotificationSettings />} />
               <Route path="/judge/:debateId/:postingId" element={<ActiveJudgeInterface />} />
+              {/* Add the route for hosting a new debate */}
+              <Route path="/host" element={<HostDebate />} />
               <Route path="/test-feed" element={<TestFeed />} />
            </Route>
           </Routes>

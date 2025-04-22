@@ -5,7 +5,7 @@ const resultsService = require('../services/resultsService');
  */
 exports.getTeamRankings = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     
     const rankings = await resultsService.getTeamRankings(tournamentId);
     
@@ -29,7 +29,7 @@ exports.getTeamRankings = async (req, res) => {
  */
 exports.recordRoundResults = async (req, res) => {
   try {
-    const { tournamentId, roundNumber } = req.params;
+    const { id: tournamentId, roundNumber } = req.params; // Use 'id' from route param
     const { results } = req.body;
     
     if (!results || !Array.isArray(results)) {
@@ -66,7 +66,7 @@ exports.recordRoundResults = async (req, res) => {
  */
 exports.getTeamResults = async (req, res) => {
   try {
-    const { tournamentId, teamId } = req.params;
+    const { id: tournamentId, teamId } = req.params; // Use 'id' from route param
     
     const teamResults = await resultsService.getTeamResults(tournamentId, teamId);
     
@@ -90,7 +90,7 @@ exports.getTeamResults = async (req, res) => {
  */
 exports.getRoundResults = async (req, res) => {
   try {
-    const { tournamentId } = req.params;
+    const { id: tournamentId } = req.params; // Use 'id' from route param
     const { round } = req.query;
     
     const roundNumber = round ? parseInt(round, 10) : null;

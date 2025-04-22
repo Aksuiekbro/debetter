@@ -235,11 +235,11 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                         size="small"
                         color="primary"
                         onClick={() => {
-                          if (assignment.status === 'evaluated' && assignment.evaluationId) {
-                            // Navigate to evaluation details
-                            navigate(`/debates/${assignment.tournamentId}/evaluation/${assignment.evaluationId}`);
+                          if (assignment.status === 'evaluated' && assignment.id) { // Check for assignment.id (posting ID)
+                            // Navigate to posting details page for evaluated games
+                            navigate(`/debates/${assignment.tournamentId}/postings/${assignment.id}`);
                           } else {
-                            // Navigate to judge panel with this game preselected
+                            // Navigate to judge panel with this game preselected for pending games
                             navigate('/judge-panel', { 
                               state: { selectedGame: assignment }
                             });
