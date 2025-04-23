@@ -9,11 +9,13 @@ import {
   Box
 } from '@mui/material';
 import { useNavigate, Link } from 'react-router-dom';
-import { api } from '../../config/api';
+// import { api } from '../../config/api'; // No longer needed directly here
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
 
 const Login = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { login } = useAuth(); // Get login function from context
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -30,27 +32,16 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    try {
-      // Use the API client instead of fetch for consistency
-      const response = await api.client.post('/api/users/login', formData);
-      const data = response.data;
-      // console.log('Login successful, API response data:', data); // Removed debug log
-      
-      // console.log('Attempting to set localStorage items...'); // Removed debug log
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('userRole', data.role); // Store the role
-      localStorage.setItem('username', data.username);
-      localStorage.setItem('userId', data._id);
-      // console.log('localStorage set, attempting to dispatch auth-change event...'); // Removed debug log
-      window.dispatchEvent(new Event('auth-change'));
-      // console.log('Event dispatched, attempting to navigate to /home...'); // Removed debug log
-      navigate('/home');
-    } catch (error) {
-      console.error('Login error:', error);
-      // console.error('Caught error during login process:', error); // Removed redundant error log
-      const errorMessage = error.response?.data?.message || t('login.genericError', 'Login failed. Please check your connection and try again.');
-      setError(errorMessage);
+
+    // Use the login function from AuthContext
+    const result = await login(formData.email, formData.password);
+
+    if (result.success) {
+      // Login function in context handles setting state and token
+      navigate('/home'); // Navigate on successful login
+    } else {
+      // Login function in context handles error logging
+      setError(result.message || t('login.genericError', 'Login failed. Please check your credentials.'));
     }
   };
   

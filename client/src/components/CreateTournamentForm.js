@@ -24,28 +24,21 @@ import { getAuthHeaders } from '../utils/auth'; // Helper to get auth headers
 const CreateTournamentForm = () => {
   const { t } = useTranslation(); // Initialize translation hook
   const [name, setName] = useState('');
-  const [selectedFormats, setSelectedFormats] = useState([]);
+  // Removed selectedFormats state
   const [date, setDate] = useState(null); // Renamed for clarity: this is the Start Date
   const [endDate, setEndDate] = useState(null); // Add end date
   const [registrationDeadline, setRegistrationDeadline] = useState(null); // Add state for registration deadline
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [eligibility, setEligibility] = useState('');
-  const [category, setCategory] = useState(''); // Add state for category
-  const [difficulty, setDifficulty] = useState(''); // Add state for difficulty
-  const [leagueType, setLeagueType] = useState('open'); // Add state for league type
+  // Removed category state
+  // Removed difficulty state
+  const [league, setLeague] = useState('school'); // Renamed from leagueType, default to 'school'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const availableFormats = ['APD', 'BP', 'LD', 'WSDC', 'Other']; // Available debate formats
-
-  const handleFormatChange = (event) => {
-    const { value, checked } = event.target;
-    setSelectedFormats((prev) =>
-      checked ? [...prev, value] : prev.filter((format) => format !== value)
-    );
-  };
+  // Removed availableFormats and handleFormatChange
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -55,17 +48,17 @@ const CreateTournamentForm = () => {
 
     const payload = {
       title: name, // Use 'title' key
-      format: 'tournament',
-      tournamentFormats: selectedFormats, // Use 'tournamentFormats' key
+      format: 'tournament', // Keep this hardcoded unless specified otherwise
+      // Removed tournamentFormats
       startDate: date instanceof Date && !isNaN(date.getTime()) ? date.toISOString() : null, // Use 'startDate' key (Start Date)
       endDate: endDate instanceof Date && !isNaN(endDate.getTime()) ? endDate.toISOString() : null, // Add end date
       registrationDeadline: registrationDeadline instanceof Date && !isNaN(registrationDeadline.getTime()) ? registrationDeadline.toISOString() : null, // Add registration deadline
       location,
       description,
       eligibilityCriteria: eligibility, // Use 'eligibilityCriteria' key
-      category, // Add category
-      difficulty, // Add difficulty
-      leagueType, // Add league type
+      // Removed category
+      // Removed difficulty
+      league, // Renamed from leagueType
     };
 
     try {
@@ -74,16 +67,16 @@ const CreateTournamentForm = () => {
       setSuccess(t('createTournamentForm.successMessage', 'Tournament "{{name}}" created successfully!', { name: response.data.title }));
       // Optionally clear the form
       setName('');
-      setSelectedFormats([]);
+      // Removed selectedFormats clear
       setDate(null); // Clear Start Date
       setEndDate(null); // Clear End Date
       setRegistrationDeadline(null); // Clear Registration Deadline
       setLocation('');
       setDescription('');
       setEligibility('');
-      setCategory(''); // Clear category
-      setDifficulty(''); // Clear difficulty
-      setLeagueType('open'); // Reset league type
+      // Removed category clear
+      // Removed difficulty clear
+      setLeague('school'); // Reset league to default
     } catch (err) {
       console.error("Error creating tournament:", err);
       setError(err.response?.data?.message || t('createTournamentForm.errorMessageDefault', 'Failed to create tournament. Please try again.'));
@@ -114,59 +107,11 @@ const CreateTournamentForm = () => {
           inputProps={{ "data-testid": "tournament-name-input" }}
         />
 
-        <Typography variant="subtitle1" gutterBottom>{t('createTournamentForm.formatsLabel', 'Formats')}</Typography>
-        <FormGroup row sx={{ mb: 2 }}>
-          {availableFormats.map((format) => (
-            <FormControlLabel
-              key={format}
-              control={
-                <Checkbox
-                  checked={selectedFormats.includes(format)}
-                  onChange={handleFormatChange}
-                  value={format}
-                  disabled={loading}
-                />
-              }
-              label={format}
-            />
-          ))}
-        </FormGroup>
+        {/* Removed Formats Checkbox Group */}
 
-        {/* Category Select */}
-        <FormControl fullWidth required sx={{ mb: 2 }} disabled={loading}>
-          <InputLabel id="category-select-label">{t('createTournamentForm.categoryLabel', 'Category')}</InputLabel>
-          <Select
-            labelId="category-select-label"
-            value={category}
-            label={t('createTournamentForm.categoryLabel', 'Category')}
-            onChange={(e) => setCategory(e.target.value)}
-            inputProps={{ "data-testid": "tournament-category-select" }}
-          >
-            {/* Define category options based on schema enum */}
-            <MenuItem value="politics">{t('createTournamentForm.category.politics', 'Politics')}</MenuItem>
-            <MenuItem value="technology">{t('createTournamentForm.category.technology', 'Technology')}</MenuItem>
-            <MenuItem value="science">{t('createTournamentForm.category.science', 'Science')}</MenuItem>
-            <MenuItem value="society">{t('createTournamentForm.category.society', 'Society')}</MenuItem>
-            <MenuItem value="economics">{t('createTournamentForm.category.economics', 'Economics')}</MenuItem>
-          </Select>
-        </FormControl>
+        {/* Removed Category Select */}
 
-        {/* Difficulty Select */}
-        <FormControl fullWidth required sx={{ mb: 2 }} disabled={loading}>
-          <InputLabel id="difficulty-select-label">{t('createTournamentForm.difficultyLabel', 'Difficulty')}</InputLabel>
-          <Select
-            labelId="difficulty-select-label"
-            value={difficulty}
-            label={t('createTournamentForm.difficultyLabel', 'Difficulty')}
-            onChange={(e) => setDifficulty(e.target.value)}
-            inputProps={{ "data-testid": "tournament-difficulty-select" }}
-          >
-            {/* Define difficulty options based on schema enum */}
-            <MenuItem value="beginner">{t('createTournamentForm.difficulty.beginner', 'Beginner')}</MenuItem>
-            <MenuItem value="intermediate">{t('createTournamentForm.difficulty.intermediate', 'Intermediate')}</MenuItem>
-            <MenuItem value="advanced">{t('createTournamentForm.difficulty.advanced', 'Advanced')}</MenuItem>
-          </Select>
-        </FormControl>
+        {/* Removed Difficulty Select */}
 
         <DatePicker
           label={t('createTournamentForm.startDateLabel', 'Start Date')}
@@ -213,20 +158,19 @@ const CreateTournamentForm = () => {
           inputProps={{ "data-testid": "tournament-description-input" }}
         />
 
-        {/* League Type Select */}
+        {/* Updated League Select */}
         <FormControl fullWidth required sx={{ mb: 2 }} disabled={loading}>
-          <InputLabel id="league-type-select-label">{t('createTournamentForm.leagueTypeLabel', 'League Type')}</InputLabel>
+          <InputLabel id="league-select-label">{t('createTournamentForm.leagueLabel', 'League')}</InputLabel>
           <Select
-            labelId="league-type-select-label"
-            value={leagueType}
-            label={t('createTournamentForm.leagueTypeLabel', 'League Type')}
-            onChange={(e) => setLeagueType(e.target.value)}
-            inputProps={{ "data-testid": "tournament-league-type-select" }}
+            labelId="league-select-label"
+            value={league}
+            label={t('createTournamentForm.leagueLabel', 'League')}
+            onChange={(e) => setLeague(e.target.value)}
+            inputProps={{ "data-testid": "tournament-league-select" }}
           >
-            <MenuItem value="school">{t('createTournamentForm.leagueType.school', 'School')}</MenuItem>
-            <MenuItem value="university">{t('createTournamentForm.leagueType.university', 'University')}</MenuItem>
-            <MenuItem value="open">{t('createTournamentForm.leagueType.open', 'Open')}</MenuItem>
-            <MenuItem value="other">{t('createTournamentForm.leagueType.other', 'Other')}</MenuItem>
+            <MenuItem value="school">{t('createTournamentForm.league.school', 'School League')}</MenuItem>
+            <MenuItem value="university">{t('createTournamentForm.league.university', 'University League')}</MenuItem>
+            {/* Removed 'open' and 'other' options as per request */}
           </Select>
         </FormControl>
 

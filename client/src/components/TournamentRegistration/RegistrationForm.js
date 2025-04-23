@@ -20,9 +20,14 @@ const RegistrationForm = ({ currentUser }) => {
   const [error, setError] = useState(null);
   
   const [role, setRole] = useState('Debater');
-  const [fieldValues, setFieldValues] = useState({});
+  const [fieldValues, setFieldValues] = useState({}); // For custom fields
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+
+  // State for standard Debater fields
+  const [teamName, setTeamName] = useState('');
+  const [participantNames, setParticipantNames] = useState(''); // Simple string for now
+  const [schoolUniversity, setSchoolUniversity] = useState('');
   
   // Fetch tournament and custom fields
   useEffect(() => {
@@ -57,25 +62,54 @@ const RegistrationForm = ({ currentUser }) => {
       [fieldName]: value
     }));
   };
-  
+
+  // Handle standard debater field changes
+  const handleStandardFieldChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'teamName') setTeamName(value);
+    else if (name === 'participantNames') setParticipantNames(value);
+    else if (name === 'schoolUniversity') setSchoolUniversity(value);
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitError(null);
-    
+
     try {
-      // First join the tournament with the selected role
-      const joinResponse = await api.client.post(`/api/debates/${tournamentId}/join`, {
-        role
-      });
-      
-      // If there are custom fields, save their values
-      if (customFields.length > 0 && Object.keys(fieldValues).length > 0) {
-        await api.client.post(`/api/debates/${tournamentId}/registration-fields/values`, fieldValues);
+      if (role === 'Debater') {
+        // TODO: Implement backend endpoint for Debater/Team registration
+        // This endpoint should handle creating/finding the team, adding participants,
+        // associating with the tournament, and potentially saving custom field values.
+        // The payload should include teamName, participantNames, schoolUniversity, and fieldValues.
+        console.log('Submitting Debater Registration:', { teamName, participantNames, schoolUniversity, customFields: fieldValues });
+        // Example placeholder call (replace with actual API call when backend is ready)
+        // await api.client.post(`/api/tournaments/${tournamentId}/register-team`, {
+        //   teamName,
+        //   participants: participantNames.split(',').map(name => name.trim()), // Example parsing
+        //   schoolUniversity,
+        //   customFieldValues: fieldValues,
+        //   role: 'Debater' // Ensure role is included if needed by backend
+        // });
+        setSubmitError('Debater registration endpoint not yet implemented.'); // Temporary error
+        setIsSubmitting(false); // Stop submission for now
+        return; // Prevent further execution until backend is ready
+
+      } else {
+        // Existing logic for Judge/Observer registration
+        // First join the tournament with the selected role
+        await api.client.post(`/api/debates/${tournamentId}/join`, {
+          role
+        });
+
+        // If there are custom fields, save their values
+        if (customFields.length > 0 && Object.keys(fieldValues).length > 0) {
+          await api.client.post(`/api/debates/${tournamentId}/registration-fields/values`, fieldValues);
+        }
       }
-      
-      // Navigate to tournament details page
+
+      // Navigate to tournament details page on success (for non-Debaters for now)
       navigate(`/tournaments/${tournamentId}`);
     } catch (err) {
       console.error('Error submitting registration:', err);
@@ -140,7 +174,48 @@ const RegistrationForm = ({ currentUser }) => {
             <FormControlLabel value="Observer" control={<Radio />} label={t('registrationForm.observer', 'Observer')} />
           </RadioGroup>
         </FormControl>
-        
+
+        {/* Standard Fields for Debaters */}
+        {role === 'Debater' && (
+          <>
+            <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+              {t('registrationForm.teamInfo', 'Team Information')}
+            </Typography>
+            <TextField
+              label={t('registrationForm.teamName', 'Team Name')}
+              name="teamName"
+              fullWidth
+              required
+              value={teamName}
+              onChange={handleStandardFieldChange}
+              margin="normal"
+              disabled={isSubmitting}
+            />
+            <TextField
+              label={t('registrationForm.participantNames', 'Participant Names (comma-separated)')}
+              name="participantNames"
+              fullWidth
+              required
+              value={participantNames}
+              onChange={handleStandardFieldChange}
+              margin="normal"
+              disabled={isSubmitting}
+              helperText={t('registrationForm.participantNamesHelper', 'Enter names separated by commas')}
+            />
+            <TextField
+              label={t('registrationForm.schoolUniversity', 'School/University')}
+              name="schoolUniversity"
+              fullWidth
+              required
+              value={schoolUniversity}
+              onChange={handleStandardFieldChange}
+              margin="normal"
+              disabled={isSubmitting}
+            />
+          </>
+        )}
+
+        {/* Custom Fields Section */}
         {customFields.length > 0 && (
           <>
             <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>

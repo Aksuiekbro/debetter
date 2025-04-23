@@ -2,152 +2,179 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Typography, Button, CircularProgress, Alert,
-  List, ListItem, ListItemText, Divider, Paper, IconButton,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+  Box, Typography, Button, CircularProgress, Alert, Paper, IconButton,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardMedia, CardActions
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import { api } from '../../config/api'; // Removed getAuthHeaders
-// import { useAuth } from '../../contexts/AuthContext'; // Passed as prop
+// Removed unused icons: AddIcon, EditIcon, DeleteIcon
+// Removed unused components: List, ListItem, ListItemText, Divider, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+import UploadIcon from '@mui/icons-material/Upload'; // Added UploadIcon
+import { api } from '../../config/api';
 
-const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => { // Added tournament prop
+// Assuming currentUser and tournamentCreatorId are used for authorization checks
+// Assuming tournament prop contains tournament details including scheduleImageUrl
+const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => {
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
-  // const { user } = useAuth(); // Passed as prop
 
-  const [scheduleItems, setScheduleItems] = useState([]);
   const [pairings, setPairings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingPairings, setLoadingPairings] = useState(true); // Renamed loading state
   const [error, setError] = useState(null);
-  const [editItem, setEditItem] = useState(null); // Item being edited/created
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dialogError, setDialogError] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [uploadSuccess, setUploadSuccess] = useState(null);
+  const [scheduleImageUrl, setScheduleImageUrl] = useState(tournament?.scheduleImageUrl || null); // Initialize from prop
 
   // Determine if the current user is an organizer or admin for this tournament
-  // Temporarily set to true for testing
-  const isOrganizerOrAdmin = true;
+  // TODO: Implement proper check based on currentUser roles and tournamentCreatorId
+  const isOrganizerOrAdmin = currentUser && (currentUser.role === 'admin' || currentUser._id === tournamentCreatorId);
 
   console.log('ScheduleView props:', { currentUser, tournamentCreatorId, tournament });
 
-  const fetchSchedule = useCallback(async () => {
-    setLoading(true);
+  // Fetch only pairings now
+  const fetchPairings = useCallback(async () => {
+    setLoadingPairings(true);
     setError(null);
     if (!tournamentId) {
-      // Don't fetch if tournamentId is not yet available
-      setError(t('scheduleView.missingIdError')); // Optional: Provide specific feedback
-      setLoading(false);
+      setError(t('scheduleView.missingIdError'));
+      setLoadingPairings(false);
       return;
     }
     try {
-      // Fetch schedule items
-      const scheduleResponse = await api.client.get(`/api/debates/${tournamentId}/schedule`);
-      setScheduleItems(scheduleResponse.data || []); // Ensure it's an array
-
       // Fetch published pairings
       const pairingsResponse = await api.client.get(`/api/debates/${tournamentId}/pairings`, {
         params: { published: 'true' }
       });
       setPairings(pairingsResponse.data.data.pairings || []);
     } catch (err) {
-      console.error("Error fetching schedule:", err);
-      setError(t('scheduleView.fetchError'));
+      console.error("Error fetching pairings:", err);
+      setError(t('scheduleView.fetchPairingsError', 'Failed to fetch pairings.')); // More specific error message
     } finally {
-      setLoading(false);
+      setLoadingPairings(false);
     }
   }, [tournamentId, t]);
 
   useEffect(() => {
-    fetchSchedule();
-  }, [fetchSchedule]);
+    fetchPairings();
+  }, [fetchPairings]);
 
-  const handleOpenDialog = (item = null) => {
-    setEditItem(item ? { ...item } : { time: '', event: '', location: '' }); // Reset or load item
-    setIsDialogOpen(true);
-    setDialogError(null);
+  // Update image URL if tournament prop changes
+  useEffect(() => {
+    setScheduleImageUrl(tournament?.scheduleImageUrl || null);
+  }, [tournament?.scheduleImageUrl]);
+
+
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+    setUploadError(null);
+    setUploadSuccess(null);
   };
 
-  const handleCloseDialog = () => {
-    if (isSubmitting) return; // Prevent closing while submitting
-    setIsDialogOpen(false);
-    setEditItem(null);
-  };
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      setUploadError(t('scheduleView.noFileSelectedError', 'Please select an image file to upload.'));
+      return;
+    }
+    if (!tournamentId) {
+        setUploadError(t('scheduleView.missingIdError', 'Tournament ID is missing. Cannot upload schedule.'));
+        return;
+    }
 
-  const handleDialogChange = (e) => {
-    const { name, value } = e.target;
-    setEditItem(prev => ({ ...prev, [name]: value }));
-  };
+    setUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
 
-  const handleDialogSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setDialogError(null);
-    // Headers are automatically added by the axios interceptor in api.js
-    const url = editItem?._id
-      ? `/api/debates/${tournamentId}/schedule/${editItem._id}`
-      : `/api/debates/${tournamentId}/schedule`;
-    const method = editItem?._id ? 'put' : 'post';
+    const formData = new FormData();
+    formData.append('scheduleImage', selectedFile); // Key must match backend expected key
 
     try {
-      await api.client[method](url, editItem); // Use api.client
-      handleCloseDialog();
-      await fetchSchedule(); // Refresh list
+      // TODO: Replace with the correct backend endpoint when created
+      const response = await api.client.post(`/api/debates/${tournamentId}/schedule-image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setScheduleImageUrl(response.data.scheduleImageUrl); // Assume backend returns the new URL
+      setUploadSuccess(t('scheduleView.uploadSuccess', 'Schedule image uploaded successfully.'));
+      setSelectedFile(null); // Clear selection after successful upload
     } catch (err) {
-      console.error(`Error ${editItem?._id ? 'updating' : 'creating'} schedule item:`, err);
-      setDialogError(err.response?.data?.message || t(`scheduleView.${editItem?._id ? 'updateError' : 'createError'}`));
+      console.error("Error uploading schedule image:", err);
+      setUploadError(err.response?.data?.message || t('scheduleView.uploadError', 'Failed to upload schedule image.'));
     } finally {
-      setIsSubmitting(false);
+      setUploading(false);
     }
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (!window.confirm(t('scheduleView.confirmDelete'))) return;
-    setIsSubmitting(true); // Use submitting state to disable buttons during delete
-    setError(null); // Clear main error
-    // Headers are automatically added by the axios interceptor in api.js
-    try {
-      await api.client.delete(`/api/debates/${tournamentId}/schedule/${itemId}`); // Use api.client
-      await fetchSchedule(); // Refresh list
-    } catch (err) {
-      console.error("Error deleting schedule item:", err);
-      // Show error temporarily, maybe using a snackbar in a real app
-      setError(err.response?.data?.message || t('scheduleView.deleteError'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>{t('scheduleView.title')}</Typography>
+      <Typography variant="h6" gutterBottom>{t('scheduleView.title', 'Schedule')}</Typography>
 
-      {isOrganizerOrAdmin && (
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{ mb: 2 }}
-          disabled={isSubmitting}
-        >
-          {t('scheduleView.addItemButton')}
-        </Button>
-      )}
+      {/* Schedule Image Section */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="subtitle1" gutterBottom>{t('scheduleView.scheduleImageTitle', 'Schedule Image')}</Typography>
+        {scheduleImageUrl ? (
+          <Card sx={{ maxWidth: '100%', mb: 2 }}>
+            <CardMedia
+              component="img"
+              image={scheduleImageUrl}
+              alt={t('scheduleView.scheduleImageAlt', 'Tournament Schedule')}
+              sx={{ maxHeight: 600, objectFit: 'contain' }} // Adjust styling as needed
+            />
+          </Card>
+        ) : (
+          <Typography sx={{ mb: 2 }}>{t('scheduleView.noScheduleImage', 'No schedule image uploaded yet.')}</Typography>
+        )}
 
-      {loading && <CircularProgress />}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {isOrganizerOrAdmin && (
+          <Box>
+            <Button
+              variant="contained"
+              component="label" // Makes the button act like a label for the hidden input
+              startIcon={<UploadIcon />}
+              disabled={uploading}
+              sx={{ mr: 2 }}
+            >
+              {t('scheduleView.selectImageButton', 'Select Image')}
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleFileChange}
+              />
+            </Button>
+            {selectedFile && (
+              <Typography component="span" sx={{ mr: 2 }}>
+                {selectedFile.name}
+              </Typography>
+            )}
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleUpload}
+              disabled={!selectedFile || uploading}
+            >
+              {uploading ? <CircularProgress size={24} /> : t('scheduleView.uploadButton', 'Upload Schedule')}
+            </Button>
+            {uploadError && <Alert severity="error" sx={{ mt: 2 }}>{uploadError}</Alert>}
+            {uploadSuccess && <Alert severity="success" sx={{ mt: 2 }}>{uploadSuccess}</Alert>}
+          </Box>
+        )}
+      </Paper>
 
-      {!loading && !error && scheduleItems.length === 0 && pairings.length === 0 && (
-        <Typography>{t('scheduleView.noItems')}</Typography>
-      )}
 
       {/* Display published pairings */}
-      {!loading && !error && pairings.length > 0 && (
+      {loadingPairings && <CircularProgress />}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {!loadingPairings && !error && pairings.length === 0 && (
+         <Typography>{t('scheduleView.noPairings', 'No pairings published yet.')}</Typography>
+      )}
+
+      {!loadingPairings && !error && pairings.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            {t('scheduleView.pairingsTitle', { defaultValue: 'Tournament Pairings' })}
+            {t('scheduleView.pairingsTitle', 'Tournament Pairings')}
           </Typography>
 
           {/* Group pairings by round and roundType */}
@@ -209,93 +236,10 @@ const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => { // 
         </Box>
       )}
 
-      {/* Display regular schedule items */}
-      {!loading && !error && scheduleItems.length > 0 && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            {t('scheduleView.scheduleTitle', { defaultValue: 'Schedule' })}
-          </Typography>
+      {/* Removed manual schedule item list */}
 
-          <List component={Paper}>
-            {scheduleItems.map((item, index) => (
-              <React.Fragment key={item._id}>
-                <ListItem
-                  secondaryAction={
-                    isOrganizerOrAdmin ? (
-                      <>
-                        <IconButton edge="end" aria-label="edit" onClick={() => handleOpenDialog(item)} disabled={isSubmitting}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteItem(item._id)} disabled={isSubmitting} sx={{ ml: 1 }}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </>
-                    ) : null
-                  }
-                >
-                  <ListItemText
-                    primary={`${new Date(item.time).toLocaleString()} - ${item.eventDescription || item.event}`}
-                    secondary={item.location || t('scheduleView.noLocation')}
-                  />
-                </ListItem>
-                {index < scheduleItems.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </List>
-        </Box>
-      )}
+      {/* Removed Create/Edit Dialog */}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{editItem?._id ? t('scheduleView.editDialogTitle') : t('scheduleView.createDialogTitle')}</DialogTitle>
-        <Box component="form" onSubmit={handleDialogSubmit}>
-          <DialogContent>
-            {dialogError && <Alert severity="error" sx={{ mb: 2 }}>{dialogError}</Alert>}
-            <TextField
-              autoFocus
-              margin="dense"
-              name="time"
-              label={t('scheduleView.formTimeLabel')}
-              type="text" // Consider using TimePicker or specific format instructions
-              fullWidth
-              variant="outlined"
-              value={editItem?.time || ''}
-              onChange={handleDialogChange}
-              required
-              disabled={isSubmitting}
-            />
-            <TextField
-              margin="dense"
-              name="event"
-              label={t('scheduleView.formEventLabel')}
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={editItem?.event || ''}
-              onChange={handleDialogChange}
-              required
-              disabled={isSubmitting}
-            />
-            <TextField
-              margin="dense"
-              name="location"
-              label={t('scheduleView.formLocationLabel')}
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={editItem?.location || ''}
-              onChange={handleDialogChange}
-              disabled={isSubmitting}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog} disabled={isSubmitting}>{t('common.cancel')}</Button>
-            <Button type="submit" variant="contained" disabled={isSubmitting || !editItem?.time || !editItem?.event}>
-              {isSubmitting ? <CircularProgress size={24} /> : (editItem?._id ? t('common.save') : t('common.create'))}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
     </Box>
   );
 };

@@ -67,7 +67,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 const Navbar = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { user, isAuthenticated, loading } = useAuth(); // Use AuthContext
+  const { user, isAuthenticated, loading, logout } = useAuth(); // Use AuthContext, import logout
   const [anchorEl, setAnchorEl] = useState(null);
   // const userRole = localStorage.getItem('userRole'); // Remove direct localStorage access for role
 
@@ -97,13 +97,9 @@ const Navbar = () => {
 
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userId'); // Add this line
-    window.dispatchEvent(new Event('auth-change'));
+    logout(); // Call logout from AuthContext
     handleClose();
-    navigate('/login');
+    navigate('/login'); // Navigate after logout
   };
 
   return (
@@ -220,7 +216,7 @@ const Navbar = () => {
                   border: '2px solid white'
                 }}
               >
-                {localStorage.getItem('username')?.[0]?.toUpperCase() || 'U'}
+                {user?.username?.[0]?.toUpperCase() || 'U'} {/* Use user from context */}
               </Avatar>
             </IconButton>
             <Menu
