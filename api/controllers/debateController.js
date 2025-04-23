@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Debate = require('../models/Debate');
 const { analyzeDebateSpeech, analyzeDebateSummary, analyzeInterimTranscript } = require('../services/aiService');
 const bcrypt = require('bcrypt');
+const cloudStorageService = require('../services/cloudStorageService'); // Import cloud storage service
 
 // Import Services
 const debateService = require('../services/debateService');
@@ -136,6 +137,7 @@ exports.createDebate = async (req, res) => {
   try {
     const debateInput = req.body;
     const creator = req.user; // User object from auth middleware
+    let scheduleImageUrl = null; // Initialize schedule image URL
 
     // Ensure creator is an organizer
     if (creator.role !== 'organizer') {
@@ -155,22 +157,51 @@ exports.createDebate = async (req, res) => {
     // Validate tournament-specific requirements using the service
     tournamentService.validateTournamentCreation(debateInput.startDate, debateInput.registrationDeadline);
 
-    // Validate tournament formats
-    if (debateInput.tournamentFormats && !Array.isArray(debateInput.tournamentFormats)) {
-      return res.status(400).json({ message: 'Tournament formats must be an array.' });
+    // Removed validation for tournamentFormats
+
+    // Validate league type (updated)
+    const validLeagueTypes = ['school', 'university']; // Only allow school and university
+    if (!debateInput.leagueType || !validLeagueTypes.includes(debateInput.leagueType)) {
+      return res.status(400).json({ message: 'Invalid league type. Must be one of: school, university.' });
     }
 
-    // Validate league type
-    const validLeagueTypes = ['school', 'university', 'open', 'other'];
-    if (debateInput.leagueType && !validLeagueTypes.includes(debateInput.leagueType)) {
-      return res.status(400).json({ message: 'Invalid league type. Must be one of: school, university, open, other.' });
+    // Handle schedule image upload if present
+    if (req.file) {
+      try {
+        // Assuming uploadFile returns the public URL of the uploaded file
+        scheduleImageUrl = await cloudStorageService.uploadFile(
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype,
+          `tournaments/${creator._id}/schedules` // Example path structure
+        );
+      } catch (uploadError) {
+        console.error('Schedule image upload error:', uploadError);
+        // Decide if upload failure should prevent tournament creation
+        return res.status(500).json({ message: 'Failed to upload schedule image.', error: uploadError.message });
+      }
     }
 
-    // Prepare tournament-specific data structure using the service
-    const preparedData = tournamentService.prepareTournamentData(debateInput, creator);
+    // Prepare data for debate creation, reflecting schema changes
+    const debateData = {
+      title: debateInput.title,
+      description: debateInput.description,
+      startDate: debateInput.startDate,
+      endDate: debateInput.endDate,
+      registrationDeadline: debateInput.registrationDeadline,
+      location: debateInput.location,
+      eligibilityCriteria: debateInput.eligibilityCriteria,
+      leagueType: debateInput.leagueType, // Use validated league type
+      format: 'tournament', // Keep format as tournament
+      creator: creator._id,
+      organizers: [creator._id], // Add creator as initial organizer
+      scheduleImageUrl: scheduleImageUrl, // Add the uploaded image URL
+      // Removed category, difficulty, tournamentFormats
+      // Default values for other fields will be set by the schema
+    };
 
-    // Create the debate using the debate service
-    const debate = await debateService.createDebate(preparedData);
+    // Create the debate using the debate service with the prepared data
+    const debate = await debateService.createDebate(debateData);
 
     // Respond with the created debate object
     res.status(201).json({
@@ -812,22 +843,54 @@ exports.updateTournamentMatch = async (req, res) => {
           }
         }
         break;
+    }
+
+    // Handle schedule image upload if present
+    if (req.file) {
+      try {
+        // Assuming uploadFile returns the public URL of the uploaded file
+        scheduleImageUrl = await cloudStorageService.uploadFile(
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype,
+          `tournaments/${creator._id}/schedules` // Example path structure
+        );
+      } catch (uploadError) {
+        console.error('Schedule image upload error:', uploadError);
+        // Decide if upload failure should prevent tournament creation
+        return res.status(500).json({ message: 'Failed to upload schedule image.', error: uploadError.message });
       }
     }
 
-    if (!matchFound) {
-      return res.status(404).json({ message: 'Match not found' });
-    }
+    // Prepare data for debate creation, reflecting schema changes
+    const debateData = {
+      title: debateInput.title,
+      description: debateInput.description,
+      startDate: debateInput.startDate,
+      endDate: debateInput.endDate,
+      registrationDeadline: debateInput.registrationDeadline,
+      location: debateInput.location,
+      eligibilityCriteria: debateInput.eligibilityCriteria,
+      leagueType: debateInput.leagueType, // Use validated league type
+      format: 'tournament', // Keep format as tournament
+      creator: creator._id,
+      organizers: [creator._id], // Add creator as initial organizer
+      scheduleImageUrl: scheduleImageUrl, // Add the uploaded image URL
+      // Removed category, difficulty, tournamentFormats
+      // Default values for other fields will be set by the schema
+    };
 
-    // Check if tournament is complete (final match has a winner)
-    const finalRound = debate.tournamentRounds[debate.tournamentRounds.length - 1];
-    if (finalRound.matches[0].completed) {
-      debate.status = 'completed';
-      debate.winner = finalRound.matches[0].winner;
-    }
+    // Create the debate using the debate service with the prepared data
+    const debate = await debateService.createDebate(debateData);
 
-    await debate.save();
-    res.json(debate);
+    // Respond with the created debate object
+    res.status(201).json({
+      status: 'success',
+      data: {
+        debate
+      }
+    });
+
   } catch (error) {
     console.error('Error updating tournament match:', error);
     res.status(500).json({ message: error.message });

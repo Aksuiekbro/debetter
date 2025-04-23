@@ -151,36 +151,24 @@
   "createTournamentForm": {
     "title": "Жаңа Турнир Құру",
     "nameLabel": "Турнир Атауы",
-    "formatsLabel": "Форматтар",
-    "categoryLabel": "Санат",
-    "category": {
-      "politics": "Саясат",
-      "technology": "Технология",
-      "science": "Ғылым",
-      "society": "Қоғам",
-      "economics": "Экономика"
-    },
-    "difficultyLabel": "Қиындық",
-    "difficulty": {
-      "beginner": "Бастаушы",
-      "intermediate": "Орташа",
-      "advanced": "Жетілдірілген"
-    },
-    "dateLabel": "Күні",
+    "startDateLabel": "Басталу Күні",
+    "endDateLabel": "Аяқталу Күні",
     "registrationDeadlineLabel": "Тіркелудің Соңғы Мерзімі",
     "locationLabel": "Өткізілетін Орны",
     "descriptionLabel": "Сипаттама",
+    "scheduleLabel": "Кесте (Суретті жүктеу)",
+    "uploadScheduleButton": "Кесте Суретін Жүктеу",
+    "leagueTypeLabel": "Лига",
+    "leagueType": {
+        "school": "Мектеп",
+        "university": "Студенттік"
+    },
     "eligibilityLabel": "Қатысу Шарттары",
+    "customFieldsNote": "Ескертпе: Турнирді құрғаннан кейін қатысушылар үшін арнайы тіркеу өрістерін қосуға болады.",
     "submitButton": "Турнир Құру",
     "loadingButton": "Құрылуда...",
     "successMessage": "\"{{name}}\" турнирі сәтті құрылды!",
     "errorMessageDefault": "Турнир құру сәтсіз аяқталды. Қайталап көріңіз."
-  },
-  "tournamentsList": {
-    "title": "Турнирлер",
-    "errorLoading": "Турнирлерді жүктеу мүмкін болмады. Кейінірек қайталап көріңіз.",
-    "participantsLabel": "Қатысушылар: ",
-    "manageButton": "Турнирді Басқару"
   },
   "tournamentDetail": {
     "errorFailed": "Турнир мәліметтерін жүктеу мүмкін болмады. Кейінірек қайталап көріңіз.",

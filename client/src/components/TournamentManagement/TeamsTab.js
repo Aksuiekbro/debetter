@@ -20,12 +20,15 @@ import { Delete as DeleteIcon, Edit as EditIcon, Add as AddIcon, Shuffle as Shuf
 
 const TeamsTab = ({
   teams = [],
+  entrants = [], // Add entrants prop explicitly
   onDeleteTeam,
   onAddTeam,
   onEditTeam,
   onRandomizeTeams,
-  onCheckInTeam,
-  onCheckOutTeam,
+  onCheckInTeam, // Keep team-level check-in
+  onCheckOutTeam, // Keep team-level check-out
+  onCheckInEntrant, // Add individual check-in handler (unused for now)
+  onCheckOutEntrant, // Add individual check-out handler (unused for now)
   loadingTeams = false,
   currentUser,
   tournamentCreatorId,

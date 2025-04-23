@@ -79,8 +79,8 @@ router.get('/:debateId/teams', getDebateTeams); // Route to get teams for a spec
 // Protected routes
 router.use(protect); // Apply basic authentication to all subsequent routes
 
-// Creating a new debate/tournament - Requires global organizer/admin role
-router.post('/', isAdminOrGlobalOrganizer, createDebate);
+// Creating a new debate/tournament - Requires global organizer/admin role and handles schedule image upload
+router.post('/', isAdminOrGlobalOrganizer, upload.single('scheduleImage'), createDebate);
 
 // User-specific routes (no specific tournament role needed beyond being logged in)
 router.get('/user/mydebates', getUserDebates);

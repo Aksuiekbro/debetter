@@ -22,7 +22,7 @@ import { useTeamManagement } from '../hooks/useTeamManagement';
 import { useJudgeManagement } from '../hooks/useJudgeManagement';
 import { useApfPostingManagement } from '../hooks/useApfPostingManagement';
 // Import Tab Components
-import EntrantsTab from './TournamentManagement/EntrantsTab';
+// Removed EntrantsTab import
 import TeamsTab from './TournamentManagement/TeamsTab';
 import JudgesTab from './TournamentManagement/JudgesTab';
 import PostingTab from './TournamentManagement/PostingTab';
@@ -134,51 +134,31 @@ const TournamentManagement = () => {
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={uiManager.tabValue} onChange={uiManager.handleTabChange} aria-label="tournament management tabs">
-          <Tab label={t('tournamentManagement.tabs.announcements', 'Announcements')} /> {/* Added Tab */}
-          <Tab label={t('tournamentManagement.tabs.entrants', 'Entrants')} />
-          <Tab label={t('tournamentManagement.tabs.teams', 'Teams')} />
-          <Tab label={t('tournamentManagement.tabs.judges', 'Judges')} />
-          <Tab label={t('tournamentManagement.tabs.posting', 'Posting')} />
-          <Tab label={t('tournamentManagement.tabs.tournamentPosting', 'Tournament Posting')} />
-          <Tab label={t('tournamentManagement.tabs.matchPostings', 'Match Postings')} />
-          <Tab label={t('tournamentManagement.tabs.standings', 'Standings')} />
-          <Tab label={t('tournamentManagement.tabs.results', 'Results')} />
-          <Tab label={t('tournamentManagement.tabs.bracket', 'Bracket')} />
-          <Tab label={t('tournamentManagement.tabs.checkIn', 'Check-In')} />
-          <Tab label={t('tournamentManagement.tabs.registrationFields', 'Registration Fields')} />
-          {/* Add Organizers Tab - Conditionally render based on creator? Or always show but disable content? Show always for now. */}
-          <Tab label={t('tournamentManagement.tabs.organizers', 'Organizers')} />
+          <Tab label={t('tournamentManagement.tabs.announcements', 'Announcements')} /> {/* Index 0 */}
+          {/* Removed Entrants Tab */}
+          <Tab label={t('tournamentManagement.tabs.teams', 'Teams')} /> {/* Now Index 1 */}
+          <Tab label={t('tournamentManagement.tabs.judges', 'Judges')} /> {/* Now Index 2 */}
+          <Tab label={t('tournamentManagement.tabs.posting', 'Posting')} /> {/* Now Index 3 */}
+          <Tab label={t('tournamentManagement.tabs.tournamentPosting', 'Tournament Posting')} /> {/* Now Index 4 */}
+          <Tab label={t('tournamentManagement.tabs.matchPostings', 'Match Postings')} /> {/* Now Index 5 */}
+          <Tab label={t('tournamentManagement.tabs.standings', 'Standings')} /> {/* Now Index 6 */}
+          <Tab label={t('tournamentManagement.tabs.results', 'Results')} /> {/* Now Index 7 */}
+          <Tab label={t('tournamentManagement.tabs.bracket', 'Bracket')} /> {/* Now Index 8 */}
+          <Tab label={t('tournamentManagement.tabs.checkIn', 'Check-In')} /> {/* Now Index 9 */}
+          <Tab label={t('tournamentManagement.tabs.registrationFields', 'Registration Fields')} /> {/* Now Index 10 */}
+          <Tab label={t('tournamentManagement.tabs.organizers', 'Organizers')} /> {/* Now Index 11 */}
         </Tabs>
       </Box>
 
       {/* Tab Panels */}
-      <TabPanel value={uiManager.tabValue} index={0}> {/* Added Panel */}
+      <TabPanel value={uiManager.tabValue} index={0}> {/* Announcements Panel */}
         <AnnouncementsTab currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={dataManager.tournament} />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={1}> {/* Index updated */}
-        <EntrantsTab
-          entrants={dataManager.entrants}
-          onAddEntrant={() => entrantManager.handleOpenEntrantDialog(false)}
-          onEditEntrant={(entrant) => entrantManager.handleOpenEntrantDialog(true, entrant)}
-          onDeleteEntrant={entrantManager.handleDeleteEntrant}
-          onGenerateTestData={async () => {
-            try {
-              await dataManager.generateTestData();
-              uiManager.showNotification('Test data generated successfully', 'success');
-            } catch (error) {
-              uiManager.showNotification(error.message || 'Failed to generate test data', 'error');
-            }
-          }}
-          currentUser={currentUser}
-          tournamentCreatorId={tournamentCreatorId}
-          teams={dataManager.teams} // Pass teams data for name lookup
-          onCheckInEntrant={entrantCheckIn.checkInEntrant} // Pass check-in function
-          onCheckOutEntrant={entrantCheckIn.checkOutEntrant} // Pass check-out function
-        />
-      </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={2}> {/* Index updated */}
+      {/* Removed Entrants TabPanel */}
+      <TabPanel value={uiManager.tabValue} index={1}> {/* Teams Panel - Now Index 1 */}
         <TeamsTab
           teams={dataManager.teams}
+          entrants={dataManager.entrants} // Pass entrants here for display/management
           onAddTeam={() => teamManager.handleOpenTeamDialog(false)}
           onEditTeam={(team) => teamManager.handleOpenTeamDialog(true, team)}
           onDeleteTeam={teamManager.handleDeleteTeam}
@@ -186,9 +166,12 @@ const TournamentManagement = () => {
           loadingTeams={teamManager.loadingTeams}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          // Add check-in/out handlers if needed here
+          onCheckInEntrant={entrantCheckIn.checkInEntrant}
+          onCheckOutEntrant={entrantCheckIn.checkOutEntrant}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={3}> {/* Index updated */}
+      <TabPanel value={uiManager.tabValue} index={2}> {/* Judges Panel - Now Index 2 */}
         <JudgesTab
           judges={dataManager.judges}
           onAddJudge={() => judgeManager.handleOpenJudgeDialog(false)}
@@ -196,14 +179,17 @@ const TournamentManagement = () => {
           onDeleteJudge={judgeManager.handleDeleteJudge}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          // Add check-in/out handlers if needed here
+          onCheckInJudge={entrantCheckIn.checkInJudge} // Assuming similar check-in logic exists or will be added
+          onCheckOutJudge={entrantCheckIn.checkOutJudge} // Assuming similar check-out logic exists or will be added
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={4}> {/* Index updated */}
+      <TabPanel value={uiManager.tabValue} index={3}> {/* Posting Panel - Now Index 3 */}
         <PostingTab
           teams={dataManager.teams}
           judges={dataManager.judges}
           apfPostings={dataManager.postings}
-          loadingPostings={dataManager.loading} // Use main loading or add specific one
+          loadingPostings={dataManager.loading}
           currentApfGameData={apfManager.currentApfGameData}
           batchMode={apfManager.batchMode}
           setBatchMode={apfManager.setBatchMode}
@@ -212,53 +198,52 @@ const TournamentManagement = () => {
           onBatchCreate={apfManager.handleBatchCreate}
           onStatusChange={apfManager.handlePostingStatusChange}
           onSendReminder={apfManager.handleSendReminder}
-          onEdit={(posting) => apfManager.handleOpenApfDialog(true, posting)} // Open dialog in edit mode
-          onDelete={apfManager.handleDeletePosting} // Trigger delete confirmation
-          onAddNewGame={() => apfManager.handleOpenApfDialog(false)} // Open dialog in add mode
+          onEdit={(posting) => apfManager.handleOpenApfDialog(true, posting)}
+          onDelete={apfManager.handleDeletePosting}
+          onAddNewGame={() => apfManager.handleOpenApfDialog(false)}
           loadingApf={apfManager.loadingApf}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={5}> {/* Tournament Posting Tab */}
+      <TabPanel value={uiManager.tabValue} index={4}> {/* Tournament Posting Panel - Now Index 4 */}
         <TournamentPostingTab
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={6}> {/* Match Postings Tab */}
+      <TabPanel value={uiManager.tabValue} index={5}> {/* Match Postings Panel - Now Index 5 */}
         <MatchPostingsTab
           currentUser={currentUser}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={7}> {/* Standings Tab */}
+      <TabPanel value={uiManager.tabValue} index={6}> {/* Standings Panel - Now Index 6 */}
         <StandingsTab
-          teams={dataManager.teams} // Pass teams potentially updated by standings fetch
+          teams={dataManager.teams}
           onRefreshStandings={async () => {
             await dataManager.refreshStandings();
             uiManager.showNotification('Standings refreshed successfully', 'success');
           }}
-          loading={dataManager.loadingStandings} // Use the specific loading state for standings
-          error={dataManager.standingsError} // Pass the specific error state for standings
+          loading={dataManager.loadingStandings}
+          error={dataManager.standingsError}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={8}> {/* Results Tab */}
+      <TabPanel value={uiManager.tabValue} index={7}> {/* Results Panel - Now Index 7 */}
         <ResultsTab
           currentUser={currentUser}
           tournamentId={dataManager.tournamentId}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={9}> {/* Bracket Tab */}
+      <TabPanel value={uiManager.tabValue} index={8}> {/* Bracket Panel - Now Index 8 */}
         <BracketTab
           tournamentRounds={dataManager.tournament?.tournamentRounds || []}
-          entrants={dataManager.entrants} // Pass entrants data
-          teams={dataManager.teams} // Pass teams data
+          entrants={dataManager.entrants}
+          teams={dataManager.teams}
           loading={dataManager.loading}
           onInitializeBracket={async () => {
             try {
-              // This function should be added to dataManager
               await dataManager.initializeBracket();
               uiManager.showNotification('Tournament bracket initialized successfully', 'success');
             } catch (error) {
@@ -270,28 +255,27 @@ const TournamentManagement = () => {
           tournamentCreatorId={tournamentCreatorId}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={10}> {/* Check-In Tab */}
+      <TabPanel value={uiManager.tabValue} index={9}> {/* Check-In Panel - Now Index 9 */}
         <CheckInTab
           tournamentId={dataManager.tournamentId}
           currentUser={currentUser}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={11}> {/* Custom Registration Fields Tab */}
+      <TabPanel value={uiManager.tabValue} index={10}> {/* Custom Registration Fields Panel - Now Index 10 */}
         <CustomRegistrationFields
           tournament={dataManager.tournament}
           currentUser={currentUser}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={12}> {/* New Organizers Tab Panel */}
-         {/* Conditionally render the management UI only for the creator */}
+      <TabPanel value={uiManager.tabValue} index={11}> {/* Organizers Panel - Now Index 11 */}
          {currentUser?._id === tournamentCreatorId ? (
            <OrganizerManagementTab
              tournamentId={dataManager.tournamentId}
-             currentOrganizers={dataManager.tournament?.organizers || []} // Pass current organizer IDs
-             allParticipants={[...dataManager.entrants, ...dataManager.judges]} // Combine entrants and judges as potential organizers
+             currentOrganizers={dataManager.tournament?.organizers || []}
+             allParticipants={[...dataManager.entrants, ...dataManager.judges]}
              showNotification={uiManager.showNotification}
-             refreshData={dataManager.refreshData} // Pass refresh to update tournament data after changes
-             currentUser={currentUser} // Pass current user for potential checks inside
+             refreshData={dataManager.refreshData}
+             currentUser={currentUser}
            />
          ) : (
            <Typography sx={{ p: 2, fontStyle: 'italic' }}>
@@ -301,24 +285,7 @@ const TournamentManagement = () => {
       </TabPanel>
 
       {/* --- Render Dialogs --- */}
-      {/* Entrant Dialogs */}
-      <EntrantDialog
-        open={entrantManager.openEntrantDialog}
-        onClose={entrantManager.handleCloseEntrantDialog}
-        onSubmit={entrantManager.handleSubmitEntrant}
-        isEditing={entrantManager.isEditingEntrant}
-        entrantForm={entrantManager.entrantForm}
-        onFormChange={entrantManager.handleEntrantFormChange} // Pass the updated handler
-        availableUsers={entrantManager.availableUsers} // Pass the list of users
-        loading={entrantManager.loading} // Pass loading state from the hook
-      />
-      <DeleteConfirmationDialog
-        open={entrantManager.openDeleteDialog}
-        onClose={entrantManager.handleCloseDeleteDialog}
-        onConfirm={entrantManager.confirmDeleteEntrant}
-        itemName="entrant"
-        // loading={entrantManager.loading}
-      />
+      {/* Removed Entrant Dialogs (assuming functionality merged into TeamDialog or handled differently) */}
 
       {/* Team Dialogs */}
       <TeamDialog

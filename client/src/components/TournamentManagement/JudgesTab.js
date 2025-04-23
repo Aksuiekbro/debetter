@@ -22,12 +22,12 @@ import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as 
 const JudgesTab = ({
   judges = [],
   onAddJudge, // Added prop
-  onEditJudge, // Added prop
-  onDeleteJudge, // Added prop
-  onCheckInJudge,
-  onCheckOutJudge,
-  currentUser, // Added prop
-  tournamentCreatorId, // Added prop
+  onEditJudge,
+  onDeleteJudge,
+  onCheckInJudge, // Prop for check-in
+  onCheckOutJudge, // Prop for check-out
+  currentUser,
+  tournamentCreatorId,
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -119,19 +119,21 @@ const JudgesTab = ({
                 </TableCell>
                 <TableCell>{judge.judgeStatus || t('common.notAvailable', { defaultValue: 'N/A' })}</TableCell>
                 <TableCell>
+                  {/* Display Check-in Status Icon */}
                   {judge.isPresent ? (
-                    <CheckCircleIcon color="success" />
+                    <CheckCircleIcon color="success" titleAccess={t('judgesTab.present', { defaultValue: 'Present' })}/>
                   ) : (
-                    <CancelIcon color="error" />
+                    <CancelIcon color="disabled" titleAccess={t('judgesTab.absent', { defaultValue: 'Absent' })}/>
                   )}
                 </TableCell>
                 {isOrganizerOrAdmin && (
                   <TableCell align="right">
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      {/* Check-in/Check-out Buttons */}
                       {judge.isPresent ? (
                         <IconButton
                           color="error"
-                          onClick={() => onCheckOutJudge(judge.id)}
+                          onClick={() => onCheckOutJudge(judge.userId)} // Use userId for check-out
                           title={t('judgesTab.checkOutAction', { defaultValue: 'Mark as Absent' })}
                         >
                           <CancelIcon />
@@ -139,22 +141,24 @@ const JudgesTab = ({
                       ) : (
                         <IconButton
                           color="success"
-                          onClick={() => onCheckInJudge(judge.id)}
+                          onClick={() => onCheckInJudge(judge.userId)} // Use userId for check-in
                           title={t('judgesTab.checkInAction', { defaultValue: 'Mark as Present' })}
                         >
                           <CheckCircleIcon />
                         </IconButton>
                       )}
+                      {/* Edit Button */}
                       <IconButton
                         color="primary"
-                        onClick={() => onEditJudge(judge)} // Pass full judge object
+                        onClick={() => onEditJudge(judge)} // Pass full judge object (contains participant _id as judge.id)
                         title={t('judgesTab.editAction', { defaultValue: 'Edit Judge' })}
                       >
                         <EditIcon />
                       </IconButton>
+                      {/* Delete Button */}
                       <IconButton
                         color="error"
-                        onClick={() => onDeleteJudge(judge.id)} // Pass judge id
+                        onClick={() => onDeleteJudge(judge.id)} // Use participant _id (judge.id) for deletion
                         title={t('judgesTab.deleteAction', { defaultValue: 'Delete Judge' })}
                       >
                         <DeleteIcon />

@@ -24,28 +24,22 @@ import { getAuthHeaders } from '../utils/auth'; // Helper to get auth headers
 const CreateTournamentForm = () => {
   const { t } = useTranslation(); // Initialize translation hook
   const [name, setName] = useState('');
-  const [selectedFormats, setSelectedFormats] = useState([]);
+  // Removed selectedFormats state
   const [date, setDate] = useState(null); // Renamed for clarity: this is the Start Date
   const [endDate, setEndDate] = useState(null); // Add end date
   const [registrationDeadline, setRegistrationDeadline] = useState(null); // Add state for registration deadline
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [eligibility, setEligibility] = useState('');
-  const [category, setCategory] = useState(''); // Add state for category
-  const [difficulty, setDifficulty] = useState(''); // Add state for difficulty
-  const [leagueType, setLeagueType] = useState('open'); // Add state for league type
+  // Removed category state
+  // Removed difficulty state
+  const [leagueType, setLeagueType] = useState(''); // Updated initial state for league type
+  const [scheduleImageFile, setScheduleImageFile] = useState(null); // Add state for schedule image file
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const availableFormats = ['APD', 'BP', 'LD', 'WSDC', 'Other']; // Available debate formats
-
-  const handleFormatChange = (event) => {
-    const { value, checked } = event.target;
-    setSelectedFormats((prev) =>
-      checked ? [...prev, value] : prev.filter((format) => format !== value)
-    );
-  };
+  // Removed availableFormats and handleFormatChange
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -53,39 +47,56 @@ const CreateTournamentForm = () => {
     setError(null);
     setSuccess(null);
 
-    const payload = {
-      title: name, // Use 'title' key
-      format: 'tournament',
-      tournamentFormats: selectedFormats, // Use 'tournamentFormats' key
-      startDate: date instanceof Date && !isNaN(date.getTime()) ? date.toISOString() : null, // Use 'startDate' key (Start Date)
-      endDate: endDate instanceof Date && !isNaN(endDate.getTime()) ? endDate.toISOString() : null, // Add end date
-      registrationDeadline: registrationDeadline instanceof Date && !isNaN(registrationDeadline.getTime()) ? registrationDeadline.toISOString() : null, // Add registration deadline
-      location,
-      description,
-      eligibilityCriteria: eligibility, // Use 'eligibilityCriteria' key
-      category, // Add category
-      difficulty, // Add difficulty
-      leagueType, // Add league type
-    };
+    // Use FormData for file upload
+    const formData = new FormData();
+    formData.append('title', name);
+    formData.append('format', 'tournament'); // Keep this if it distinguishes tournament type
+    // Removed tournamentFormats from payload
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      formData.append('startDate', date.toISOString());
+    }
+    if (endDate instanceof Date && !isNaN(endDate.getTime())) {
+      formData.append('endDate', endDate.toISOString());
+    }
+    if (registrationDeadline instanceof Date && !isNaN(registrationDeadline.getTime())) {
+      formData.append('registrationDeadline', registrationDeadline.toISOString());
+    }
+    formData.append('location', location);
+    formData.append('description', description);
+    formData.append('eligibilityCriteria', eligibility);
+    // Removed category from payload
+    // Removed difficulty from payload
+    formData.append('leagueType', leagueType);
+    if (scheduleImageFile) {
+      formData.append('scheduleImage', scheduleImageFile); // Add schedule image file
+    }
+
 
     try {
-      const response = await api.client.post('/api/debates', payload, { headers: getAuthHeaders() });
-      // Assuming response.data.title based on payload key 'title'
+      // Send FormData
+      const response = await api.client.post('/api/debates', formData, {
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'multipart/form-data', // Important for file uploads
+        },
+      });
       setSuccess(t('createTournamentForm.successMessage', 'Tournament "{{name}}" created successfully!', { name: response.data.title }));
       // Optionally clear the form
       setName('');
-      setSelectedFormats([]);
+      // Removed setSelectedFormats([])
       setDate(null); // Clear Start Date
       setEndDate(null); // Clear End Date
       setRegistrationDeadline(null); // Clear Registration Deadline
       setLocation('');
       setDescription('');
       setEligibility('');
-      setCategory(''); // Clear category
-      setDifficulty(''); // Clear difficulty
-      setLeagueType('open'); // Reset league type
+      // Removed setCategory('')
+      // Removed setDifficulty('')
+      setLeagueType(''); // Reset league type
+      setScheduleImageFile(null); // Clear schedule image file
     } catch (err) {
       console.error("Error creating tournament:", err);
+      // Handle potential FormData related errors if necessary
       setError(err.response?.data?.message || t('createTournamentForm.errorMessageDefault', 'Failed to create tournament. Please try again.'));
     } finally {
       setLoading(false);
@@ -114,59 +125,12 @@ const CreateTournamentForm = () => {
           inputProps={{ "data-testid": "tournament-name-input" }}
         />
 
-        <Typography variant="subtitle1" gutterBottom>{t('createTournamentForm.formatsLabel', 'Formats')}</Typography>
-        <FormGroup row sx={{ mb: 2 }}>
-          {availableFormats.map((format) => (
-            <FormControlLabel
-              key={format}
-              control={
-                <Checkbox
-                  checked={selectedFormats.includes(format)}
-                  onChange={handleFormatChange}
-                  value={format}
-                  disabled={loading}
-                />
-              }
-              label={format}
-            />
-          ))}
-        </FormGroup>
+        {/* Removed Formats Checkboxes */}
 
-        {/* Category Select */}
-        <FormControl fullWidth required sx={{ mb: 2 }} disabled={loading}>
-          <InputLabel id="category-select-label">{t('createTournamentForm.categoryLabel', 'Category')}</InputLabel>
-          <Select
-            labelId="category-select-label"
-            value={category}
-            label={t('createTournamentForm.categoryLabel', 'Category')}
-            onChange={(e) => setCategory(e.target.value)}
-            inputProps={{ "data-testid": "tournament-category-select" }}
-          >
-            {/* Define category options based on schema enum */}
-            <MenuItem value="politics">{t('createTournamentForm.category.politics', 'Politics')}</MenuItem>
-            <MenuItem value="technology">{t('createTournamentForm.category.technology', 'Technology')}</MenuItem>
-            <MenuItem value="science">{t('createTournamentForm.category.science', 'Science')}</MenuItem>
-            <MenuItem value="society">{t('createTournamentForm.category.society', 'Society')}</MenuItem>
-            <MenuItem value="economics">{t('createTournamentForm.category.economics', 'Economics')}</MenuItem>
-          </Select>
-        </FormControl>
+        {/* Removed Category Select */}
 
-        {/* Difficulty Select */}
-        <FormControl fullWidth required sx={{ mb: 2 }} disabled={loading}>
-          <InputLabel id="difficulty-select-label">{t('createTournamentForm.difficultyLabel', 'Difficulty')}</InputLabel>
-          <Select
-            labelId="difficulty-select-label"
-            value={difficulty}
-            label={t('createTournamentForm.difficultyLabel', 'Difficulty')}
-            onChange={(e) => setDifficulty(e.target.value)}
-            inputProps={{ "data-testid": "tournament-difficulty-select" }}
-          >
-            {/* Define difficulty options based on schema enum */}
-            <MenuItem value="beginner">{t('createTournamentForm.difficulty.beginner', 'Beginner')}</MenuItem>
-            <MenuItem value="intermediate">{t('createTournamentForm.difficulty.intermediate', 'Intermediate')}</MenuItem>
-            <MenuItem value="advanced">{t('createTournamentForm.difficulty.advanced', 'Advanced')}</MenuItem>
-          </Select>
-        </FormControl>
+        {/* Removed Difficulty Select */}
+
 
         <DatePicker
           label={t('createTournamentForm.startDateLabel', 'Start Date')}
@@ -213,20 +177,40 @@ const CreateTournamentForm = () => {
           inputProps={{ "data-testid": "tournament-description-input" }}
         />
 
-        {/* League Type Select */}
+        {/* Schedule Image Upload */}
+        <FormControl fullWidth sx={{ mb: 2 }} disabled={loading}>
+           <Typography variant="subtitle1" gutterBottom>{t('createTournamentForm.scheduleLabel', 'Schedule (Image Upload)')}</Typography>
+           <Button
+             variant="contained"
+             component="label"
+             disabled={loading}
+           >
+             {t('createTournamentForm.uploadScheduleButton', 'Upload Schedule Image')}
+             <input
+               type="file"
+               hidden
+               accept="image/*"
+               onChange={(e) => setScheduleImageFile(e.target.files[0])}
+               data-testid="schedule-image-input"
+             />
+           </Button>
+           {scheduleImageFile && <Typography sx={{ mt: 1 }}>{scheduleImageFile.name}</Typography>}
+        </FormControl>
+
+
+        {/* League Type Select - Updated Options */}
         <FormControl fullWidth required sx={{ mb: 2 }} disabled={loading}>
-          <InputLabel id="league-type-select-label">{t('createTournamentForm.leagueTypeLabel', 'League Type')}</InputLabel>
+          <InputLabel id="league-type-select-label">{t('createTournamentForm.leagueTypeLabel', 'Лига')}</InputLabel> {/* Updated Label */}
           <Select
             labelId="league-type-select-label"
             value={leagueType}
-            label={t('createTournamentForm.leagueTypeLabel', 'League Type')}
+            label={t('createTournamentForm.leagueTypeLabel', 'Лига')} // Updated Label
             onChange={(e) => setLeagueType(e.target.value)}
             inputProps={{ "data-testid": "tournament-league-type-select" }}
           >
-            <MenuItem value="school">{t('createTournamentForm.leagueType.school', 'School')}</MenuItem>
-            <MenuItem value="university">{t('createTournamentForm.leagueType.university', 'University')}</MenuItem>
-            <MenuItem value="open">{t('createTournamentForm.leagueType.open', 'Open')}</MenuItem>
-            <MenuItem value="other">{t('createTournamentForm.leagueType.other', 'Other')}</MenuItem>
+            <MenuItem value="school">{t('createTournamentForm.leagueType.school', 'Школьная')}</MenuItem> {/* Updated Label */}
+            <MenuItem value="university">{t('createTournamentForm.leagueType.university', 'Студенческая')}</MenuItem> {/* Updated Label */}
+            {/* Removed open and other options */}
           </Select>
         </FormControl>
 

@@ -151,36 +151,24 @@
   "createTournamentForm": {
     "title": "Создать Новый Турнир",
     "nameLabel": "Название Турнира",
-    "formatsLabel": "Форматы",
-    "categoryLabel": "Категория",
-    "category": {
-      "politics": "Политика",
-      "technology": "Технологии",
-      "science": "Наука",
-      "society": "Общество",
-      "economics": "Экономика"
-    },
-    "difficultyLabel": "Сложность",
-    "difficulty": {
-      "beginner": "Начинающий",
-      "intermediate": "Средний",
-      "advanced": "Продвинутый"
-    },
-    "dateLabel": "Дата",
+    "startDateLabel": "Дата Начала",
+    "endDateLabel": "Дата Окончания",
     "registrationDeadlineLabel": "Крайний Срок Регистрации",
     "locationLabel": "Место Проведения",
     "descriptionLabel": "Описание",
+    "scheduleLabel": "Расписание (Загрузка изображения)",
+    "uploadScheduleButton": "Загрузить Изображение Расписания",
+    "leagueTypeLabel": "Лига",
+    "leagueType": {
+        "school": "Школьная",
+        "university": "Студенческая"
+    },
     "eligibilityLabel": "Критерии Участия",
+    "customFieldsNote": "Примечание: После создания турнира вы можете добавить пользовательские поля регистрации для участников.",
     "submitButton": "Создать Турнир",
     "loadingButton": "Создание...",
     "successMessage": "Турнир \"{{name}}\" успешно создан!",
     "errorMessageDefault": "Не удалось создать турнир. Пожалуйста, попробуйте еще раз."
-  },
-  "tournamentsList": {
-    "title": "Турниры",
-    "errorLoading": "Не удалось загрузить турниры. Пожалуйста, попробуйте позже.",
-    "participantsLabel": "Участники: ",
-    "manageButton": "Управлять Турниром"
   },
   "tournamentDetail": {
     "errorFailed": "Не удалось загрузить детали турнира. Пожалуйста, попробуйте позже.",

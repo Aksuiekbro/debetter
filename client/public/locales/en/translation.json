@@ -151,26 +151,20 @@
   "createTournamentForm": {
     "title": "Create New Tournament",
     "nameLabel": "Tournament Name",
-    "formatsLabel": "Formats",
-    "categoryLabel": "Category",
-    "category": {
-      "politics": "Politics",
-      "technology": "Technology",
-      "science": "Science",
-      "society": "Society",
-      "economics": "Economics"
-    },
-    "difficultyLabel": "Difficulty",
-    "difficulty": {
-      "beginner": "Beginner",
-      "intermediate": "Intermediate",
-      "advanced": "Advanced"
-    },
-    "dateLabel": "Date",
+    "startDateLabel": "Start Date",
+    "endDateLabel": "End Date",
     "registrationDeadlineLabel": "Registration Deadline",
     "locationLabel": "Location",
     "descriptionLabel": "Description",
+    "scheduleLabel": "Schedule (Image Upload)",
+    "uploadScheduleButton": "Upload Schedule Image",
+    "leagueTypeLabel": "League",
+    "leagueType": {
+        "school": "School",
+        "university": "University"
+    },
     "eligibilityLabel": "Eligibility Criteria",
+    "customFieldsNote": "Note: After creating the tournament, you can add custom registration fields for participants.",
     "submitButton": "Create Tournament",
     "loadingButton": "Creating...",
     "successMessage": "Tournament \"{{name}}\" created successfully!",

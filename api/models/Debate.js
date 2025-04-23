@@ -167,9 +167,9 @@ const postingSchema = new Schema({
 const debateSchema = new Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, required: true },
-  category: { type: String, required: true, lowercase: true, enum: ['politics', 'technology', 'science', 'society', 'economics'] },
+  // Removed category field
   status: { type: String, required: true, enum: ['upcoming', 'team-assignment', 'in-progress', 'completed'], default: 'upcoming' },
-  difficulty: { type: String, required: true, enum: ['beginner', 'intermediate', 'advanced'] },
+  // Removed difficulty field
   startDate: { type: Date, required: true },
   registrationDeadline: { type: Date },
   participants: [{
@@ -203,8 +203,8 @@ const debateSchema = new Schema({
     currentDebaters: { type: Number, default: 0 },
     currentJudges: { type: Number, default: 0 }
   },
-  tournamentFormats: { type: [String], enum: ['APD', 'BP', 'LD', 'WSDC', 'Other'] }, // Expanded tournament format options
-  leagueType: { type: String, enum: ['school', 'university', 'open', 'other'], default: 'open' }, // Added league type
+  // Removed tournamentFormats field
+  leagueType: { type: String, enum: ['school', 'university'], required: true }, // Updated league type enum and made required
   customRegistrationFields: { type: Boolean, default: false }, // Flag to indicate if tournament has custom registration fields
   eligibilityCriteria: { type: String }, // Added for tournament eligibility rules
   mode: { type: String, enum: ['solo', 'duo'] },
@@ -223,6 +223,11 @@ const debateSchema = new Schema({
     text: { type: String, required: true, trim: true }
   }],
   mapImageUrl: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  scheduleImageUrl: { // Added field for schedule image
     type: String,
     trim: true,
     default: null
@@ -322,6 +327,12 @@ debateSchema.methods = {
   }
 };
 
-debateSchema.index({ title: 'text', description: 'text', category: 1, status: 1, difficulty: 1, createdAt: -1, startDate: 1 });
+// Updated index to remove category and difficulty
+debateSchema.index({ title: 'text', description: 'text', status: 1, createdAt: -1, startDate: 1 });
+debateSchema.index({ format: 1, status: 1 }); // Kept existing index
+debateSchema.index({ 'participants._id': 1 }); // Kept existing index
+debateSchema.index({ 'creator': 1 }); // Kept existing index
+debateSchema.index({ startDate: 1 }); // Kept existing index
+
 
 module.exports = mongoose.model('Debate', debateSchema);
