@@ -32,69 +32,72 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     let newSocket = null;
 
+    // Only attempt connection if we have a token AND user is marked as authenticated
     if (isAuthenticated && token) {
-      console.log('Attempting to connect socket...');
-      newSocket = io(api.baseUrl, {
-        auth: { token },
-        transports: ['websocket', 'polling'] // Explicitly define transports
-      });
+        console.log('SocketContext: Attempting connection with token.'); // Add log
+        newSocket = io(api.baseUrl, { // Use api.baseUrl from config
+            auth: { token },
+            transports: ['websocket', 'polling'] // Explicitly define transports
+        });
 
-      newSocket.on('connect', () => {
-        console.log('Socket connected:', newSocket.id);
-        setIsConnected(true);
-        setSocket(newSocket);
-        fetchInitialNotifications(); // Fetch notifications on connect
-      });
+        newSocket.on('connect', () => {
+            console.log('Socket connected:', newSocket.id);
+            setIsConnected(true);
+            setSocket(newSocket); // Set socket state *after* successful connection
+            fetchInitialNotifications(); // Fetch notifications on connect
+        });
 
-      newSocket.on('disconnect', (reason) => {
-        console.log('Socket disconnected:', reason);
-        setIsConnected(false);
-        setSocket(null); // Clear socket state on disconnect
-      });
+        newSocket.on('disconnect', (reason) => {
+            console.log('Socket disconnected:', reason);
+            setIsConnected(false);
+            setSocket(null); // Clear socket state on disconnect
+        });
 
-      newSocket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
-        setIsConnected(false);
-        // Optionally attempt to reconnect or notify the user
-      });
+        newSocket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+            setIsConnected(false);
+            // Optionally attempt to reconnect or notify the user
+        });
 
-      newSocket.on('new_notification', (notification) => {
-        console.log('New notification received:', notification);
-        setNotifications((prev) => [notification, ...prev]);
-        setUnreadCount((prev) => prev + 1);
-      });
+        newSocket.on('new_notification', (notification) => {
+            console.log('New notification received:', notification);
+            setNotifications((prev) => [notification, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+        });
 
-      // Store the socket instance immediately for cleanup reference
-      // Note: Setting state is async, so we use the 'newSocket' variable directly for cleanup
-      // setSocket(newSocket); // Moved inside 'connect' handler
+        // No need to set socket here, it's done in 'connect' handler
 
-    } else if (socket) {
-      // If not authenticated or no token, disconnect existing socket
-      console.log('Disconnecting socket due to auth change...');
-      socket.disconnect();
-      setIsConnected(false);
-      setSocket(null);
-      setNotifications([]); // Clear notifications on logout
-      setUnreadCount(0);
+    } else {
+         console.log('SocketContext: Conditions not met for connection (isAuthenticated:', isAuthenticated, 'token exists:', !!token, ')'); // Add log
+        // Ensure disconnection if conditions are not met and an old socket exists
+        if (socket) {
+             console.log('SocketContext: Disconnecting existing socket.'); // Add log
+            socket.disconnect();
+            setIsConnected(false); // Ensure connection state is false
+            setSocket(null); // Clear socket state
+            setNotifications([]); // Clear notifications on logout/disconnect
+            setUnreadCount(0); // Reset unread count
+        }
     }
 
     // Cleanup function
     return () => {
-      if (newSocket) {
-        console.log('Cleaning up socket connection...');
-        newSocket.off('connect');
-        newSocket.off('disconnect');
+        // Use the 'newSocket' variable captured in the effect's scope for cleanup
+        if (newSocket) {
+            console.log('SocketContext: Cleaning up new socket connection.'); // Add log
+            newSocket.off('connect');
+            newSocket.off('disconnect');
         newSocket.off('connect_error');
         newSocket.off('new_notification');
         newSocket.disconnect();
-      } else if (socket) {
-        // Fallback cleanup if newSocket wasn't created but an old one exists
-        console.log('Cleaning up existing socket connection (fallback)...');
-        socket.disconnect();
-      }
+        }
+        // No need for the 'else if (socket)' fallback here,
+        // as the disconnection logic in the main 'else' block handles the case
+        // where conditions are not met and an 'old' socket exists.
+        // The cleanup should primarily focus on the 'newSocket' created within this effect instance.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, token, fetchInitialNotifications]); // Add fetchInitialNotifications dependency
+  }, [isAuthenticated, token, fetchInitialNotifications]); // Keep dependencies
 
   // Function to mark notifications as read (example)
   const markAsRead = useCallback(async (notificationIds) => {

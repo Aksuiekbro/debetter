@@ -15,7 +15,19 @@ exports.protect = async (req, res, next) => {
 
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-            const user = await User.findById(decoded.id).select('-password');
+            const userLookupTimeout = 10000; // 10 seconds
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => {
+                    const timeoutError = new Error('User lookup timed out');
+                    timeoutError.name = 'TimeoutError'; // Custom name for easier identification
+                    reject(timeoutError);
+                }, userLookupTimeout)
+            );
+
+            const userPromise = User.findById(decoded.id).select('-password'); // Original query
+
+            // Race the user lookup against the timeout
+            const user = await Promise.race([userPromise, timeoutPromise]);
 
             if (!user) {
                 return res.status(401).json({ message: 'User not found' });
@@ -24,8 +36,20 @@ exports.protect = async (req, res, next) => {
             req.user = user;
             next();
         } catch (error) {
-            console.error('Token verification error:', error);
-            return res.status(401).json({ message: 'Not authorized, token failed' });
+            console.error('Auth middleware inner error:', error); // Updated console log message
+            // Handle specific errors from the try block above
+            if (error.name === 'TimeoutError') {
+                // Handle the specific timeout error from Promise.race
+                return res.status(503).json({ message: 'User lookup timed out' });
+            } else if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+                // Handle JWT verification errors specifically
+                return res.status(401).json({ message: 'Not authorized, token failed' });
+            } else {
+                // For any other errors caught here (e.g., unexpected DB errors not caught by timeout,
+                // or other errors from jwt.verify if they occur),
+                // rethrow to be handled by the outer catch block as a general server error.
+                throw error;
+            }
         }
     } catch (error) {
         console.error('Auth middleware error:', error);

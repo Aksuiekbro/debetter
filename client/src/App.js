@@ -43,11 +43,13 @@ const MainLayout = () => {
 function App() {
   const { user, loading } = useAuth(); // Get user and loading state
 
-  // Optional: Render loading state or null while auth check is in progress
-  // if (loading) {
-  //   return <div>Loading...</div>; // Or a spinner component
-  // }
+  // Render loading state or null while auth check is in progress
+  if (loading) {
+    // You might want a more sophisticated loading indicator here
+    return <div>Loading authentication state...</div>;
+  }
 
+  // Once loading is false, render the main application
   return (
     <ThemeProvider theme={telegramTheme}>
       <CssBaseline />

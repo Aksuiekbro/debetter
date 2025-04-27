@@ -42,6 +42,7 @@ const {
     getJudgeLeaderboard, // Import for judge leaderboard
     getDebateTeams, // Import for getting teams of a debate
     updateOrganizers, // Import the new controller function
+    registerTeamWithParticipants, // Import the new controller function for team registration
 } = require('../controllers/debateController');
 const { getParticipantStandings } = require('../controllers/debateController'); // Import for participant standings
 const announcementRoutes = require('./announcementRoutes'); // Import announcement ROUTES
@@ -86,6 +87,7 @@ router.post('/', isAdminOrGlobalOrganizer, createDebate);
 router.get('/user/mydebates', getUserDebates);
 router.post('/:id/join', joinDebate); // Joining doesn't require organizer role
 router.post('/:id/leave', leaveDebate); // Leaving doesn't require organizer role
+router.post('/:id/register-team', registerTeamWithParticipants); // New route for team registration
 
 // Routes requiring specific tournament organizer/creator permissions
 router.put('/:id', isTournamentOrganizer, updateDebate); // Updating tournament details

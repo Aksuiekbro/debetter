@@ -13,7 +13,21 @@
     "search_placeholder": "Search debates..."
   },
   "common": {
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "notApplicable": "N/A",
+    "cancel": "Cancel",
+    "save": "Save",
+    "aria": {
+      "delete": "delete"
+    },
+    "button": {
+      "add": "Add",
+      "saveChanges": "Save Changes",
+      "retry": "Retry",
+      "editInfo": "Edit info & settings",
+      "addFriend": "Add friend",
+      "addNewDebate": "Add new debate"
+    }
   },
   "profile": {
     "role": {
@@ -73,15 +87,161 @@
     "awards": {
       "placeholder": "No awards listed"
     }
-  }
-,
+  },
   "tournamentPostingTab": {
-    "judge": "Judge",
-    "noJudge": "No Judge",
+    "title": "Tournament Postings",
+    "refreshing": "Refreshing...",
+    "refresh": "Refresh",
+    "error": {
+      "loadFailed": "Failed to load tournament data.",
+      "notFound": "Tournament with ID {{tournamentId}} not found. Please check the ID or navigate from the tournaments list.",
+      "apiError": "API Error ({{status}}): {{message}}",
+      "unknownApiError": "An unknown API error occurred.",
+      "networkError": "Network error: Could not connect to the server.",
+      "unexpectedError": "An unexpected error occurred: {{message}}",
+      "randomizeFailed": "Failed to randomize pairings",
+      "submitFailed": "Failed to submit pairings",
+      "selectTeam1": "Please select Team 1",
+      "team1AlreadyPaired": "Team 1 is already paired in this round",
+      "team2AlreadyPaired": "Team 2 is already paired in this round"
+    },
+    "autoProgressedToRound": "Automatically progressed to {{round}}",
+    "previewModeManual": "Previewing manually entered pairings for {{round}}. Click Submit to finalize or Cancel to discard.",
+    "previewMode": "Previewing randomized pairings for {{round}}. Click Submit to finalize or Cancel to discard.",
+    "activeRound": "Active Round",
+    "autoProgressRounds": "Auto-progress to next round",
+    "randomize": "Randomize",
+    "manualEntry": "Manual Entry",
+    "roundSubmitted": "Round submitted and published",
+    "submitting": "Submitting...",
+    "submit": "Submit",
+    "team": "Team",
+    "preview": "Preview",
+    "submitted": "Submitted",
+    "bye": "BYE",
     "room": "Room",
+    "judge": "Judge",
+    "notSubmitted": "Not submitted",
+    "pendingRandomization": "Pending randomization",
+    "pending": "Pending",
+    "randomizeTitle": "Randomize Pairings",
+    "randomizeDescription": "You are about to randomize pairings for {{round}}.",
+    "options": "Options",
+    "avoidRematches": "Avoid rematches",
+    "avoidSameClub": "Avoid same-club matchups",
+    "randomizing": "Randomizing...",
+    "manualEntryTitle": "Manual Entry for Pairings",
+    "manualEntryDescription": "Manually create pairings for {{round}}.",
+    "editPairing": "Edit Pairing",
     "addPairing": "Add Pairing",
+    "team1": "Team 1",
+    "team2ByeOption": "Team 2 (or leave empty for BYE)",
+    "team2": "Team 2",
+    "noJudge": "No Judge",
+    "updatePairing": "Update Pairing",
     "currentPairings": "Current Pairings",
     "noPairingsYet": "No pairings created yet",
-    "savePairings": "Save Pairings"
+    "actions": "Actions",
+    "savePairings": "Save Pairings",
+    "roomPlaceholder": "Room",
+    "preliminaryRound": "{{number}} Preliminary Round",
+    "final": "Final",
+    "round": "Round"
+  },
+  "tournamentManagement": {
+    "title": "Tournament: {{name}}",
+    "tabs": {
+      "announcements": "Announcements",
+      "teams": "Teams",
+      "judges": "Judges",
+      "posting": "Posting",
+      "tournamentPosting": "Tournament Posting",
+      "matchPostings": "Match Postings",
+      "standings": "Standings",
+      "results": "Results",
+      "bracket": "Bracket",
+      "checkIn": "Check-In",
+      "registrationFields": "Registration Fields",
+      "organizers": "Organizers",
+      "customFields": "Custom Fields"
+    }
+  },
+  "checkInTab": {
+    "title": "Tournament Check-In",
+    "searchPlaceholder": "Search...",
+    "refreshing": "Refreshing...",
+    "refresh": "Refresh",
+    "teamsTab": "Teams ({{present}}/{{total}})",
+    "judgesTab": "Judges ({{present}}/{{total}})",
+    "teamName": "Team Name",
+    "members": "Members",
+    "club": "Club",
+    "city": "City",
+    "institution": "Institution",
+    "status": "Status",
+    "checkedInAt": "Checked In At",
+    "actions": "Actions",
+    "present": "Present",
+    "absent": "Absent",
+    "markAbsent": "Mark as Absent",
+    "markPresent": "Mark as Present",
+    "noTeamsMatch": "No teams match search",
+    "noTeams": "No teams found",
+    "judgeName": "Judge Name",
+    "judgeStatus": "Status",
+    "presence": "Presence",
+    "noJudgesMatch": "No judges match search",
+    "noJudges": "No judges found",
+    "errors": {
+      "loadFailed": "Failed to load check-in data",
+      "checkInTeamFailed": "Failed to check in team",
+      "checkOutTeamFailed": "Failed to check out team",
+      "checkInJudgeFailed": "Failed to check in judge",
+      "checkOutJudgeFailed": "Failed to check out judge"
+    }
+  },
+  "organizersTab": {
+    "title": "Manage Organizers",
+    "description": "Add or remove users who can help manage this tournament.",
+    "currentOrganizers": "Current Organizers:",
+    "noOrganizers": "No additional organizers assigned.",
+    "addUser": "Add User as Organizer",
+    "noUsersAvailable": "No available users",
+    "noEmail": "No Email",
+    "unknownUser": "Unknown User",
+    "errors": {
+      "updateFailed": "Failed to update organizers"
+    },
+    "notifications": {
+      "updateSuccess": "Organizers updated successfully"
+    }
+  },
+  "customFieldsTab": {
+    "title": "Custom Registration Fields",
+    "addField": "Add Field",
+    "editField": "Edit Field",
+    "noFieldsOrganizer": "No custom fields defined. Add fields to collect additional information from participants.",
+    "noFields": "No custom fields defined for this tournament.",
+    "required": "Required",
+    "options": "Options",
+    "fieldName": "Field Name",
+    "fieldTypeLabel": "Field Type",
+    "optionsLabel": "Options (comma-separated)",
+    "optionsHelp": "Enter options separated by commas",
+    "confirmDelete": "Are you sure you want to delete this field?",
+    "fieldType": {
+      "text": "Text",
+      "number": "Number",
+      "select": "Dropdown",
+      "checkbox": "Checkbox",
+      "date": "Date"
+    },
+    "errors": {
+      "loadFailed": "Failed to load registration fields",
+      "nameRequired": "Field name is required",
+      "saveFailed": "Failed to save field",
+      "deleteFailed": "Failed to delete field",
+      "orderUpdateFailed": "Failed to update field order"
+    }
   }
 }

@@ -17,12 +17,13 @@ import {
 } from '@mui/icons-material';
 // Assuming api config and auth context are correctly pathed relative to this new file location
 import { api } from '../../config/api';
-import websocketService from '../../services/websocketService';
+import { useSocket } from '../../contexts/SocketContext'; // Import useSocket
 
 const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament }) => {
   console.log('AnnouncementsFeedView props:', { currentUser, tournamentCreatorId, tournament });
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
+  const { socket } = useSocket(); // Get socket from context
   // State for announcements and UI
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,41 +85,37 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
   useEffect(() => {
     fetchAnnouncements();
 
-    // Set up WebSocket connection for real-time updates
-    websocketService.initialize();
-    websocketService.joinTournament(tournamentId);
+    if (socket) {
+      // Join the tournament room
+      socket.emit('join:tournament', { tournamentId });
+      console.log(`Joined tournament room via context socket: ${tournamentId}`);
 
-    // Add event listeners for announcements and comments
-    const createdListener = websocketService.addEventListener('announcement:created', () => {
-      fetchAnnouncements();
-    });
+      // Define listener functions
+      const handleAnnouncementCreated = () => fetchAnnouncements();
+      const handleAnnouncementUpdated = () => fetchAnnouncements();
+      const handleAnnouncementDeleted = () => fetchAnnouncements();
+      const handleCommentCreated = () => fetchAnnouncements();
+      const handleCommentDeleted = () => fetchAnnouncements();
 
-    const updatedListener = websocketService.addEventListener('announcement:updated', () => {
-      fetchAnnouncements();
-    });
+      // Add event listeners using the context socket
+      socket.on('announcement:created', handleAnnouncementCreated);
+      socket.on('announcement:updated', handleAnnouncementUpdated);
+      socket.on('announcement:deleted', handleAnnouncementDeleted);
+      socket.on('comment:created', handleCommentCreated);
+      socket.on('comment:deleted', handleCommentDeleted);
 
-    const deletedListener = websocketService.addEventListener('announcement:deleted', () => {
-      fetchAnnouncements();
-    });
-
-    const commentCreatedListener = websocketService.addEventListener('comment:created', () => {
-      fetchAnnouncements();
-    });
-
-    const commentDeletedListener = websocketService.addEventListener('comment:deleted', () => {
-      fetchAnnouncements();
-    });
-
-    // Clean up WebSocket connection and event listeners
-    return () => {
-      createdListener();
-      updatedListener();
-      deletedListener();
-      commentCreatedListener();
-      commentDeletedListener();
-      websocketService.leaveTournament(tournamentId);
-    };
-  }, [fetchAnnouncements, tournamentId]);
+      // Clean up WebSocket connection and event listeners
+      return () => {
+        console.log(`Leaving tournament room via context socket: ${tournamentId}`);
+        socket.emit('leave:tournament', { tournamentId });
+        socket.off('announcement:created', handleAnnouncementCreated);
+        socket.off('announcement:updated', handleAnnouncementUpdated);
+        socket.off('announcement:deleted', handleAnnouncementDeleted);
+        socket.off('comment:created', handleCommentCreated);
+        socket.off('comment:deleted', handleCommentDeleted);
+      };
+    }
+  }, [fetchAnnouncements, tournamentId, socket]); // Add socket to dependency array
 
 
 

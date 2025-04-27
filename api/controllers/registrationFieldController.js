@@ -5,9 +5,10 @@ const registrationFieldService = require('../services/registrationFieldService')
  */
 exports.createField = async (req, res) => {
   try {
-    const { id: tournamentId } = req.params; // Use 'id' from route param
+    // Parent router defines ':id' as the tournament identifier
+    const { id: tournamentId } = req.params;
     const userId = req.user._id;
-    
+
     const field = await registrationFieldService.createField(
       tournamentId,
       req.body,
@@ -34,8 +35,8 @@ exports.createField = async (req, res) => {
  */
 exports.getFields = async (req, res) => {
   try {
-    const { id: tournamentId } = req.params; // Use 'id' from route param
-    
+    // Parent router defines ':id' as the tournament identifier
+    const { id: tournamentId } = req.params;
     const fields = await registrationFieldService.getFieldsByTournament(tournamentId);
     
     res.status(200).json({
@@ -108,9 +109,10 @@ exports.deleteField = async (req, res) => {
  */
 exports.saveFieldValues = async (req, res) => {
   try {
-    const { id: tournamentId } = req.params; // Use 'id' from route param
+    // Parent router defines ':id' as the tournament identifier
+    const { id: tournamentId } = req.params;
     const userId = req.user._id;
-    
+
     const participant = await registrationFieldService.saveParticipantFieldValues(
       tournamentId,
       userId,

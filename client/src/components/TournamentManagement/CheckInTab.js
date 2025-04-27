@@ -66,7 +66,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
       setCheckInData(response.data.data);
     } catch (err) {
       console.error('Error fetching check-in data:', err);
-      setError(err.response?.data?.message || 'Failed to load check-in data');
+      setError(err.response?.data?.message || t('checkInTab.errors.loadFailed', 'Failed to load check-in data'));
     } finally {
       setLoading(false);
     }
@@ -109,7 +109,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
       }));
     } catch (err) {
       console.error('Error checking in team:', err);
-      setError(err.response?.data?.message || 'Failed to check in team');
+      setError(err.response?.data?.message || t('checkInTab.errors.checkInTeamFailed', 'Failed to check in team'));
     }
   };
 
@@ -128,7 +128,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
       }));
     } catch (err) {
       console.error('Error checking out team:', err);
-      setError(err.response?.data?.message || 'Failed to check out team');
+      setError(err.response?.data?.message || t('checkInTab.errors.checkOutTeamFailed', 'Failed to check out team'));
     }
   };
 
@@ -147,7 +147,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
       }));
     } catch (err) {
       console.error('Error checking in judge:', err);
-      setError(err.response?.data?.message || 'Failed to check in judge');
+      setError(err.response?.data?.message || t('checkInTab.errors.checkInJudgeFailed', 'Failed to check in judge'));
     }
   };
 
@@ -166,7 +166,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
       }));
     } catch (err) {
       console.error('Error checking out judge:', err);
-      setError(err.response?.data?.message || 'Failed to check out judge');
+      setError(err.response?.data?.message || t('checkInTab.errors.checkOutJudgeFailed', 'Failed to check out judge'));
     }
   };
 
@@ -207,12 +207,12 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
-          {t('checkInTab.title', { defaultValue: 'Tournament Check-In' })}
+          {t('checkInTab.title', 'Tournament Check-In')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <TextField
             size="small"
-            placeholder={t('checkInTab.searchPlaceholder', { defaultValue: 'Search...' })}
+            placeholder={t('checkInTab.searchPlaceholder', 'Search...')}
             value={searchTerm}
             onChange={handleSearchChange}
             sx={{ width: 250 }}
@@ -226,7 +226,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
             onClick={handleRefresh}
             disabled={refreshing}
           >
-            {refreshing ? t('checkInTab.refreshing', { defaultValue: 'Refreshing...' }) : t('checkInTab.refresh', { defaultValue: 'Refresh' })}
+            {refreshing ? t('checkInTab.refreshing', 'Refreshing...') : t('checkInTab.refresh', 'Refresh')}
           </Button>
         </Box>
       </Box>
@@ -245,8 +245,8 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
           textColor="primary"
           centered
         >
-          <Tab label={t('checkInTab.teamsTab', { defaultValue: `Teams (${teamStats.present}/${teamStats.total})` })} />
-          <Tab label={t('checkInTab.judgesTab', { defaultValue: `Judges (${judgeStats.present}/${judgeStats.total})` })} />
+          <Tab label={t('checkInTab.teamsTab', `Teams ({{present}}/{{total}})`, { present: teamStats.present, total: teamStats.total })} />
+          <Tab label={t('checkInTab.judgesTab', `Judges ({{present}}/{{total}})`, { present: judgeStats.present, total: judgeStats.total })} />
         </Tabs>
 
         {/* Teams Tab */}
@@ -260,14 +260,14 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>{t('checkInTab.teamName', { defaultValue: 'Team Name' })}</TableCell>
-                    <TableCell>{t('checkInTab.members', { defaultValue: 'Members' })}</TableCell>
-                    <TableCell>{t('checkInTab.club', { defaultValue: 'Club' })}</TableCell>
-                    <TableCell>{t('checkInTab.city', { defaultValue: 'City' })}</TableCell>
-                    <TableCell>{t('checkInTab.institution', { defaultValue: 'Institution' })}</TableCell>
-                    <TableCell>{t('checkInTab.status', { defaultValue: 'Status' })}</TableCell>
-                    <TableCell>{t('checkInTab.checkedInAt', { defaultValue: 'Checked In At' })}</TableCell>
-                    <TableCell align="right">{t('checkInTab.actions', { defaultValue: 'Actions' })}</TableCell>
+                    <TableCell>{t('checkInTab.teamName', 'Team Name')}</TableCell>
+                    <TableCell>{t('checkInTab.members', 'Members')}</TableCell>
+                    <TableCell>{t('checkInTab.club', 'Club')}</TableCell>
+                    <TableCell>{t('checkInTab.city', 'City')}</TableCell>
+                    <TableCell>{t('checkInTab.institution', 'Institution')}</TableCell>
+                    <TableCell>{t('checkInTab.status', 'Status')}</TableCell>
+                    <TableCell>{t('checkInTab.checkedInAt', 'Checked In At')}</TableCell>
+                    <TableCell align="right">{t('checkInTab.actions', 'Actions')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -281,37 +281,37 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                               <li key={idx}>{member.name} ({member.role})</li>
                             ))}
                           </ul>
-                        ) : 'N/A'}
+                        ) : t('common.notApplicable', 'N/A')}
                       </TableCell>
-                      <TableCell>{team.club || 'N/A'}</TableCell>
-                      <TableCell>{team.city || 'N/A'}</TableCell>
-                      <TableCell>{team.institution || 'N/A'}</TableCell>
+                      <TableCell>{team.club || t('common.notApplicable', 'N/A')}</TableCell>
+                      <TableCell>{team.city || t('common.notApplicable', 'N/A')}</TableCell>
+                      <TableCell>{team.institution || t('common.notApplicable', 'N/A')}</TableCell>
                       <TableCell>
                         {team.isPresent ? (
                           <Chip
                             icon={<CheckCircleIcon />}
-                            label={t('checkInTab.present', { defaultValue: 'Present' })}
+                            label={t('checkInTab.present', 'Present')}
                             color="success"
                             size="small"
                           />
                         ) : (
                           <Chip
                             icon={<CancelIcon />}
-                            label={t('checkInTab.absent', { defaultValue: 'Absent' })}
+                            label={t('checkInTab.absent', 'Absent')}
                             color="error"
                             size="small"
                           />
                         )}
                       </TableCell>
                       <TableCell>
-                        {team.checkedInAt ? new Date(team.checkedInAt).toLocaleString() : 'N/A'}
+                        {team.checkedInAt ? new Date(team.checkedInAt).toLocaleString() : t('common.notApplicable', 'N/A')}
                       </TableCell>
                       <TableCell align="right">
                         {team.isPresent ? (
                           <IconButton
                             color="error"
                             onClick={() => handleTeamCheckOut(team.id)}
-                            title={t('checkInTab.markAbsent', { defaultValue: 'Mark as Absent' })}
+                            title={t('checkInTab.markAbsent', 'Mark as Absent')}
                           >
                             <CancelIcon />
                           </IconButton>
@@ -319,7 +319,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                           <IconButton
                             color="success"
                             onClick={() => handleTeamCheckIn(team.id)}
-                            title={t('checkInTab.markPresent', { defaultValue: 'Mark as Present' })}
+                            title={t('checkInTab.markPresent', 'Mark as Present')}
                           >
                             <CheckCircleIcon />
                           </IconButton>
@@ -331,8 +331,8 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                     <TableRow>
                       <TableCell colSpan={8} align="center">
                         {checkInData.teams.length > 0
-                          ? t('checkInTab.noTeamsMatch', { defaultValue: 'No teams match search' })
-                          : t('checkInTab.noTeams', { defaultValue: 'No teams found' })}
+                          ? t('checkInTab.noTeamsMatch', 'No teams match search')
+                          : t('checkInTab.noTeams', 'No teams found')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -353,46 +353,46 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>{t('checkInTab.judgeName', { defaultValue: 'Judge Name' })}</TableCell>
-                    <TableCell>{t('checkInTab.club', { defaultValue: 'Club' })}</TableCell>
-                    <TableCell>{t('checkInTab.judgeStatus', { defaultValue: 'Status' })}</TableCell>
-                    <TableCell>{t('checkInTab.status', { defaultValue: 'Presence' })}</TableCell>
-                    <TableCell>{t('checkInTab.checkedInAt', { defaultValue: 'Checked In At' })}</TableCell>
-                    <TableCell align="right">{t('checkInTab.actions', { defaultValue: 'Actions' })}</TableCell>
+                    <TableCell>{t('checkInTab.judgeName', 'Judge Name')}</TableCell>
+                    <TableCell>{t('checkInTab.club', 'Club')}</TableCell>
+                    <TableCell>{t('checkInTab.judgeStatus', 'Status')}</TableCell>
+                    <TableCell>{t('checkInTab.presence', 'Presence')}</TableCell>
+                    <TableCell>{t('checkInTab.checkedInAt', 'Checked In At')}</TableCell>
+                    <TableCell align="right">{t('checkInTab.actions', 'Actions')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredJudges.map((judge) => (
                     <TableRow key={judge.id}>
                       <TableCell>{judge.name}</TableCell>
-                      <TableCell>{judge.club || 'N/A'}</TableCell>
-                      <TableCell>{judge.judgeStatus || 'N/A'}</TableCell>
+                      <TableCell>{judge.club || t('common.notApplicable', 'N/A')}</TableCell>
+                      <TableCell>{judge.judgeStatus || t('common.notApplicable', 'N/A')}</TableCell>
                       <TableCell>
                         {judge.isPresent ? (
                           <Chip
                             icon={<CheckCircleIcon />}
-                            label={t('checkInTab.present', { defaultValue: 'Present' })}
+                            label={t('checkInTab.present', 'Present')}
                             color="success"
                             size="small"
                           />
                         ) : (
                           <Chip
                             icon={<CancelIcon />}
-                            label={t('checkInTab.absent', { defaultValue: 'Absent' })}
+                            label={t('checkInTab.absent', 'Absent')}
                             color="error"
                             size="small"
                           />
                         )}
                       </TableCell>
                       <TableCell>
-                        {judge.checkedInAt ? new Date(judge.checkedInAt).toLocaleString() : 'N/A'}
+                        {judge.checkedInAt ? new Date(judge.checkedInAt).toLocaleString() : t('common.notApplicable', 'N/A')}
                       </TableCell>
                       <TableCell align="right">
                         {judge.isPresent ? (
                           <IconButton
                             color="error"
                             onClick={() => handleJudgeCheckOut(judge.id)}
-                            title={t('checkInTab.markAbsent', { defaultValue: 'Mark as Absent' })}
+                            title={t('checkInTab.markAbsent', 'Mark as Absent')}
                           >
                             <CancelIcon />
                           </IconButton>
@@ -400,7 +400,7 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                           <IconButton
                             color="success"
                             onClick={() => handleJudgeCheckIn(judge.id)}
-                            title={t('checkInTab.markPresent', { defaultValue: 'Mark as Present' })}
+                            title={t('checkInTab.markPresent', 'Mark as Present')}
                           >
                             <CheckCircleIcon />
                           </IconButton>
@@ -412,8 +412,8 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                     <TableRow>
                       <TableCell colSpan={6} align="center">
                         {checkInData.judges.length > 0
-                          ? t('checkInTab.noJudgesMatch', { defaultValue: 'No judges match search' })
-                          : t('checkInTab.noJudges', { defaultValue: 'No judges found' })}
+                          ? t('checkInTab.noJudgesMatch', 'No judges match search')
+                          : t('checkInTab.noJudges', 'No judges found')}
                       </TableCell>
                     </TableRow>
                   )}

@@ -212,7 +212,13 @@
       "judges": "Төрешілер",
       "posting": "Парингтер",
       "standings": "Кесте",
-      "bracket": "Тор"
+      "bracket": "Тор",
+      "tournamentPosting": "Турнир Жарияланымы",
+      "matchPostings": "Матч Жарияланымдары",
+      "results": "Нәтижелер",
+      "checkIn": "Тіркелу",
+      "organizers": "Ұйымдастырушылар",
+      "customFields": "Бапталатын Өрістер"
     },
     "bracketTab": {
       "title": "Турнир Торы",

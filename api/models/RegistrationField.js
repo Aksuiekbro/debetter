@@ -7,7 +7,7 @@ const { Schema } = mongoose;
 const registrationFieldSchema = new Schema({
   tournament: {
     type: Schema.Types.ObjectId,
-    ref: 'Debate',
+    ref: 'Tournament',
     required: true,
     index: true
   },

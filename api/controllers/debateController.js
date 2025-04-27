@@ -10,6 +10,7 @@ const tournamentService = require('../services/tournamentService');
 const teamService = require('../services/teamService');
 const postingService = require('../services/postingService');
 const transcriptService = require('../services/transcriptService');
+const registrationFieldService = require('../services/registrationFieldService'); // Import registration field service
 
 
 // Get all debates with filtering and sorting
@@ -2079,5 +2080,138 @@ exports.updateOrganizers = async (req, res) => {
   } catch (error) {
     console.error('Error updating organizers:', error);
     res.status(500).json({ message: error.message || 'Failed to update organizers' });
+  }
+};
+
+
+// Register a team with participants and custom fields
+exports.registerTeamWithParticipants = async (req, res) => {
+  const session = await mongoose.startSession(); // Use transactions for multi-step operation
+  session.startTransaction();
+  try {
+    const { id: tournamentId } = req.params;
+    const { teamName, participantIdentifiers, institution, customFieldValues } = req.body;
+    const requestingUser = req.user; // User performing the registration
+
+    // --- Basic Validation ---
+    if (!teamName || !participantIdentifiers || participantIdentifiers.length === 0 || !institution) {
+      throw new Error('Missing required fields: teamName, participantIdentifiers, institution');
+    }
+    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
+        throw new Error('Invalid Tournament ID format');
+    }
+
+    // --- Fetch Tournament & Validate Status ---
+    const debate = await Debate.findById(tournamentId).session(session);
+    if (!debate) {
+      throw new Error('Tournament not found');
+    }
+    if (debate.format !== 'tournament') {
+      throw new Error('Registration is only applicable for tournaments.');
+    }
+    // Add checks for registration deadline and tournament status (upcoming)
+    if (debate.status !== 'upcoming') {
+        throw new Error('Registration is closed for this tournament (not upcoming).');
+    }
+    if (debate.registrationDeadline && new Date() > new Date(debate.registrationDeadline)) {
+        throw new Error('Registration deadline has passed.');
+    }
+
+    // --- Resolve Participant Users ---
+    const participantUsers = await User.find({
+      $or: [
+        { username: { $in: participantIdentifiers } },
+        { email: { $in: participantIdentifiers.map(id => id.toLowerCase()) } } // Case-insensitive email search
+      ]
+    }).select('_id username email').session(session);
+
+    // Check if all identifiers were resolved to users
+    if (participantUsers.length !== participantIdentifiers.length) {
+      const foundIdentifiers = participantUsers.map(u => u.username).concat(participantUsers.map(u => u.email));
+      const missingIdentifiers = participantIdentifiers.filter(id => !foundIdentifiers.includes(id) && !foundIdentifiers.includes(id.toLowerCase()));
+      throw new Error(`Could not find users for the following identifiers: ${missingIdentifiers.join(', ')}`);
+    }
+
+    // --- Check Capacity ---
+    const currentDebaterCount = debate.participants.filter(p => p.tournamentRole === 'Debater').length;
+    const maxDebaters = debate.tournamentSettings?.maxDebaters || 32; // Use default if not set
+    if (currentDebaterCount + participantUsers.length > maxDebaters) {
+        throw new Error(`Registering this team would exceed the maximum number of debaters (${maxDebaters}).`);
+    }
+
+    // --- Check if Users are Already Participants ---
+     const existingParticipantUserIds = debate.participants.map(p => p.userId.toString());
+     const alreadyRegistered = participantUsers.filter(u => existingParticipantUserIds.includes(u._id.toString()));
+     if (alreadyRegistered.length > 0) {
+         throw new Error(`The following users are already registered in this tournament: ${alreadyRegistered.map(u => u.username).join(', ')}`);
+     }
+
+    // --- Create Embedded Team ---
+    const newTeam = {
+      _id: new mongoose.Types.ObjectId(), // Generate ID for the embedded doc
+      name: teamName,
+      institution: institution,
+      members: participantUsers.map((user, index) => ({
+        userId: user._id,
+        // Assign 'leader' role to the first participant, 'speaker' to others (adjust as needed)
+        role: index === 0 ? 'leader' : 'speaker'
+      }))
+      // Add other default fields like wins, losses, points if needed (defaults are in schema)
+    };
+    debate.teams.push(newTeam);
+
+    // --- Create Participant Entries (without custom fields initially) ---
+    const participantEntries = participantUsers.map(user => ({
+        userId: user._id,
+        tournamentRole: 'Debater',
+        teamId: newTeam._id, // Link to the newly created embedded team
+        status: 'registered' // Mark as registered
+        // customFields will be added later
+    }));
+    debate.participants.push(...participantEntries);
+
+    // --- Save Debate with New Team and Participants ---
+    // Mark arrays as modified before saving within a transaction
+    debate.markModified('teams');
+    debate.markModified('participants');
+    await debate.save({ session });
+
+    // --- Save Custom Field Values (using service) ---
+    if (customFieldValues && Object.keys(customFieldValues).length > 0) {
+        // We need to save values for each participant added
+        for (const user of participantUsers) {
+            // Find the participant entry we just added to get its _id if needed by service
+            // Note: registrationFieldService.saveParticipantFieldValues uses userId, not participant entry _id
+            await registrationFieldService.saveParticipantFieldValues(
+                tournamentId,
+                user._id.toString(), // Pass user ID
+                customFieldValues,
+                session // Pass session to service if it supports transactions
+            );
+        }
+    }
+
+    // --- Commit Transaction ---
+    await session.commitTransaction();
+
+    // --- Respond ---
+    // Fetch updated debate details if needed for response, outside transaction
+     const updatedDebate = await Debate.findById(tournamentId)
+        .populate('teams.members.userId', 'username email')
+        .populate('participants.userId', 'username email')
+        .lean();
+
+    res.status(201).json({
+      message: 'Team registered successfully',
+      teamId: newTeam._id,
+      debate: updatedDebate // Return updated debate details
+    });
+
+  } catch (error) {
+    await session.abortTransaction(); // Rollback on error
+    console.error('Error registering team with participants:', error);
+    res.status(400).json({ message: error.message || 'Failed to register team' });
+  } finally {
+    session.endSession(); // End the session
   }
 };

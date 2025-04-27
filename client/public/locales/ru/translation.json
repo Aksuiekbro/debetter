@@ -212,7 +212,13 @@
       "judges": "Судьи",
       "posting": "Паринги",
       "standings": "Таблица",
-      "bracket": "Сетка"
+      "bracket": "Сетка",
+      "tournamentPosting": "Публикация Турнира",
+      "matchPostings": "Публикации Матчей",
+      "results": "Результаты",
+      "checkIn": "Регистрация",
+      "organizers": "Организаторы",
+      "customFields": "Настраиваемые Поля"
     },
     "bracketTab": {
       "title": "Турнирная Сетка",

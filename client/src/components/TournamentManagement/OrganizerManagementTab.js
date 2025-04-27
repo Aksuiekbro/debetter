@@ -43,9 +43,9 @@ const OrganizerManagementTab = ({
     const creatorId = currentUser?._id; // Assuming creator info is in currentUser for simplicity, might need adjustment
     const potential = allParticipants
       .filter(p => p.id && p.id !== creatorId && !organizerIds.includes(p.id)) // Exclude creator and current organizers
-      .map(p => ({ id: p.id, label: `${p.name} (${p.email || 'No Email'})` })); // Format for Autocomplete
+      .map(p => ({ id: p.id, label: `${p.name} (${p.email || t('organizersTab.noEmail', 'No Email')})` })); // Format for Autocomplete
     setPotentialOrganizers(potential);
-  }, [allParticipants, organizerIds, currentUser]);
+  }, [allParticipants, organizerIds, currentUser, t]); // Added t dependency
 
   const handleAddOrganizer = () => {
     if (selectedUser && !organizerIds.includes(selectedUser.id)) {
@@ -69,50 +69,50 @@ const OrganizerManagementTab = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update organizers');
+        throw new Error(errorData.message || t('organizersTab.errors.updateFailed', 'Failed to update organizers'));
       }
 
-      showNotification('Organizers updated successfully', 'success');
+      showNotification(t('organizersTab.notifications.updateSuccess', 'Organizers updated successfully'), 'success');
       await refreshData(); // Refresh the main tournament data
 
     } catch (error) {
       console.error('Error updating organizers:', error);
-      showNotification(error.message || 'Failed to update organizers', 'error');
+      showNotification(error.message || t('organizersTab.errors.updateFailed', 'Failed to update organizers'), 'error');
       // Optionally revert local state on error?
       // setOrganizerIds(currentOrganizers);
     } finally {
       setLoading(false);
     }
-  }, [tournamentId, organizerIds, showNotification, refreshData]);
+  }, [tournamentId, organizerIds, showNotification, refreshData, t]); // Added t dependency
 
   // Helper to get organizer name from ID (requires allParticipants prop)
   const getOrganizerName = (userId) => {
     const participant = allParticipants.find(p => p.id === userId);
-    return participant ? participant.name : 'Unknown User';
+    return participant ? participant.name : t('organizersTab.unknownUser', 'Unknown User');
   };
 
   return (
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>
-        {t('organizerManagement.title', 'Manage Organizers')}
+        {t('organizersTab.title', 'Manage Organizers')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('organizerManagement.description', 'Add or remove users who can help manage this tournament.')}
+        {t('organizersTab.description', 'Add or remove users who can help manage this tournament.')}
       </Typography>
 
       <Box sx={{ mb: 3 }}>
         <Typography variant="subtitle1" gutterBottom>
-          {t('organizerManagement.currentOrganizers', 'Current Organizers:')}
+          {t('organizersTab.currentOrganizers', 'Current Organizers:')}
         </Typography>
         {organizerIds.length === 0 ? (
-          <Typography sx={{ fontStyle: 'italic' }}>{t('organizerManagement.noOrganizers', 'No additional organizers assigned.')}</Typography>
+          <Typography sx={{ fontStyle: 'italic' }}>{t('organizersTab.noOrganizers', 'No additional organizers assigned.')}</Typography>
         ) : (
           <List dense>
             {organizerIds.map(userId => (
               <ListItem
                 key={userId}
                 secondaryAction={
-                  <IconButton edge="end" aria-label="delete" onClick={() => handleRemoveOrganizer(userId)} color="error">
+                  <IconButton edge="end" aria-label={t('common.aria.delete', 'delete')} onClick={() => handleRemoveOrganizer(userId)} color="error">
                     <DeleteIcon />
                   </IconButton>
                 }
@@ -136,13 +136,13 @@ const OrganizerManagementTab = ({
           renderInput={(params) => (
             <TextField
               {...params}
-              label={t('organizerManagement.addUser', 'Add User as Organizer')}
+              label={t('organizersTab.addUser', 'Add User as Organizer')}
               variant="outlined"
               size="small"
             />
           )}
           sx={{ flexGrow: 1 }}
-          noOptionsText={t('organizerManagement.noUsersAvailable', 'No available users')}
+          noOptionsText={t('organizersTab.noUsersAvailable', 'No available users')}
         />
         <Button
           variant="contained"

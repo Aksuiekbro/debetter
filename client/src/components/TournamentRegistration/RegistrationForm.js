@@ -79,40 +79,54 @@ const RegistrationForm = ({ currentUser }) => {
 
     try {
       if (role === 'Debater') {
-        // TODO: Implement backend endpoint for Debater/Team registration
-        // This endpoint should handle creating/finding the team, adding participants,
-        // associating with the tournament, and potentially saving custom field values.
-        // The payload should include teamName, participantNames, schoolUniversity, and fieldValues.
-        console.log('Submitting Debater Registration:', { teamName, participantNames, schoolUniversity, customFields: fieldValues });
-        // Example placeholder call (replace with actual API call when backend is ready)
-        // await api.client.post(`/api/tournaments/${tournamentId}/register-team`, {
-        //   teamName,
-        //   participants: participantNames.split(',').map(name => name.trim()), // Example parsing
-        //   schoolUniversity,
-        //   customFieldValues: fieldValues,
-        //   role: 'Debater' // Ensure role is included if needed by backend
-        // });
-        setSubmitError('Debater registration endpoint not yet implemented.'); // Temporary error
-        setIsSubmitting(false); // Stop submission for now
-        return; // Prevent further execution until backend is ready
+        // Prepare payload for Debater/Team registration
+        const payload = {
+          teamName: teamName.trim(),
+          // Assuming participantNames are usernames or emails to identify users
+          // Backend will need to resolve these to user IDs.
+          // Sending raw string for now, backend needs robust parsing/lookup.
+          participantIdentifiers: participantNames.split(',').map(name => name.trim()).filter(name => name),
+          institution: schoolUniversity.trim(), // Match field name in embeddedTeamSchema
+          customFieldValues: fieldValues
+        };
+
+        // Basic frontend validation
+        if (!payload.teamName || payload.participantIdentifiers.length === 0 || !payload.institution) {
+          setSubmitError(t('registrationForm.missingStandardFields', 'Please fill in all required team information.'));
+          setIsSubmitting(false);
+          return;
+        }
+
+        // TODO: Implement this backend endpoint
+        // This endpoint needs to handle team creation/finding, user lookup,
+        // participant creation within the tournament, and saving custom fields.
+        await api.client.post(`/api/debates/${tournamentId}/register-team`, payload);
+
+        // Navigate on success
+        navigate(`/tournaments/${tournamentId}`);
 
       } else {
         // Existing logic for Judge/Observer registration
-        // First join the tournament with the selected role
+        // First join the tournament as an individual participant
+        // Note: The 'join' endpoint might need adjustment if it doesn't handle
+        // creating the participant record correctly for judges/observers
+        // before custom fields are saved. Assuming it does for now.
         await api.client.post(`/api/debates/${tournamentId}/join`, {
-          role
+          role // Send the selected role (Judge or Observer)
         });
 
-        // If there are custom fields, save their values
+        // If there are custom fields, save their values for the joined participant
+        // This uses the endpoint that saves values for the currently logged-in user (req.user._id)
         if (customFields.length > 0 && Object.keys(fieldValues).length > 0) {
           await api.client.post(`/api/debates/${tournamentId}/registration-fields/values`, fieldValues);
         }
+         // Navigate on success for Judge/Observer
+        navigate(`/tournaments/${tournamentId}`);
       }
 
-      // Navigate to tournament details page on success (for non-Debaters for now)
-      navigate(`/tournaments/${tournamentId}`);
     } catch (err) {
       console.error('Error submitting registration:', err);
+      // Provide more specific error messages if possible
       setSubmitError(err.response?.data?.message || 'Failed to complete registration');
     } finally {
       setIsSubmitting(false);
