@@ -97,7 +97,7 @@ function App() {
               <Route path="/settings/notifications" element={<NotificationSettings />} />
               <Route path="/judge/:debateId/:postingId" element={<ActiveJudgeInterface />} />
               {/* Add the route for hosting a new debate */}
-              <Route path="/host" element={<HostDebate />} />
+              <Route path="/host" element={<Navigate to="/create-tournament" replace />} />
               <Route path="/test-feed" element={<TestFeed />} />
            </Route>
           </Routes>
