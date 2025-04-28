@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { FixedSizeList } from 'react-window'; // Import FixedSizeList
 import {
   Box, Typography, Button, TextField, CircularProgress, Alert,
-  ListItem, ListItemText, ListItemSecondaryAction, IconButton, // Removed List
-  Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel,
-  Switch, Select, MenuItem, FormControl, InputLabel, Chip, Divider
+  ListItem, ListItemText, /* ListItemSecondaryAction removed */ IconButton, // Added IconButton back
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, // Added Dialog components
+  Switch, Select, MenuItem, FormControl, InputLabel, Chip, Divider // Added Form components
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -284,13 +284,17 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
             divider
             style={{ ...style, ...providedDraggable.draggableProps.style }}
             component="div"
+            // Make ListItem a flex container
+            sx={{ display: 'flex', alignItems: 'center', width: '100%' }}
           >
             {isTournamentOrganizer && (
-              <Box {...providedDraggable.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center', cursor: 'grab' }}>
+              <Box {...providedDraggable.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center', cursor: 'grab', flexShrink: 0 }}>
                 <DragIcon />
               </Box>
             )}
+            {/* Let ListItemText grow to take available space */}
             <ListItemText
+              sx={{ flexGrow: 1, mr: 1 }} // Add margin-right to separate from buttons
               primary={
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   {field.fieldName}
@@ -317,15 +321,17 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
                 </>
               }
             />
+            {/* Remove ListItemSecondaryAction, place Box directly */}
             {isTournamentOrganizer && (
-              <ListItemSecondaryAction>
+              // Use ml: 'auto' to push this Box to the right
+              <Box sx={{ display: 'flex', gap: 1, ml: 'auto', flexShrink: 0 }}>
                 <IconButton edge="end" onClick={() => handleEditField(field)} aria-label={t('common.edit', 'Edit')}>
                   <EditIcon />
                 </IconButton>
                 <IconButton edge="end" onClick={() => handleDeleteField(field._id)} aria-label={t('common.delete', 'Delete')}>
                   <DeleteIcon />
                 </IconButton>
-              </ListItemSecondaryAction>
+              </Box>
             )}
           </ListItem>
         )}
@@ -394,23 +400,31 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
                       mode="virtual"
                       renderClone={(provided, snapshot, rubric) => {
                           const field = fields[rubric.source.index];
-                          // Clone rendering logic (ensure it uses isTournamentOrganizer)
                           return (
                             <ListItem
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              {...provided.dragHandleProps}
+                              {...provided.dragHandleProps} // Apply drag handle props here too
                               divider
                               style={provided.draggableProps.style}
                               component="div"
-                              sx={{ bgcolor: 'background.paper', boxShadow: 3 }}
+                              // Make ListItem a flex container
+                              sx={{
+                                bgcolor: 'background.paper',
+                                boxShadow: 3,
+                                display: 'flex', // Add flex display
+                                alignItems: 'center', // Align items vertically
+                                width: '100%' // Ensure it takes full width
+                              }}
                             >
                               {isTournamentOrganizer && (
-                                <Box sx={{ mr: 1, display: 'flex', alignItems: 'center', cursor: 'grab' }}>
+                                <Box sx={{ mr: 1, display: 'flex', alignItems: 'center', cursor: 'grab', flexShrink: 0 }}>
                                   <DragIcon />
                                 </Box>
                               )}
+                              {/* Let ListItemText grow */}
                               <ListItemText
+                                sx={{ flexGrow: 1, mr: 1 }} // Add margin-right
                                 primary={
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     {field.fieldName}
@@ -437,15 +451,17 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
                                   </>
                                 }
                               />
+                              {/* Remove ListItemSecondaryAction, place Box directly */}
                               {isTournamentOrganizer && (
-                                <ListItemSecondaryAction>
+                                // Use ml: 'auto' to push this Box to the right
+                                <Box sx={{ display: 'flex', gap: 1, ml: 'auto', flexShrink: 0 }}>
                                   <IconButton edge="end" onClick={() => handleEditField(field)} aria-label={t('common.edit', 'Edit')}>
                                     <EditIcon />
                                   </IconButton>
                                   <IconButton edge="end" onClick={() => handleDeleteField(field._id)} aria-label={t('common.delete', 'Delete')}>
                                     <DeleteIcon />
                                   </IconButton>
-                                </ListItemSecondaryAction>
+                                </Box>
                               )}
                             </ListItem>
                           );

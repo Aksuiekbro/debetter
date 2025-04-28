@@ -195,6 +195,7 @@ exports.joinDebate = async (req, res) => {
   try {
     const debateId = req.params.id;
     const user = req.user; // User from auth middleware
+    const { customFieldValues } = req.body; // Extract custom field values from request body
 
     // Validate using the service (checks existence, format, limits, deadlines, etc.)
     // The service method throws specific errors if validation fails.
@@ -202,6 +203,23 @@ exports.joinDebate = async (req, res) => {
 
     // Add participant using the service, which now returns the updated debate object
     const updatedDebate = await tournamentService.addParticipant(debate, user);
+
+    // If custom field values were provided, save them
+    if (customFieldValues && Object.keys(customFieldValues).length > 0) {
+      try {
+        await registrationFieldService.saveParticipantFieldValues(
+          debateId,
+          user._id,
+          customFieldValues
+        );
+        console.log(`[joinDebate] Successfully saved custom fields for user ${user._id} in tournament ${debateId}`);
+      } catch (fieldSaveError) {
+        // Log the error but don't necessarily fail the whole join operation
+        // The user is joined, but their custom fields weren't saved.
+        console.error(`[joinDebate] Error saving custom fields for user ${user._id} in tournament ${debateId}:`, fieldSaveError);
+        // Optionally, you could add a flag to the response indicating partial success
+      }
+    }
 
     // Respond with the updated debate object
     res.json(updatedDebate);
@@ -227,73 +245,148 @@ exports.joinDebate = async (req, res) => {
 exports.leaveDebate = async (req, res) => {
   try {
     const debateId = req.params.id;
-    const user = req.user;
+    const userId = req.user._id;
 
-    // Use the service to handle leaving the tournament/debate
-    // The service handles finding the debate, validation, removing participant, and updating counts
-    // Assuming leaveTournament handles both standard and tournament debates appropriately,
-    // or a separate debateService.leaveDebate method is needed for standard debates.
-    // For now, using tournamentService as it contains the logic.
-    const { updatedDebate, updatedCounts } = await tournamentService.leaveTournament(debateId, user._id);
+    // Find the debate
+    const debate = await Debate.findById(debateId);
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
+    }
 
-    // Respond with the updated debate object (or just counts if preferred)
-    res.json(updatedDebate);
+    // Check if the user is a participant in the debate
+    const participant = debate.participants.find(p => p.userId.toString() === userId.toString());
+    if (!participant) {
+      return res.status(400).json({ message: 'You are not a participant in this debate' });
+    }
 
+    // Remove the user from the participants list
+    debate.participants = debate.participants.filter(p => p.userId.toString() !== userId.toString());
+
+    // If the debate is of format 'tournament', update the rounds and matches
+    if (debate.format === 'tournament') {
+      // Reinitialize the tournament rounds
+      debate.rounds = initializeTournamentRounds(debate.participants);
+
+      // Optionally, you might want to reset the status or other fields
+      debate.status = 'pending'; // or any other appropriate status
+    }
+
+    // Save the updated debate
+    await debate.save();
+
+    res.json({ message: 'Successfully left the debate', debate });
   } catch (error) {
-    console.error('Error leaving debate:', error);
-    // Handle specific errors from the service
-    if (error.message === 'Debate not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    if (error.message === 'User is not a participant in this tournament' || error.message === 'User is not a participant in this debate') {
-       return res.status(400).json({ message: error.message });
-    }
-    // Add handling for other potential errors like registration closed if implemented in service
+    console.error('Leave debate error:', error);
     res.status(500).json({ message: error.message || 'Failed to leave debate' });
   }
 };
 
-// Get single debate
+// Get debates for the currently logged-in user
+exports.getUserDebates = async (req, res) => {
+  try {
+    const userId = req.user._id; // Get user ID from the authenticated request
+
+    // Find debates where the user is a participant
+    // Adjust the query based on how participants are stored (e.g., an array of user IDs or participant objects)
+    const debates = await Debate.find({ 'participants.userId': userId })
+                                .populate('creator', 'username')
+                                .populate({
+                                    path: 'participants.userId',
+                                    select: 'username role _id' // Populate participant details
+                                });
+
+    if (!debates || debates.length === 0) {
+      // It's better to return an empty array than a 404 if the user simply hasn't joined any debates
+      return res.json([]);
+    }
+
+    // Transform the debates similar to getDebates if needed for consistency
+    const transformedDebates = debates.map(debate => {
+      const debateObj = debate.toObject();
+      if (debate.format === 'tournament') {
+        const [debaters, judges] = [
+          debate.participants.filter(p => p.role !== 'judge'),
+          debate.participants.filter(p => p.role === 'judge')
+        ];
+        debateObj.counts = {
+          debaters: debaters.length,
+          judges: judges.length,
+          maxDebaters: debate.maxParticipants || 32, // Use debate's max or default
+          maxJudges: debate.maxJudges || 8 // Use debate's max or default
+        };
+      } else {
+        debateObj.counts = {
+          total: debate.participants.length,
+          max: debate.maxParticipants
+        };
+      }
+      return debateObj;
+    });
+
+
+    res.json(transformedDebates); // Send the found and transformed debates
+
+  } catch (error) {
+    console.error('Error in getUserDebates:', error);
+    res.status(500).json({ message: error.message || 'Failed to retrieve user debates' });
+  }
+};
+// Get a single debate by ID
 exports.getDebate = async (req, res) => {
   try {
     const debateId = req.params.id;
 
-    if (!debateId) {
-      return res.status(400).json({ message: 'Debate ID is required' });
+    if (!mongoose.Types.ObjectId.isValid(debateId)) {
+        return res.status(400).json({ message: 'Invalid Debate ID format' });
     }
 
-    try {
-      const debate = await debateService.getDebateById(debateId);
+    // Use the Debate model (assuming it's the correct one for tournaments)
+    const debate = await Debate.findById(debateId)
+                                .populate('creator', 'username')
+                                .populate({
+                                    path: 'participants.userId',
+                                    select: 'username role _id'
+                                })
+                                .populate('teams'); // Populate teams as well if needed
 
-      if (!debate) {
-        return res.status(404).json({ message: 'Debate not found' });
-      }
-
-      // Log the state of participants for debugging
-
-      res.json(debate);
-    } catch (serviceError) {
-      console.error('Service error getting debate:', serviceError);
-
-      if (serviceError.message === 'Invalid debate ID format') {
-        return res.status(400).json({ message: 'Invalid debate ID format' });
-      }
-      if (serviceError.message === 'Debate not found') {
-        return res.status(404).json({ message: 'Debate not found' });
-      }
-
-      // For other service errors, return a 500
-      throw serviceError;
+    if (!debate) {
+      return res.status(404).json({ message: 'Debate not found' });
     }
+
+    // Transform the result for consistency (optional, but good practice)
+    const debateObj = debate.toObject();
+    if (debate.format === 'tournament') {
+        const [debaters, judges] = [
+          debate.participants.filter(p => p.role !== 'judge'),
+          debate.participants.filter(p => p.role === 'judge')
+        ];
+        debateObj.counts = {
+          debaters: debaters.length,
+          judges: judges.length,
+          maxDebaters: debate.maxParticipants || 32,
+          maxJudges: debate.maxJudges || 8
+        };
+      } else {
+        debateObj.counts = {
+          total: debate.participants.length,
+          max: debate.maxParticipants
+        };
+      }
+      // Add teams count if populated
+      debateObj.teamCount = debate.teams ? debate.teams.length : 0;
+
+
+    res.json(debateObj); // Return the found and transformed debate
+
   } catch (error) {
-    console.error('Error in getDebate controller:', error);
-    res.status(500).json({
-      message: 'Failed to get debate details',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error(`Error in getDebate for ID ${req.params.id}:`, error);
+    // Distinguish between CastError (invalid ID format) and general errors
+    if (error instanceof mongoose.Error.CastError) {
+        return res.status(400).json({ message: 'Invalid Debate ID format' });
+    }
+    res.status(500).json({ message: error.message || 'Failed to retrieve debate' });
   }
 };
-
 
 // Get teams for a specific debate
 exports.getDebateTeams = async (req, res) => {
@@ -301,1917 +394,405 @@ exports.getDebateTeams = async (req, res) => {
     const { debateId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(debateId)) {
-      return res.status(400).json({ message: 'Invalid Debate ID format' });
+        return res.status(400).json({ message: 'Invalid Debate ID format' });
     }
 
-    // Find the debate and populate the teams and their members
+    // Find the debate and populate its teams, including team members' user details
     const debate = await Debate.findById(debateId)
-      .populate({
-        path: 'teams', // Populate the 'teams' array field in the Debate model
-        populate: {
-          path: 'members.userId', // Populate the 'userId' within the 'members' array of each team
-          select: 'username name email _id' // Select specific user fields
-        }
-      })
-      .lean(); // Use lean for performance as we are only reading
+                              .populate({
+                                path: 'teams',
+                                populate: {
+                                  path: 'members.userId',
+                                  select: 'username email _id' // Select fields you need from User
+                                }
+                              });
 
     if (!debate) {
       return res.status(404).json({ message: 'Debate not found' });
     }
 
-    // Return the populated teams array
-    res.status(200).json({ status: 'success', data: debate.teams || [] }); // Return empty array if no teams
+    res.json(debate.teams || []); // Return the populated teams array or an empty array
 
   } catch (error) {
-    console.error('Error in getDebateTeams:', error);
-    if (error.name === 'CastError') {
-        return res.status(400).json({ message: 'Invalid ID format provided.' });
+    console.error(`Error in getDebateTeams for debate ID ${req.params.debateId}:`, error);
+     if (error instanceof mongoose.Error.CastError) {
+        return res.status(400).json({ message: 'Invalid Debate ID format' });
     }
-    res.status(500).json({ message: 'Failed to get debate teams', error: error.message });
+    res.status(500).json({ message: error.message || 'Failed to retrieve debate teams' });
   }
 };
-
-// Get details for a specific posting within a debate
-exports.getPostingDetails = async (req, res) => {
+// Placeholder for registerTeamWithParticipants
+exports.registerTeamWithParticipants = async (req, res) => {
   try {
-    const { id: debateId, postingId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(debateId) || !mongoose.Types.ObjectId.isValid(postingId)) {
-        return res.status(400).json({ message: 'Invalid Debate or Posting ID format' });
-    }
-
-    // Fetch the parent debate, ensuring the teams array is selected/populated
-    // Assuming 'teams' is an array within the Debate document based on lookup logic.
-    // If 'teams' were refs needing population, it would be .populate('teams')
-    const debate = await Debate.findById(debateId)
-      .select('+teams +title +startDate +postings')
-      .populate({ path: 'teams.members.userId', select: 'username name email' }) // Populate team members
-      .lean(); // Use lean for performance if not modifying debate doc
-
-    if (!debate) {
-      console.error(`[getPostingDetails] Debate not found for ID: ${debateId}`);
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Find the specific posting within the debate's postings array
-    // Ensure postings exist and are an array before trying to find
-    const posting = debate.postings?.find(p => p._id.equals(postingId));
-
-
-    if (!posting) {
-      console.error(`[getPostingDetails] Posting not found for ID: ${postingId} within Debate ID: ${debateId}`);
-      return res.status(404).json({ message: 'Posting not found within this debate' });
-    }
-
-    // Find the full team data using the IDs from the posting
-    const team1Data = debate.teams?.find(t => t._id.equals(posting.team1));
-    const team2Data = debate.teams?.find(t => t._id.equals(posting.team2));
-
-    // Construct the detailed response object including populated members
-    const responseData = {
-        _id: posting._id,
-        debateId: debate._id,
-        debateTitle: debate.title,
-        round: posting.round,
-        matchNumber: posting.matchNumber, // Assuming matchNumber exists or add if needed
-        theme: posting.theme,
-        location: posting.location,
-        startTime: debate.startDate, // Consider if posting has its own time
-        status: posting.status, // Include status from posting
-        team1: {
-            id: posting.team1,
-            name: team1Data?.name || 'Team 1 Not Found',
-            members: team1Data?.members || [] // Include the populated members array
-        },
-        team2: {
-            id: posting.team2,
-            name: team2Data?.name || 'Team 2 Not Found',
-            members: team2Data?.members || [] // Include the populated members array
-        },
-        judges: posting.judges // Keep judge IDs (consider populating if needed later)
-    };
-
-    res.status(200).json({ status: 'success', data: responseData });
-
+    const { id } = req.params;
+    const { teamName, participants } = req.body; // Example body structure
+    console.log(`[Placeholder] registerTeamWithParticipants called for tournament ${id} with team ${teamName}`);
+    // TODO: Implement logic to register a team and its participants for a tournament
+    res.status(501).json({ message: `registerTeamWithParticipants for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error in getPostingDetails:', error);
-    // Handle potential CastErrors if IDs are invalid format, though checked above
-    if (error.name === 'CastError') {
-        return res.status(400).json({ message: 'Invalid ID format provided.' });
-    }
-    // Generic error handler
-    res.status(500).json({ message: 'Failed to get posting details', error: error.message });
+    console.error(`Error in registerTeamWithParticipants (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in registerTeamWithParticipants (placeholder)' });
   }
 };
-
-
-// Get user's debates (both created and participated)
-exports.getUserDebates = async (req, res) => {
-  try {
-    const createdDebates = await Debate.find({ creator: req.user._id })
-      .populate('creator', 'username role')
-      // Correct population for participants.userId
-      .populate({ path: 'participants.userId', select: 'username role _id' })
-      .populate('teams.members.userId', 'username email _id')
-      .populate({ // Populate judges within postings
-        path: 'postings',
-        populate: { path: 'judges', select: '_id username role' }
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const participatedDebates = await Debate.find({
-      participants: req.user._id,
-      creator: { $ne: req.user._id }
-    })
-      .populate('creator', 'username role')
-      // Correct population for participants.userId
-      .populate({ path: 'participants.userId', select: 'username role _id' })
-      .populate('teams.members.userId', 'username email _id')
-      .populate({ // Populate judges within postings
-        path: 'postings',
-        populate: { path: 'judges', select: '_id username role' }
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    // Process the debateData to include additional information about teams
-    const processDebateData = (debates) => {
-      return debates.map(debate => {
-        if (debate.postings && debate.postings.length > 0) {
-          debate.postings = debate.postings.map(posting => {
-            // Find the team objects referenced in the posting
-            const team1 = debate.teams?.find(t => t._id.toString() === posting.team1?.toString());
-            const team2 = debate.teams?.find(t => t._id.toString() === posting.team2?.toString());
-
-            // Add team names to the posting for easier access
-            if (team1) {
-              posting.team1Name = team1.name;
-              posting.team1Members = team1.members;
-            }
-            if (team2) {
-              posting.team2Name = team2.name;
-              posting.team2Members = team2.members;
-            }
-
-            return posting;
-          });
-        }
-        return debate;
-      });
-    };
-
-    res.json({
-      created: processDebateData(createdDebates),
-      participated: processDebateData(participatedDebates)
-    });
-  } catch (error) {
-    console.error('Error fetching user debates:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Update debate settings (only creator can update)
+// Placeholder for updateDebate
 exports.updateDebate = async (req, res) => {
   try {
-    const debate = await Debate.findById(req.params.id);
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Check if user is the creator
-    if (debate.creator.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Only debate creator can update settings' });
-    }
-
-    // Handle basic debate information updates
-    if (req.body.title) debate.title = req.body.title;
-    if (req.body.description) debate.description = req.body.description;
-    if (req.body.category) debate.category = req.body.category;
-    if (req.body.difficulty) debate.difficulty = req.body.difficulty;
-    if (req.body.startDate) debate.startDate = req.body.startDate;
-    if (req.body.maxParticipants) debate.maxParticipants = req.body.maxParticipants;
-
-    // Handle participant updates for test data registration
-    if (req.body.participants && Array.isArray(req.body.participants)) {
-      // Replace all participants with the new list
-      debate.participants = req.body.participants;
-    }
-
-    // Save the updated debate
-    const updatedDebate = await debate.save();
-
-    // Return populated debate data
-    const populatedDebate = await Debate.findById(updatedDebate._id)
-      .populate('creator', 'username')
-      // Correct population for participants.userId
-      .populate({ path: 'participants.userId', select: 'username role judgeRole _id' })
-      .lean();
-
-    res.json(populatedDebate);
+    const { id } = req.params;
+    const updateData = req.body;
+    console.log(`[Placeholder] updateDebate called for tournament ${id} with data:`, updateData);
+    // TODO: Implement logic to update a debate/tournament by ID
+    res.status(501).json({ message: `updateDebate for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error updating debate:', error);
-    res.status(400).json({ message: error.message });
+    console.error(`Error in updateDebate (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in updateDebate (placeholder)' });
   }
 };
-
-// Start a debate room
-exports.startRoom = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('participants', 'username role');
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Deactivate any existing active rooms
-    debate.rooms.forEach(room => {
-      if (room.isActive) {
-        room.isActive = false;
-      }
-    });
-
-    // Create a new room
-    const room = {
-      teams: debate.teams,
-      isActive: true,
-      transcription: []
-    };
-
-    debate.rooms.push(room);
-    debate.status = 'in-progress';
-    await debate.save();
-
-    // Get the created room with populated fields
-    const updatedDebate = await Debate.findById(debate._id)
-      .populate('rooms.transcription.speaker', 'username');
-    const createdRoom = updatedDebate.rooms[updatedDebate.rooms.length - 1];
-
-    res.json({ room: createdRoom });
-  } catch (error) {
-    console.error('Error starting room:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Save debate transcript segment
-exports.saveTranscript = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('rooms.transcription.speaker', 'username');
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Find the active room if roomId is not provided
-    let room;
-    if (req.body.roomId) {
-      room = debate.rooms.id(req.body.roomId);
-    } else {
-      room = debate.rooms.find(r => r.isActive);
-    }
-
-    if (!room) {
-      return res.status(404).json({ message: 'Active room not found' });
-    }
-
-    // Add transcript to room
-    const transcriptEntry = {
-      text: req.body.text,
-      timestamp: req.body.timestamp || new Date(),
-      speaker: req.body.speaker
-    };
-
-    room.transcription.push(transcriptEntry);
-    await debate.save();
-
-    // Populate the new transcript entry
-    const updatedDebate = await Debate.findById(debate._id)
-      .populate('rooms.transcription.speaker', 'username');
-    const updatedRoom = updatedDebate.rooms.id(room._id);
-
-    res.json({
-      message: 'Transcript saved successfully',
-      transcription: updatedRoom.transcription
-    });
-  } catch (error) {
-    console.error('Error saving transcript:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// End debate and perform final analysis
-exports.analyzeFinalDebate = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('participants', 'username role')
-      .populate('teams.members', 'username')
-      .populate('rooms.transcription.speaker', 'username');
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Find the active room and get its transcriptions
-    const activeRoom = debate.rooms.find(r => r.isActive);
-
-    if (!activeRoom || !activeRoom.transcription || activeRoom.transcription.length === 0) {
-      return res.status(400).json({ message: 'No debate transcript available for analysis' });
-    }
-
-    // Format transcriptions
-    const allTranscriptions = activeRoom.transcription.map(t => ({
-      speaker: t.speaker.username,
-      text: t.text,
-      timestamp: t.timestamp
-    }));
-
-    // Sort by timestamp
-    allTranscriptions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    // Format the transcript
-    const formattedTranscript = allTranscriptions
-      .map(t => `${t.speaker}: ${t.text}`)
-      .join('\n\n');
-
-    // Analyze the complete debate
-    const analysis = await analyzeDebateSummary(formattedTranscript);
-
-    // Update debate status and save analysis
-    debate.status = 'completed';
-    debate.analysis = analysis;
-    debate.endedAt = new Date();
-
-    // Mark room as inactive
-    if (activeRoom) {
-      activeRoom.isActive = false;
-    }
-
-    await debate.save();
-
-    res.json({ analysis });
-  } catch (error) {
-    console.error('Error analyzing debate:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.analyzeInterim = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('rooms.transcription.speaker', 'username')
-      .populate('participants', 'username role');
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    const room = debate.rooms.id(req.body.roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
-    }
-
-    // Format transcriptions
-    const allTranscriptions = room.transcription.map(t => ({
-      speaker: t.speaker.username,
-      text: t.text,
-      timestamp: t.timestamp
-    }));
-
-    // Sort by timestamp
-    allTranscriptions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    const formattedTranscript = allTranscriptions
-      .map(t => `${t.speaker}: ${t.text}`)
-      .join('\n\n');
-
-    // Use the interim analysis function
-    const analysis = await analyzeInterimTranscript(formattedTranscript);
-
-    // Save the analysis to the room's current state
-    room.currentAnalysis = analysis;
-    await debate.save();
-
-    res.json({ analysis });
-  } catch (error) {
-    console.error('Error in interim analysis:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Generate tournament bracket
-exports.generateTournamentBracket = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id)
-      .populate('participants', 'username role');
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    if (debate.format !== 'tournament') {
-      return res.status(400).json({ message: 'This is not a tournament debate' });
-    }
-
-    // Get all debaters (non-judge participants)
-    const debaters = debate.participants.filter(p => p.role !== 'judge');
-
-    if (debaters.length < 2) {
-      return res.status(400).json({ message: 'Not enough debaters to start tournament' });
-    }
-
-    // Shuffle debaters randomly
-    const shuffledDebaters = [...debaters].sort(() => Math.random() - 0.5);
-
-    // Calculate number of rounds needed
-    const numRounds = Math.ceil(Math.log2(shuffledDebaters.length));
-    const totalSlots = Math.pow(2, numRounds);
-
-    // Create first round matches
-    const firstRound = [];
-    for (let i = 0; i < totalSlots; i += 2) {
-      firstRound.push({
-        round: 1,
-        matchNumber: Math.floor(i/2) + 1,
-        team1: shuffledDebaters[i] || null,
-        team2: shuffledDebaters[i + 1] || null,
-        completed: false
-      });
-    }
-
-    // Create subsequent empty rounds
-    const tournamentRounds = [{
-      roundNumber: 1,
-      matches: firstRound
-    }];
-
-    for (let round = 2; round <= numRounds; round++) {
-      const numMatches = Math.pow(2, numRounds - round);
-      const matches = [];
-
-      for (let match = 1; match <= numMatches; match++) {
-        matches.push({
-          round: round,
-          matchNumber: match,
-          team1: null,
-          team2: null,
-          completed: false
-        });
-      }
-
-      tournamentRounds.push({
-        roundNumber: round,
-        matches: matches
-      });
-    }
-
-    // Update debate with tournament bracket
-    debate.tournamentRounds = tournamentRounds;
-    debate.status = 'in-progress';
-    await debate.save();
-
-    res.json({ tournamentRounds });
-  } catch (error) {
-    console.error('Error generating tournament bracket:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Update tournament match result
-exports.updateTournamentMatch = async (req, res) => {
-  try {
-    const { matchId, winnerId } = req.body;
-    const debate = await Debate.findById(req.params.id);
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Find and update the match
-    let matchFound = false;
-    for (const round of debate.tournamentRounds) {
-      const match = round.matches.id(matchId);
-      if (match) {
-        match.winner = winnerId;
-        match.completed = true;
-        matchFound = true;
-
-        // If not the final round, update next round's match
-        if (round.roundNumber < debate.tournamentRounds.length) {
-          const nextRound = debate.tournamentRounds.find(r => r.roundNumber === round.roundNumber + 1);
-          const nextMatchNumber = Math.ceil(match.matchNumber / 2);
-          const nextMatch = nextRound.matches.find(m => m.matchNumber === nextMatchNumber);
-
-          if (nextMatch) {
-            // Place winner in appropriate slot of next match
-            if (match.matchNumber % 2 === 1) {
-              nextMatch.team1 = winnerId;
-            } else {
-              nextMatch.team2 = winnerId;
-            }
-          }
-        }
-        break;
-      }
-    }
-
-    if (!matchFound) {
-      return res.status(404).json({ message: 'Match not found' });
-    }
-
-    // Check if tournament is complete (final match has a winner)
-    const finalRound = debate.tournamentRounds[debate.tournamentRounds.length - 1];
-    if (finalRound.matches[0].completed) {
-      debate.status = 'completed';
-      debate.winner = finalRound.matches[0].winner;
-    }
-
-    await debate.save();
-    res.json(debate);
-  } catch (error) {
-    console.error('Error updating tournament match:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Add the missing validation middleware for tournament operations
-exports.validateTournamentOperation = async (req, res, next) => {
-  try {
-    const debate = await Debate.findById(req.params.id);
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // For tournaments, check if registration is still open
-    if (debate.format === 'tournament' && debate.status !== 'upcoming') {
-      return res.status(400).json({
-        message: 'Cannot join or leave a tournament that has already started or ended'
-      });
-    }
-
-    // For tournaments, check if registration deadline has passed
-    if (debate.format === 'tournament' && debate.registrationDeadline) {
-      const now = new Date();
-      const deadline = new Date(debate.registrationDeadline);
-
-      if (now > deadline) {
-        return res.status(400).json({
-          message: 'Registration deadline has passed for this tournament'
-        });
-      }
-    }
-
-    // All checks passed, proceed to the next middleware
-    next();
-  } catch (error) {
-    console.error('Tournament validation error:', error);
-    res.status(500).json({ message: 'Error validating tournament operation' });
-  }
-};
-
-// Add the missing assignTeams function for debate team assignment
+// Placeholder for assignTeams
 exports.assignTeams = async (req, res) => {
   try {
-    const { propositionTeam, oppositionTeam } = req.body;
-    const debate = await Debate.findById(req.params.id);
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Verify user is creator or has permission to assign teams
-    if (debate.creator.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Only the debate creator can assign teams' });
-    }
-
-    // Validate team members are participants
-    const allTeamMembers = [...propositionTeam, ...oppositionTeam];
-    const allParticipantIds = debate.participants.map(p => p._id.toString());
-
-    const invalidMembers = allTeamMembers.filter(id => !allParticipantIds.includes(id.toString()));
-    if (invalidMembers.length > 0) {
-      return res.status(400).json({
-        message: 'Some team members are not participants in this debate'
-      });
-    }
-
-    // Assign teams
-    debate.teams = {
-      propositionTeam,
-      oppositionTeam
-    };
-
-    const updatedDebate = await debate.save();
-    res.json(updatedDebate);
-
+    const { id } = req.params;
+    const assignmentData = req.body;
+    console.log(`[Placeholder] assignTeams called for tournament ${id} with data:`, assignmentData);
+    // TODO: Implement logic to assign teams within a tournament
+    res.status(501).json({ message: `assignTeams for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error assigning teams:', error);
-    res.status(500).json({ message: error.message });
+    console.error(`Error in assignTeams (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in assignTeams (placeholder)' });
   }
 };
-
-// Add the missing analyzeSpeech function referenced in routes
-exports.analyzeSpeech = async (req, res) => {
+// Placeholder for startRoom
+exports.startRoom = async (req, res) => {
   try {
-    const { speechText, speakerId } = req.body;
-    const debate = await Debate.findById(req.params.id)
-      .populate('participants', 'username role');
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    // Validate that the speaker is a participant in the debate
-    const isSpeakerParticipant = debate.participants.some(
-      p => p._id.toString() === speakerId
-    );
-
-    if (!isSpeakerParticipant) {
-      return res.status(400).json({ message: 'Speaker is not a participant in this debate' });
-    }
-
-    // Use the AI service to analyze the speech
-    const analysisResult = await analyzeDebateSpeech(speechText);
-
-    res.json({
-      analysis: analysisResult,
-      timestamp: new Date()
-    });
+    const { id } = req.params;
+    console.log(`[Placeholder] startRoom called for tournament ${id}`);
+    // TODO: Implement logic to start a debate room/match
+    res.status(501).json({ message: `startRoom for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error analyzing speech:', error);
-    res.status(500).json({ message: error.message });
+    console.error(`Error in startRoom (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in startRoom (placeholder)' });
   }
 };
-
-// Add the missing updateTournamentBrackets function referenced in routes
+// Placeholder for saveTranscript
+exports.saveTranscript = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { transcript } = req.body;
+    console.log(`[Placeholder] saveTranscript called for tournament ${id}`);
+    // TODO: Implement logic to save a debate transcript
+    res.status(501).json({ message: `saveTranscript for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in saveTranscript (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in saveTranscript (placeholder)' });
+  }
+};
+// Placeholder for analyzeFinalDebate
+exports.analyzeFinalDebate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[Placeholder] analyzeFinalDebate called for tournament ${id}`);
+    // TODO: Implement logic to trigger final debate analysis
+    res.status(501).json({ message: `analyzeFinalDebate for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in analyzeFinalDebate (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in analyzeFinalDebate (placeholder)' });
+  }
+};
+// Placeholder for analyzeInterim
+exports.analyzeInterim = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[Placeholder] analyzeInterim called for tournament ${id}`);
+    // TODO: Implement logic to trigger interim debate analysis
+    res.status(501).json({ message: `analyzeInterim for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in analyzeInterim (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in analyzeInterim (placeholder)' });
+  }
+};
+// Placeholder for updateTournamentBrackets
 exports.updateTournamentBrackets = async (req, res) => {
   try {
+    const { id } = req.params;
     const { brackets } = req.body;
-    const debate = await Debate.findById(req.params.id);
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found' });
-    }
-
-    if (debate.format !== 'tournament') {
-      return res.status(400).json({ message: 'This is not a tournament debate' });
-    }
-
-    // Verify user is creator or organizer
-    if (debate.creator.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Only the tournament creator can update brackets' });
-    }
-
-    // Update tournament brackets
-    debate.tournamentRounds = brackets;
-
-    // Check if tournament is complete (final match has a winner)
-    const finalRound = brackets[brackets.length - 1];
-    if (finalRound && finalRound.matches &&
-        finalRound.matches[0] && finalRound.matches[0].completed) {
-      debate.status = 'completed';
-      debate.winner = finalRound.matches[0].winner;
-    }
-
-    await debate.save();
-    res.json(debate);
+    console.log(`[Placeholder] updateTournamentBrackets called for tournament ${id}`);
+    // TODO: Implement logic to update tournament brackets
+    res.status(501).json({ message: `updateTournamentBrackets for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error updating tournament brackets:', error);
-    res.status(500).json({ message: error.message });
+    console.error(`Error in updateTournamentBrackets (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in updateTournamentBrackets (placeholder)' });
   }
 };
-
-// Update tournament participants in bulk
-exports.updateParticipants = async (req, res) => {
+// Placeholder for generateTournamentBracket
+exports.generateTournamentBracket = async (req, res) => {
   try {
-    const { participants } = req.body;
-    const debate = await Debate.findById(req.params.id);
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-
-    if (debate.format !== 'tournament') {
-      return res.status(400).json({ message: 'This is not a tournament debate' });
-    }
-
-    // Add new participants
-    debate.participants = participants.map(p => ({
-      userId: p.userId,
-      role: p.role,
-      judgeRole: p.judgeRole
-    }));
-
-    await debate.save();
-
-    // Populate the user details
-    const updatedDebate = await Debate.findById(debate._id)
-      .populate('participants.userId', 'username email');
-
-    res.json(updatedDebate);
+    const { id } = req.params;
+    console.log(`[Placeholder] generateTournamentBracket called for tournament ${id}`);
+    // TODO: Implement logic to generate the initial tournament bracket
+    res.status(501).json({ message: `generateTournamentBracket for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error updating participants:', error);
-    res.status(500).json({ message: error.message });
+    console.error(`Error in generateTournamentBracket (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in generateTournamentBracket (placeholder)' });
   }
 };
-
-// Create a new team for tournament
+// Placeholder for updateTournamentMatch
+exports.updateTournamentMatch = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { matchId, winner } = req.body; // Example body structure
+    console.log(`[Placeholder] updateTournamentMatch called for tournament ${id}, match ${matchId}`);
+    // TODO: Implement logic to update a specific tournament match result
+    res.status(501).json({ message: `updateTournamentMatch for tournament ${id}, match ${matchId} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in updateTournamentMatch (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in updateTournamentMatch (placeholder)' });
+  }
+};
+// Placeholder for createTeam
 exports.createTeam = async (req, res) => {
   try {
-    const { name, leader, speaker, tournamentId } = req.body; // tournamentId might be in req.params.id depending on route
-
-    // Basic input check
-    if (!name || !leader || !speaker) {
-        return res.status(400).json({ message: 'Missing required fields: name, leader, speaker' });
-    }
-
-    const debateId = req.params.id || tournamentId; // Get ID from params or body
-    if (!debateId) {
-        return res.status(400).json({ message: 'Missing tournament ID' });
-    }
-
-    // Use the team service to handle validation and creation
-    const teamData = { name, leader, speaker };
-    const createdTeam = await teamService.createTeam(debateId, teamData);
-
-    res.status(201).json(createdTeam); // Return the team data from the service
-
+    const { id } = req.params;
+    const teamData = req.body;
+    console.log(`[Placeholder] createTeam called for tournament ${id} with data:`, teamData);
+    // TODO: Implement logic to create a team within a tournament
+    res.status(501).json({ message: `createTeam for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error creating team:', error);
-    // Handle specific errors from the service more generically
-    if (error.message === 'Tournament not found' || error.message === 'Debate is not a tournament') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Service validation errors (like invalid members) should result in 400
-    if (error.message.includes('participant') || error.message.includes('Invalid member')) {
-        return res.status(400).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({ message: error.message || 'Failed to create team' });
+    console.error(`Error in createTeam (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in createTeam (placeholder)' });
   }
 };
-
-// Update an existing team
+// Placeholder for updateTeam
 exports.updateTeam = async (req, res) => {
   try {
-    // Extract IDs from params, data from body
-    const { teamId } = req.params; // Get teamId from URL params
-    const { name, leader, speaker, tournamentId } = req.body;
-
-    // Basic input validation
-    if (!name || !leader || !speaker) {
-      return res.status(400).json({ message: 'Missing required fields: name, leader, speaker' });
-    }
-    if (!tournamentId) {
-      return res.status(400).json({ message: 'Missing tournament ID in request body' });
-    }
-
-    // Prepare update data for the service
-    const teamUpdateData = { name, leader, speaker };
-
-    // Call the service method
-    const updatedTeam = await teamService.updateTeam(tournamentId, teamId, teamUpdateData);
-
-    res.status(200).json({
-      message: 'Team updated successfully',
-      team: updatedTeam // Return the updated team from the service
-    });
-
+    const { id, teamId } = req.params;
+    const teamUpdateData = req.body;
+    console.log(`[Placeholder] updateTeam called for tournament ${id}, team ${teamId} with data:`, teamUpdateData);
+    // TODO: Implement logic to update a team within a tournament
+    res.status(501).json({ message: `updateTeam for tournament ${id}, team ${teamId} not yet implemented.` });
   } catch (error) {
-    console.error('Error updating team:', error);
-    // Handle specific errors from the service
-    if (error.message === 'Tournament not found' || error.message === 'Team not found in tournament') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Service validation errors (like invalid members) should result in 400
-    if (error.message.includes('participant') || error.message.includes('Invalid member')) {
-      return res.status(400).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({ message: error.message || 'Failed to update team' });
+    console.error(`Error in updateTeam (placeholder) for tournament ${req.params.id}, team ${req.params.teamId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in updateTeam (placeholder)' });
   }
 };
-
-// Register both judges and debaters to a tournament
-exports.registerParticipants = async (req, res) => {
-  try {
-    const { judges, debaters } = req.body;
-    // console.log('Received registration request:', { judges, debaters }); // Removed debug log
-    const debateId = req.params.id; // Get debateId from params
-
-    if (!Array.isArray(judges) || !Array.isArray(debaters)) {
-      return res.status(400).json({
-        message: 'Invalid input: judges and debaters must be arrays'
-      });
-    }
-
-    // Use the tournament service to handle registration
-    const result = await tournamentService.registerParticipants(debateId, judges, debaters);
-
-     // Fetch the fully populated debate to return
-     const updatedDebate = await Debate.findById(debateId)
-       .populate('participants._id', 'username email role') // Populate user details within participants
-       .lean(); // Use lean for performance
-
-    res.json({
-      message: 'Participants registered successfully',
-      debate: updatedDebate, // Return the updated debate object
-      summary: { // Include summary counts from service result
-          judgesAdded: result.judgesAdded,
-          debatersAdded: result.debatersAdded,
-          totalJudges: result.totalJudges,
-          totalDebaters: result.totalDebaters
-      }
-    });
-
-  } catch (error) {
-    console.error('Error registering participants:', error);
-    if (error.message === 'Tournament not found') {
-      return res.status(404).json({ message: error.message });
-    }
-     if (error.message === 'Not a tournament debate') {
-      return res.status(400).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message || 'Failed to register participants' });
-  }
-};
-
-// Generate test data for development and testing
-exports.generateTestData = async (req, res) => {
-  try {
-    const debate = await Debate.findById(req.params.id);
-
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-
-    // Fetch test judges and debaters from the database, ensuring we don't exceed limits
-    // Limit judges to 7 to leave room for potential organizer/creator
-    const testJudges = await User.find({ role: 'judge', isTestAccount: true }).limit(7);
-    const testDebaters = await User.find({ role: 'user', isTestAccount: true }).limit(32);
-
-    // console.log(`Found ${testJudges.length} test judges and ${testDebaters.length} test debaters`); // Removed debug log
-
-    // Start with completely empty participants array - no creator included
-    const participants = [];
-
-    // Add judges (maximum exactly 7 to avoid hitting the 8 judge limit)
-    for (const judge of testJudges) {
-      participants.push({
-        _id: judge._id,
-        username: judge.username,
-        role: 'judge',
-        judgeRole: judge.judgeRole || 'Judge'
-      });
-    }
-
-    // Add debaters (maximum exactly 32)
-    let debaterCount = 0;
-    for (const debater of testDebaters) {
-      if (debaterCount >= 32) break;
-
-      participants.push({
-        _id: debater._id,
-        username: debater.username,
-        role: 'debater'  // Force role to be 'debater' to avoid any issues
-      });
-      debaterCount++;
-    }
-
-    // Log the counts before saving
-    const judgeCount = participants.filter(p => p.role === 'judge').length;
-    const debaterCount2 = participants.filter(p => p.role === 'debater').length;
-    // console.log(`Preparing to save ${judgeCount} judges and ${debaterCount2} debaters`); // Removed debug log
-
-    // Update the debate with the test participants - completely replace existing participants
-    debate.participants = participants;
-
-    // Save with error handling
-    try {
-      await debate.save();
-
-      res.json({
-        message: 'Test participants registered successfully',
-        debate: {
-          _id: debate._id,
-          title: debate.title,
-          participantCount: participants.length,
-          judges: judgeCount,
-          debaters: debaterCount2
-        }
-      });
-    } catch (saveError) {
-      console.error('Error saving debate with test participants:', saveError);
-      res.status(400).json({
-        message: 'Failed to save test data',
-        error: saveError.message,
-        stack: saveError.stack
-      });
-    }
-
-  } catch (error) {
-    console.error('Error generating test data:', error);
-    res.status(500).json({
-      message: error.message,
-      stack: error.stack
-    });
-  }
-};
-
-// Update participant details within a tournament
-exports.updateParticipant = async (req, res) => {
-  try {
-    const { id: debateId, participantUserId } = req.params;
-    const updateData = req.body; // Contains fields like tournamentRole, teamId, etc.
-
-    // TODO: Add validation for updateData here if necessary
-
-    // Call the service function to update the participant
-    // Assuming the service function returns the updated debate or participant info
-    const updatedInfo = await tournamentService.updateParticipantDetails(debateId, participantUserId, updateData);
-
-    res.status(200).json({
-      message: 'Participant updated successfully',
-      data: updatedInfo // Send back updated info (e.g., updated participant object or full debate)
-    });
-
-  } catch (error) {
-    console.error('Error updating participant:', error);
-    if (error.message === 'Debate not found' || error.message === 'Participant not found' || error.message === 'User not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Handle other potential errors (e.g., validation errors from service)
-    res.status(500).json({ message: error.message || 'Failed to update participant' });
-  }
-};
-
-// Delete a participant from a tournament
-exports.deleteParticipant = async (req, res) => {
-  try {
-    const { id: debateId, participantUserId } = req.params;
-
-    // Call the service function to remove the participant
-    // Assuming the service function handles validation (e.g., participant exists)
-    await tournamentService.removeParticipantFromTournament(debateId, participantUserId);
-
-    res.status(200).json({ message: 'Participant removed successfully' });
-
-  } catch (error) {
-    console.error('Error deleting participant:', error);
-    if (error.message === 'Debate not found' || error.message === 'Participant not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Handle other potential errors (e.g., permissions if not handled by middleware/route)
-    res.status(500).json({ message: error.message || 'Failed to remove participant' });
-  }
-};
-
-// Create APF game posting
-exports.createApfPosting = async (req, res) => {
-  try {
-    const postingData = req.body;
-    const debateId = req.params.id || postingData.tournamentId; // Get ID from params or body
-    const userId = req.user._id; // Assuming user ID is available from auth middleware
-
-    if (!debateId) {
-        return res.status(400).json({ message: 'Missing tournament ID' });
-    }
-
-    // Basic validation (service handles more detailed checks)
-    if (!postingData.team1Id || !postingData.team2Id || (!postingData.location && !postingData.virtualLink) || !postingData.judgeIds || !postingData.theme) {
-      return res.status(400).json({ message: 'Missing required fields for APF posting (team1Id, team2Id, location/virtualLink, judgeIds, theme)' });
-    }
-
-    // Call the posting service to handle creation, validation, and notifications
-    const result = await postingService.createPosting(debateId, userId, postingData);
-
-    // The service returns the created posting data and notification results
-    res.status(201).json({
-      message: 'APF game posted successfully',
-      posting: result // Return the full result from the service
-    });
-
-  } catch (error) {
-    console.error('Error creating APF posting:', error);
-    // Handle specific errors from the service
-    if (error.message === 'Tournament not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    if (error.message.includes('Missing required fields') ||
-        error.message.includes('Teams cannot be the same') ||
-        error.message.includes('not found in this tournament') ||
-        error.message.includes('not participants')) {
-      return res.status(400).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({
-      message: error.message || 'Failed to create APF posting',
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-};
-
-// Batch creation of APF game postings
-exports.createApfBatchPostings = async (req, res) => {
-  try {
-    const batchData = req.body; // Contains batchGames and batchName
-    const debateId = req.params.id;
-    const userId = req.user._id;
-
-    // Basic validation
-    if (!Array.isArray(batchData.batchGames) || batchData.batchGames.length === 0) {
-      return res.status(400).json({ message: 'No games provided for batch creation' });
-    }
-    if (!debateId) {
-        return res.status(400).json({ message: 'Missing tournament ID' });
-    }
-
-    // Call the service to handle batch creation, validation, saving, and notifications
-    const { results, errors } = await postingService.createBatchPostings(debateId, userId, batchData);
-
-    // Determine appropriate status code based on errors
-    const statusCode = errors.length > 0 && results.length === 0 ? 400 : 201; // 400 if all failed, 201 otherwise
-
-    res.status(statusCode).json({
-      message: `Batch creation processed: ${results.length} succeeded, ${errors.length} failed.`,
-      results, // Array of successfully created posting summaries
-      errors: errors.length > 0 ? errors : undefined // Array of errors for failed games
-    });
-
-  } catch (error) {
-    console.error('Error creating batch APF postings:', error);
-    // Handle specific errors from the service (e.g., tournament not found)
-    if (error.message === 'Tournament not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({
-      message: error.message || 'Failed to process batch APF postings',
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-};
-
-// Helper function to send notifications for a game
-async function sendGameNotifications(debate, game, debateId, batchName) {
-  const judgeIds = game.judges.map(j => j.id);
-
-  // Send notifications to judges
-  for (const judgeId of judgeIds) {
-    const judge = await User.findById(judgeId);
-    if (judge) {
-      if (!judge.notifications) {
-        judge.notifications = [];
-      }
-
-      const notification = {
-        type: 'game_assignment',
-        debate: debateId,
-        message: `You have been assigned to judge an APF debate${game.scheduledTime ? ` on ${new Date(game.scheduledTime).toLocaleString()}` : ''}${batchName ? ` (${batchName})` : ''}: ${typeof game.theme === 'string' ? game.theme : game.theme?.label || 'Topic not specified'}`,
-        seen: false,
-        createdAt: new Date()
-      };
-
-      judge.notifications.push(notification);
-      await judge.save();
-    }
-  }
-
-  // Send notifications to team members
-  const team1 = debate.teams.find(t => t._id.toString() === game.team1.id);
-  const team2 = debate.teams.find(t => t._id.toString() === game.team2.id);
-
-  if (team1 && team1.members) {
-    for (const member of team1.members) {
-      if (member.userId) {
-        const teamMember = await User.findById(typeof member.userId === 'object' ? member.userId._id : member.userId);
-        if (teamMember) {
-          if (!teamMember.notifications) {
-            teamMember.notifications = [];
-          }
-
-          const notification = {
-            type: 'game_assignment',
-            debate: debateId,
-            message: `Your team (${team1.name}) has been scheduled for an APF debate${game.scheduledTime ? ` on ${new Date(game.scheduledTime).toLocaleString()}` : ''}${batchName ? ` (${batchName})` : ''}: ${typeof game.theme === 'string' ? game.theme : game.theme?.label || 'Topic not specified'}`,
-            seen: false,
-            createdAt: new Date()
-          };
-
-          teamMember.notifications.push(notification);
-          await teamMember.save();
-        }
-      }
-    }
-  }
-
-  if (team2 && team2.members) {
-    for (const member of team2.members) {
-      if (member.userId) {
-        const teamMember = await User.findById(typeof member.userId === 'object' ? member.userId._id : member.userId);
-        if (teamMember) {
-          if (!teamMember.notifications) {
-            teamMember.notifications = [];
-          }
-
-          const notification = {
-            type: 'game_assignment',
-            debate: debateId,
-            message: `Your team (${team2.name}) has been scheduled for an APF debate${game.scheduledTime ? ` on ${new Date(game.scheduledTime).toLocaleString()}` : ''}${batchName ? ` (${batchName})` : ''}: ${typeof game.theme === 'string' ? game.theme : game.theme?.label || 'Topic not specified'}`,
-            seen: false,
-            createdAt: new Date()
-          };
-
-          teamMember.notifications.push(notification);
-          await teamMember.save();
-        }
-      }
-    }
-  }
-
-  // Find the posting and mark notifications as sent
-  const postingIndex = debate.postings.findIndex(p =>
-    p.team1.toString() === game.team1.id &&
-    p.team2.toString() === game.team2.id &&
-    p.batchName === batchName
-  );
-
-  if (postingIndex !== -1) {
-    debate.postings[postingIndex].notifications.judgesNotified = true;
-    debate.postings[postingIndex].notifications.sentAt = new Date();
-    await debate.save();
-  }
-}
-
-// Update APF posting status (or other details via service)
-exports.updateApfPostingStatus = async (req, res) => {
-  try {
-    const { id: debateId, postingId } = req.params;
-    const updateData = req.body; // Can include status or other fields
-    const userId = req.user._id; // Assuming user ID is available
-
-    // Basic validation if only status is expected by this specific route
-    if (updateData.status && !['scheduled', 'in_progress', 'completed', 'cancelled'].includes(updateData.status)) {
-      return res.status(400).json({ message: 'Invalid status value' });
-    }
-    if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({ message: 'No update data provided' });
-    }
-
-    // Call the service method to handle the update
-    const updatedPosting = await postingService.updatePostingDetails(debateId, postingId, updateData, userId);
-
-    res.status(200).json({
-      message: 'APF posting updated successfully',
-      posting: updatedPosting // Return the updated posting from the service
-    });
-
-  } catch (error) {
-    console.error('Error updating APF posting status:', error);
-    // Handle specific errors from the service
-    if (error.message === 'Tournament not found' || error.message === 'Posting not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    if (error.message === 'Invalid status value' || error.message.includes('not participants')) {
-        return res.status(400).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({ message: error.message || 'Failed to update APF posting' });
-  }
-};
-
-// Get APF postings for a specific tournament
-exports.getApfPostings = async (req, res) => {
-  try {
-    const { id: debateId } = req.params;
-    const filters = req.query; // Allow filtering via query params (e.g., ?status=scheduled)
-
-    if (!debateId) {
-        return res.status(400).json({ message: 'Missing tournament ID in request parameters' });
-    }
-
-    // Call the service method to get postings
-    const postings = await postingService.getPostingsForDebate(debateId, filters);
-
-    res.status(200).json(postings); // Return the array of postings
-
-  } catch (error) {
-    console.error('Error getting APF postings:', error);
-    // Handle specific errors from the service
-    if (error.message === 'Tournament not found' || error.message === 'Debate is not a tournament') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({ message: error.message || 'Failed to get APF postings' });
-  }
-};
-
-
-// Send reminders for APF game
-exports.sendApfGameReminder = async (req, res) => {
-  try {
-    const { id: debateId, postingId } = req.params;
-    const userId = req.user._id; // Assuming user ID is available
-
-    if (!debateId || !postingId) {
-        return res.status(400).json({ message: 'Missing tournament ID or posting ID in request parameters' });
-    }
-
-    // Call the service method to handle finding the posting and sending notifications
-    const notificationResults = await postingService.sendReminders(debateId, postingId, userId);
-
-    res.status(200).json({
-      message: 'Reminders sent successfully',
-      ...notificationResults // Spread the results (judgesNotified, teamMembersNotified, errors)
-    });
-
-  } catch (error) {
-    console.error('Error sending APF game reminders:', error);
-    // Handle specific errors from the service
-    if (error.message === 'Tournament not found' || error.message === 'APF posting not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({ message: error.message || 'Failed to send reminders' });
-  }
-};
-
-// Randomize teams for tournament
-exports.randomizeTeams = async (req, res) => {
-  try {
-    const debateId = req.params.id;
-    // Call the service method which handles finding debate, validation, shuffling, and saving
-    const updatedDebateWithTeams = await teamService.randomizeTeams(debateId);
-
-    res.json({
-      message: 'Teams randomized successfully',
-      // Return the teams array from the populated debate object returned by the service
-      teams: updatedDebateWithTeams.teams
-    });
-
-  } catch (error) {
-    console.error('Error randomizing teams:', error);
-    // Handle specific errors from the service
-    if (error.message === 'Tournament not found' || error.message === 'Not a tournament') {
-      return res.status(404).json({ message: error.message });
-    }
-    if (error.message === 'Not enough debaters to randomize teams') {
-      return res.status(400).json({ message: error.message });
-    }
-    // Default to 500 for unexpected errors
-    res.status(500).json({ message: error.message || 'Failed to randomize teams' });
-  }
-};
-
-// --- Tournament Map Controllers ---
-
-/**
- * @desc    Upload or replace tournament map image
- * @route   POST /api/debates/:id/map
- * @access  Private (Organizer/Admin)
- */
-exports.uploadMap = async (req, res) => {
-  try {
-    const debateId = req.params.id;
-    const userId = req.user._id; // From protect middleware
-
-    // Check if a file was uploaded by multer
-    if (!req.file) {
-      return res.status(400).json({ message: 'No map image file uploaded.' });
-    }
-
-    const fileBuffer = req.file.buffer;
-    const originalFileName = req.file.originalname;
-    const mimeType = req.file.mimetype;
-
-    // Call the service function
-    const mapUrl = await debateService.uploadTournamentMap(
-      debateId,
-      fileBuffer,
-      originalFileName,
-      mimeType,
-      userId.toString() // Ensure userId is passed as string
-    );
-
-    res.status(200).json({
-      message: 'Map uploaded successfully.',
-      mapImageUrl: mapUrl
-    });
-
-  } catch (error) {
-    console.error('Error uploading tournament map:', error);
-    if (error.message === 'Debate not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    if (error.message.includes('Not authorized') || error.message.includes('Invalid file type')) {
-      return res.status(403).json({ message: error.message }); // Or 400 for invalid file type
-    }
-    if (error.message === 'Map can only be uploaded for tournaments.') {
-        return res.status(400).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message || 'Failed to upload map.' });
-  }
-};
-
-/**
- * @desc    Get tournament map image URL
- * @route   GET /api/debates/:id/map
- * @access  Private (Authenticated Users)
- */
-exports.getMap = async (req, res) => {
-  try {
-    const debateId = req.params.id;
-
-    // Call the service function
-    const mapUrl = await debateService.getTournamentMapUrl(debateId);
-
-    // Service returns null if no map or if not a tournament, which is fine
-    res.status(200).json({ mapImageUrl: mapUrl });
-
-  } catch (error) {
-    console.error('Error getting tournament map URL:', error);
-    if (error.message === 'Debate not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message || 'Failed to get map URL.' });
-  }
-};
-
-/**
- * @desc    Delete tournament map image
- * @route   DELETE /api/debates/:id/map
- * @access  Private (Organizer/Admin)
- */
-exports.deleteMap = async (req, res) => {
-  try {
-    const debateId = req.params.id;
-    const userId = req.user._id; // From protect middleware
-
-    // Call the service function
-    await debateService.deleteTournamentMap(debateId, userId.toString());
-
-    res.status(200).json({ message: 'Map deleted successfully.' });
-
-  } catch (error) {
-    console.error('Error deleting tournament map:', error);
-    if (error.message === 'Debate not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    if (error.message.includes('Not authorized')) {
-      return res.status(403).json({ message: error.message });
-    }
-     if (error.message === 'Map can only be deleted for tournaments.') {
-        return res.status(400).json({ message: error.message });
-    }
-    // Handle case where map didn't exist (service currently doesn't throw error for this)
-    // if (error.message === 'No map image exists to delete.') {
-    //   return res.status(404).json({ message: error.message });
-    // }
-    res.status(500).json({ message: error.message || 'Failed to delete map.' });
-  }
-};
-
-
-// Delete a team from a tournament
+// Placeholder for deleteTeam
 exports.deleteTeam = async (req, res) => {
   try {
-    const { id: tournamentId, teamId } = req.params;
-
-    // Validate IDs
-    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(teamId)) {
-      return res.status(400).json({ message: 'Invalid Tournament or Team ID format' });
-    }
-
-    // Call the service function to delete the team
-    await teamService.deleteTeam(tournamentId, teamId);
-
-    res.status(200).json({ message: 'Team successfully deleted from tournament' });
-
+    const { id, teamId } = req.params;
+    console.log(`[Placeholder] deleteTeam called for tournament ${id}, team ${teamId}`);
+    // TODO: Implement logic to delete a team from a tournament
+    res.status(501).json({ message: `deleteTeam for tournament ${id}, team ${teamId} not yet implemented.` });
   } catch (error) {
-    console.error('Error deleting team:', error);
-    // Handle specific errors from the service (e.g., not found)
-    if (error.message === 'Tournament not found' || error.message === 'Team not found in this tournament') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Generic server error
-    res.status(500).json({ message: error.message || 'Failed to delete team' });
+    console.error(`Error in deleteTeam (placeholder) for tournament ${req.params.id}, team ${req.params.teamId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in deleteTeam (placeholder)' });
   }
 };
-
-// Upload recorded audio for a specific posting
+// Placeholder for addParticipant
+exports.addParticipant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const participantData = req.body;
+    console.log(`[Placeholder] addParticipant called for tournament ${id} with data:`, participantData);
+    // TODO: Implement logic to add a participant to a tournament
+    res.status(501).json({ message: `addParticipant for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in addParticipant (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in addParticipant (placeholder)' });
+  }
+};
+// Placeholder for updateParticipant
+exports.updateParticipant = async (req, res) => {
+  try {
+    const { id, participantUserId } = req.params;
+    const participantUpdateData = req.body;
+    console.log(`[Placeholder] updateParticipant called for tournament ${id}, user ${participantUserId} with data:`, participantUpdateData);
+    // TODO: Implement logic to update a participant within a tournament
+    res.status(501).json({ message: `updateParticipant for tournament ${id}, user ${participantUserId} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in updateParticipant (placeholder) for tournament ${req.params.id}, user ${req.params.participantUserId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in updateParticipant (placeholder)' });
+  }
+};
+// Placeholder for deleteParticipant
+exports.deleteParticipant = async (req, res) => {
+  try {
+    const { id, participantUserId } = req.params;
+    console.log(`[Placeholder] deleteParticipant called for tournament ${id}, user ${participantUserId}`);
+    // TODO: Implement logic to delete a participant from a tournament
+    res.status(501).json({ message: `deleteParticipant for tournament ${id}, user ${participantUserId} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in deleteParticipant (placeholder) for tournament ${req.params.id}, user ${req.params.participantUserId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in deleteParticipant (placeholder)' });
+  }
+};
+// Placeholder for createApfPosting
+exports.createApfPosting = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const postingData = req.body;
+    console.log(`[Placeholder] createApfPosting called for tournament ${id} with data:`, postingData);
+    // TODO: Implement logic to create an APF posting for a tournament
+    res.status(501).json({ message: `createApfPosting for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in createApfPosting (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in createApfPosting (placeholder)' });
+  }
+};
+// Placeholder for createApfBatchPostings
+exports.createApfBatchPostings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { postings } = req.body; // Example body structure
+    console.log(`[Placeholder] createApfBatchPostings called for tournament ${id}`);
+    // TODO: Implement logic to create multiple APF postings in batch
+    res.status(501).json({ message: `createApfBatchPostings for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in createApfBatchPostings (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in createApfBatchPostings (placeholder)' });
+  }
+};
+// Placeholder for updateApfPostingStatus
+exports.updateApfPostingStatus = async (req, res) => {
+  try {
+    const { id, postingId } = req.params;
+    const { status } = req.body; // Example body structure
+    console.log(`[Placeholder] updateApfPostingStatus called for tournament ${id}, posting ${postingId} to status ${status}`);
+    // TODO: Implement logic to update the status of an APF posting
+    res.status(501).json({ message: `updateApfPostingStatus for tournament ${id}, posting ${postingId} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in updateApfPostingStatus (placeholder) for tournament ${req.params.id}, posting ${req.params.postingId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in updateApfPostingStatus (placeholder)' });
+  }
+};
+// Placeholder for sendApfGameReminder
+exports.sendApfGameReminder = async (req, res) => {
+  try {
+    const { id, postingId } = req.params;
+    console.log(`[Placeholder] sendApfGameReminder called for tournament ${id}, posting ${postingId}`);
+    // TODO: Implement logic to send reminders for an APF game/posting
+    res.status(501).json({ message: `sendApfGameReminder for tournament ${id}, posting ${postingId} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in sendApfGameReminder (placeholder) for tournament ${req.params.id}, posting ${req.params.postingId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in sendApfGameReminder (placeholder)' });
+  }
+};
+// Placeholder for uploadAudio
 exports.uploadAudio = async (req, res) => {
   try {
-    const { id: debateId, postingId } = req.params;
-
+    const { id, postingId } = req.params;
+    console.log(`[Placeholder] uploadAudio called for tournament ${id}, posting ${postingId}`);
+    // TODO: Implement logic to handle audio upload for a posting
+    // Note: Actual file handling is done by uploadMiddleware, this controller handles post-upload logic.
     if (!req.file) {
       return res.status(400).json({ message: 'No audio file uploaded.' });
     }
-
-    // Call placeholder service to get a dummy URL
-    // In a real scenario, this would upload to cloud storage and return the actual URL
-    const audioUrl = await postingService.saveAudioUrl(req.file.buffer); // Assuming service handles buffer
-
-    const debate = await Debate.findById(debateId);
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found.' });
-    }
-
-    const posting = debate.postings.id(postingId);
-    if (!posting) {
-      return res.status(404).json({ message: 'Posting not found within the debate.' });
-    }
-
-    posting.recordedAudioUrl = audioUrl;
-    debate.markModified('postings'); // Important when modifying nested arrays/objects
-    await debate.save();
-
-    res.status(200).json({ message: 'Audio URL successfully updated.', posting });
-
+    res.status(501).json({ message: `uploadAudio for tournament ${id}, posting ${postingId} not yet implemented. File received: ${req.file.originalname}` });
   } catch (error) {
-    console.error('Error uploading audio:', error);
-    res.status(500).json({ message: error.message || 'Failed to upload audio.' });
+    console.error(`Error in uploadAudio (placeholder) for tournament ${req.params.id}, posting ${req.params.postingId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in uploadAudio (placeholder)' });
   }
 };
-
-// Upload ballot image for a specific posting
+// Placeholder for uploadBallot
 exports.uploadBallot = async (req, res) => {
   try {
-    const { id: debateId, postingId } = req.params;
-
+    const { id, postingId } = req.params;
+    console.log(`[Placeholder] uploadBallot called for tournament ${id}, posting ${postingId}`);
+    // TODO: Implement logic to handle ballot upload for a posting
+    // Note: Actual file handling is done by uploadMiddleware, this controller handles post-upload logic.
     if (!req.file) {
-      return res.status(400).json({ message: 'No ballot image file uploaded.' });
+      return res.status(400).json({ message: 'No ballot file uploaded.' });
     }
-
-    // Call placeholder service to get a dummy URL
-    const imageUrl = await postingService.saveBallotUrl(req.file.buffer); // Assuming service handles buffer
-
-    const debate = await Debate.findById(debateId);
-    if (!debate) {
-      return res.status(404).json({ message: 'Debate not found.' });
-    }
-
-    const posting = debate.postings.id(postingId);
-    if (!posting) {
-      return res.status(404).json({ message: 'Posting not found within the debate.' });
-    }
-
-    posting.ballotImageUrl = imageUrl;
-    debate.markModified('postings'); // Important when modifying nested arrays/objects
-    await debate.save();
-
-    res.status(200).json({ message: 'Ballot image URL successfully updated.', posting });
-
+    res.status(501).json({ message: `uploadBallot for tournament ${id}, posting ${postingId} not yet implemented. File received: ${req.file.originalname}` });
   } catch (error) {
-    console.error('Error uploading ballot image:', error);
-    res.status(500).json({ message: error.message || 'Failed to upload ballot image.' });
+    console.error(`Error in uploadBallot (placeholder) for tournament ${req.params.id}, posting ${req.params.postingId}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in uploadBallot (placeholder)' });
   }
 };
-
-
-// Get Judge Leaderboard for a Tournament
-exports.getJudgeLeaderboard = async (req, res) => {
+// Placeholder for registerParticipants
+exports.registerParticipants = async (req, res) => {
   try {
-    const tournamentId = req.params.id;
-
-    // Validate if tournamentId is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
-      return res.status(400).json({ message: 'Invalid Tournament ID format' });
-    }
-
-    // Fetch the tournament and populate necessary user details for participants
-    const debate = await Debate.findById(tournamentId)
-      .populate({
-        path: 'participants.userId',
-        select: 'username judgeRole profilePhotoUrl' // Select fields from User model
-      })
-      .lean(); // Use lean for performance if we don't need Mongoose documents
-
-    // Check if the tournament exists
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-
-    // Filter participants to include only judges
-    const judges = debate.participants.filter(p => p.tournamentRole === 'Judge' && p.userId); // Ensure userId is populated
-
-    // Define the rank order for sorting
-    const rankOrder = {
-      'Head Judge': 1,
-      'Judge': 2,
-      'Assistant Judge': 3
-    };
-
-    // Map judges to the desired leaderboard format and sort them
-    const leaderboard = judges
-      .map(p => ({
-        id: p.userId._id,
-        name: p.userId.username,
-        rank: p.userId.judgeRole || 'Judge', // Default to 'Judge' if judgeRole is missing
-        photo: p.userId.profilePhotoUrl || null // Handle missing photo URL
-      }))
-      .sort((a, b) => {
-        const rankA = rankOrder[a.rank] || 99; // Assign a high number for unknown ranks
-        const rankB = rankOrder[b.rank] || 99;
-        return rankA - rankB;
-      });
-
-    // Return the sorted leaderboard
-    res.json(leaderboard);
-
+    const { id } = req.params;
+    const { judges, debaters } = req.body; // Example body structure
+    console.log(`[Placeholder] registerParticipants called for tournament ${id}`);
+    // TODO: Implement logic to register multiple participants (judges/debaters)
+    res.status(501).json({ message: `registerParticipants for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error fetching judge leaderboard:', error);
-    res.status(500).json({ message: 'Failed to fetch judge leaderboard', error: error.message });
+    console.error(`Error in registerParticipants (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in registerParticipants (placeholder)' });
   }
 };
-
-// Update a specific participant's details within a tournament
-exports.updateParticipant = async (req, res, next) => {
+// Placeholder for generateTestData
+exports.generateTestData = async (req, res) => {
   try {
-    const { id: tournamentId, participantUserId } = req.params;
-    const updateData = req.body; // e.g., { name, email } - adjust based on what can be updated
-    const requestingUserId = req.user.id; // Assuming organizer check is done by middleware
-
-    // Basic validation
-    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(participantUserId)) {
-      return res.status(400).json({ message: 'Invalid tournament or participant ID format' });
-    }
-    if (!updateData || Object.keys(updateData).length === 0) {
-        return res.status(400).json({ message: 'No update data provided' });
-    }
-
-    // Call the service function to update the participant
-    // Assuming a service function exists like this:
-    const updatedParticipant = await tournamentService.updateParticipantDetails(
-        tournamentId,
-        participantUserId,
-        updateData,
-        requestingUserId // Pass requesting user for permission checks within service if needed
-    );
-
-    if (!updatedParticipant) {
-        // Service should throw specific errors, but handle general case
-        return res.status(404).json({ message: 'Participant not found or update failed' });
-    }
-
-    res.status(200).json(updatedParticipant);
-
+    const { id } = req.params;
+    console.log(`[Placeholder] generateTestData called for tournament ${id}`);
+    // TODO: Implement logic to generate test data for a tournament
+    res.status(501).json({ message: `generateTestData for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error(`Error updating participant ${participantUserId} in tournament ${tournamentId}:`, error);
-    // Handle specific errors from service
-    if (error.message === 'Tournament not found' || error.message === 'Participant not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    if (error.message === 'Update forbidden' || error.message.includes('permission')) {
-        return res.status(403).json({ message: error.message });
-    }
-    // Generic error
-    res.status(500).json({ message: error.message || 'Failed to update participant' });
-  }
-}; // End of updateParticipant
-
-
-
-// Add Participant to Tournament
-exports.addParticipant = async (req, res, next) => {
-  try {
-    const { id: tournamentId } = req.params;
-    const { userId, role } = req.body; // Expecting 'Debater' or 'Judge'
-    const requestingUser = req.user; // From protect middleware
-
-    // --- Validation ---
-    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid tournament or user ID format' });
-    }
-    if (!role || !['Debater', 'Judge'].includes(role)) {
-        return res.status(400).json({ message: 'Invalid or missing participant role. Must be "Debater" or "Judge".' });
-    }
-
-    // --- Fetch Tournament ---
-    const debate = await Debate.findById(tournamentId);
-    if (!debate) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-    if (debate.format !== 'tournament') {
-        return res.status(400).json({ message: 'Participants can only be added to tournaments.' });
-    }
-
-    // --- Authorization (Middleware 'isOrganizer' already handles this, but double-check) ---
-    // The isOrganizer middleware should suffice, but an explicit check can be added if needed:
-    // if (debate.creator.toString() !== requestingUser.id && requestingUser.role !== 'organizer' && requestingUser.role !== 'admin') {
-    //   return res.status(403).json({ message: 'Not authorized to add participants to this tournament.' });
-    // }
-
-    // --- Check for Duplicates ---
-    const existingParticipant = debate.participants.find(p => p.userId.toString() === userId);
-    if (existingParticipant) {
-      return res.status(409).json({ message: 'User is already a participant in this tournament.' });
-    }
-
-    // --- Check Capacity ---
-    // Use the model's method or check counts directly
-    const counts = debate.getParticipantCounts(); // Use the existing method
-    if (role === 'Debater' && counts.debaters >= counts.maxDebaters) {
-        return res.status(400).json({ message: 'Maximum number of debaters reached.' });
-    }
-    if (role === 'Judge' && counts.judges >= counts.maxJudges) {
-        return res.status(400).json({ message: 'Maximum number of judges reached.' });
-    }
-
-    // --- Add Participant ---
-    const newParticipant = {
-      userId: userId,
-      tournamentRole: role,
-      status: 'registered' // Set status directly as registered
-    };
-    debate.participants.push(newParticipant);
-
-    // --- Save and Respond ---
-    await debate.save(); // The pre-save hook should update counts
-
-    // Populate the newly added participant for the response
-    const populatedDebate = await Debate.findById(tournamentId).populate('participants.userId', 'username email role');
-    const addedParticipantDetails = populatedDebate.participants.find(p => p.userId._id.toString() === userId);
-
-
-    res.status(201).json({
-        message: 'Participant added successfully.',
-        participant: addedParticipantDetails,
-        // Optionally return updated counts
-        // currentDebaters: populatedDebate.tournamentSettings.currentDebaters,
-        // currentJudges: populatedDebate.tournamentSettings.currentJudges
-    });
-
-  } catch (error) {
-    console.error(`Error adding participant ${userId} to tournament ${tournamentId}:`, error);
-    // Handle potential errors during save or other operations
-    res.status(500).json({ message: error.message || 'Failed to add participant' });
-  }
-}; // End of addParticipant
-
-
-
-// Delete a specific participant from a tournament
-exports.deleteParticipant = async (req, res, next) => {
-  try {
-    const { id: tournamentId, participantUserId } = req.params;
-    const requestingUserId = req.user.id; // Assuming organizer check is done by middleware
-
-    // Basic validation
-    if (!mongoose.Types.ObjectId.isValid(tournamentId) || !mongoose.Types.ObjectId.isValid(participantUserId)) {
-      return res.status(400).json({ message: 'Invalid tournament or participant ID format' });
-    }
-
-    // Call the service function to delete the participant
-    // Assuming a service function exists like this:
-    const result = await tournamentService.removeParticipant(
-        tournamentId,
-        participantUserId,
-        requestingUserId // Pass requesting user for permission checks within service if needed
-    );
-
-    if (!result || !result.success) { // Check for a success flag or similar from service
-        // Service should throw specific errors, but handle general case
-        return res.status(404).json({ message: result?.message || 'Participant not found or deletion failed' });
-    }
-
-    res.status(200).json({ message: 'Participant deleted successfully' }); // Or 204 No Content
-
-  } catch (error) {
-    console.error(`Error deleting participant ${participantUserId} from tournament ${tournamentId}:`, error);
-    // Handle specific errors from service
-    if (error.message === 'Tournament not found' || error.message === 'Participant not found') {
-      return res.status(404).json({ message: error.message });
-    }
-     if (error.message === 'Deletion forbidden' || error.message.includes('permission')) {
-        return res.status(403).json({ message: error.message });
-    }
-    // Generic error
-    res.status(500).json({ message: error.message || 'Failed to delete participant' });
+    console.error(`Error in generateTestData (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in generateTestData (placeholder)' });
   }
 };
-
-
-
-
-
-// Get ranked participant standings for a tournament
-exports.getParticipantStandings = async (req, res) => {
+// Placeholder for uploadMap
+exports.uploadMap = async (req, res) => {
   try {
-    const tournamentId = req.params.id;
-
-    // Validate tournamentId (basic check)
-    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
-      return res.status(400).json({ message: 'Invalid tournament ID format' });
+    const { id } = req.params;
+    console.log(`[Placeholder] uploadMap called for tournament ${id}`);
+    // TODO: Implement logic to handle map image upload for a tournament
+    // Note: Actual file handling is done by uploadMiddleware, this controller handles post-upload logic.
+    if (!req.file) {
+      return res.status(400).json({ message: 'No map image file uploaded.' });
     }
-
-    // Call the service function to calculate standings
-    // Assuming the service function is in debateService for now
-    const standings = await debateService.calculateParticipantStandings(tournamentId);
-
-    res.status(200).json(standings);
-
+    res.status(501).json({ message: `uploadMap for tournament ${id} not yet implemented. File received: ${req.file.originalname}` });
   } catch (error) {
-    console.error('Error getting participant standings:', error);
-    // Handle specific errors if the service throws them
-    if (error.message === 'Tournament not found') {
-      return res.status(404).json({ message: error.message });
-    }
-    // Generic error response
-    res.status(500).json({ message: error.message || 'Failed to calculate participant standings' });
+    console.error(`Error in uploadMap (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in uploadMap (placeholder)' });
   }
 };
-
-// Update the list of organizers for a tournament (Creator only)
+// Placeholder for deleteMap
+exports.deleteMap = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[Placeholder] deleteMap called for tournament ${id}`);
+    // TODO: Implement logic to delete the map for a tournament
+    res.status(501).json({ message: `deleteMap for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in deleteMap (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in deleteMap (placeholder)' });
+  }
+};
+// Placeholder for updateOrganizers
 exports.updateOrganizers = async (req, res) => {
   try {
-    const tournamentId = req.params.id;
-    const { organizerIds } = req.body; // Expecting an array of User IDs
-    const requestingUserId = req.user.id; // From protect middleware
-
-    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
-      return res.status(400).json({ message: 'Invalid Tournament ID format' });
-    }
-    if (!Array.isArray(organizerIds)) {
-      return res.status(400).json({ message: 'organizerIds must be an array' });
-    }
-
-    // Fetch the tournament, selecting creator and organizers fields
-    const tournament = await Debate.findById(tournamentId).select('creator organizers');
-
-    if (!tournament) {
-      return res.status(404).json({ message: 'Tournament not found' });
-    }
-
-    // Authorization: Only the original creator can modify the organizers list
-    if (tournament.creator.toString() !== requestingUserId) {
-      return res.status(403).json({ message: 'Only the tournament creator can update the organizers list' });
-    }
-
-    // Optional: Validate that provided IDs correspond to existing users
-    const validUserIds = [];
-    if (organizerIds.length > 0) {
-        const users = await User.find({ '_id': { $in: organizerIds } }).select('_id');
-        users.forEach(u => validUserIds.push(u._id));
-        // Check if any provided IDs were invalid (optional)
-        // const invalidIds = organizerIds.filter(id => !validUserIds.some(validId => validId.toString() === id));
-        // if (invalidIds.length > 0) {
-        //     console.warn(`Invalid user IDs provided for organizers: ${invalidIds.join(', ')}`);
-        // }
-    }
-
-    // Update the organizers array with validated IDs
-    tournament.organizers = validUserIds;
-
-    // Save the updated tournament
-    await tournament.save();
-
-    // Populate organizer details for the response
-    const updatedTournament = await Debate.findById(tournamentId)
-                                        .populate('organizers', 'username email _id')
-                                        .lean();
-
-    res.status(200).json({
-      message: 'Organizers updated successfully',
-      organizers: updatedTournament.organizers // Return the populated list
-    });
-
+    const { id } = req.params;
+    const { organizers } = req.body; // Example body structure
+    console.log(`[Placeholder] updateOrganizers called for tournament ${id}`);
+    // TODO: Implement logic to update the organizers list for a tournament
+    res.status(501).json({ message: `updateOrganizers for tournament ${id} not yet implemented.` });
   } catch (error) {
-    console.error('Error updating organizers:', error);
-    res.status(500).json({ message: error.message || 'Failed to update organizers' });
+    console.error(`Error in updateOrganizers (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in updateOrganizers (placeholder)' });
   }
 };
-
-
-// Register a team with participants and custom fields
-exports.registerTeamWithParticipants = async (req, res) => {
-  const session = await mongoose.startSession(); // Use transactions for multi-step operation
-  session.startTransaction();
+// Placeholder for getJudgeLeaderboard
+exports.getJudgeLeaderboard = async (req, res) => {
   try {
-    const { id: tournamentId } = req.params;
-    const { teamName, participantIdentifiers, institution, customFieldValues } = req.body;
-    const requestingUser = req.user; // User performing the registration
-
-    // --- Basic Validation ---
-    if (!teamName || !participantIdentifiers || participantIdentifiers.length === 0 || !institution) {
-      throw new Error('Missing required fields: teamName, participantIdentifiers, institution');
-    }
-    if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
-        throw new Error('Invalid Tournament ID format');
-    }
-
-    // --- Fetch Tournament & Validate Status ---
-    const debate = await Debate.findById(tournamentId).session(session);
-    if (!debate) {
-      throw new Error('Tournament not found');
-    }
-    if (debate.format !== 'tournament') {
-      throw new Error('Registration is only applicable for tournaments.');
-    }
-    // Add checks for registration deadline and tournament status (upcoming)
-    if (debate.status !== 'upcoming') {
-        throw new Error('Registration is closed for this tournament (not upcoming).');
-    }
-    if (debate.registrationDeadline && new Date() > new Date(debate.registrationDeadline)) {
-        throw new Error('Registration deadline has passed.');
-    }
-
-    // --- Resolve Participant Users ---
-    const participantUsers = await User.find({
-      $or: [
-        { username: { $in: participantIdentifiers } },
-        { email: { $in: participantIdentifiers.map(id => id.toLowerCase()) } } // Case-insensitive email search
-      ]
-    }).select('_id username email').session(session);
-
-    // Check if all identifiers were resolved to users
-    if (participantUsers.length !== participantIdentifiers.length) {
-      const foundIdentifiers = participantUsers.map(u => u.username).concat(participantUsers.map(u => u.email));
-      const missingIdentifiers = participantIdentifiers.filter(id => !foundIdentifiers.includes(id) && !foundIdentifiers.includes(id.toLowerCase()));
-      throw new Error(`Could not find users for the following identifiers: ${missingIdentifiers.join(', ')}`);
-    }
-
-    // --- Check Capacity ---
-    const currentDebaterCount = debate.participants.filter(p => p.tournamentRole === 'Debater').length;
-    const maxDebaters = debate.tournamentSettings?.maxDebaters || 32; // Use default if not set
-    if (currentDebaterCount + participantUsers.length > maxDebaters) {
-        throw new Error(`Registering this team would exceed the maximum number of debaters (${maxDebaters}).`);
-    }
-
-    // --- Check if Users are Already Participants ---
-     const existingParticipantUserIds = debate.participants.map(p => p.userId.toString());
-     const alreadyRegistered = participantUsers.filter(u => existingParticipantUserIds.includes(u._id.toString()));
-     if (alreadyRegistered.length > 0) {
-         throw new Error(`The following users are already registered in this tournament: ${alreadyRegistered.map(u => u.username).join(', ')}`);
-     }
-
-    // --- Create Embedded Team ---
-    const newTeam = {
-      _id: new mongoose.Types.ObjectId(), // Generate ID for the embedded doc
-      name: teamName,
-      institution: institution,
-      members: participantUsers.map((user, index) => ({
-        userId: user._id,
-        // Assign 'leader' role to the first participant, 'speaker' to others (adjust as needed)
-        role: index === 0 ? 'leader' : 'speaker'
-      }))
-      // Add other default fields like wins, losses, points if needed (defaults are in schema)
-    };
-    debate.teams.push(newTeam);
-
-    // --- Create Participant Entries (without custom fields initially) ---
-    const participantEntries = participantUsers.map(user => ({
-        userId: user._id,
-        tournamentRole: 'Debater',
-        teamId: newTeam._id, // Link to the newly created embedded team
-        status: 'registered' // Mark as registered
-        // customFields will be added later
-    }));
-    debate.participants.push(...participantEntries);
-
-    // --- Save Debate with New Team and Participants ---
-    // Mark arrays as modified before saving within a transaction
-    debate.markModified('teams');
-    debate.markModified('participants');
-    await debate.save({ session });
-
-    // --- Save Custom Field Values (using service) ---
-    if (customFieldValues && Object.keys(customFieldValues).length > 0) {
-        // We need to save values for each participant added
-        for (const user of participantUsers) {
-            // Find the participant entry we just added to get its _id if needed by service
-            // Note: registrationFieldService.saveParticipantFieldValues uses userId, not participant entry _id
-            await registrationFieldService.saveParticipantFieldValues(
-                tournamentId,
-                user._id.toString(), // Pass user ID
-                customFieldValues,
-                session // Pass session to service if it supports transactions
-            );
-        }
-    }
-
-    // --- Commit Transaction ---
-    await session.commitTransaction();
-
-    // --- Respond ---
-    // Fetch updated debate details if needed for response, outside transaction
-     const updatedDebate = await Debate.findById(tournamentId)
-        .populate('teams.members.userId', 'username email')
-        .populate('participants.userId', 'username email')
-        .lean();
-
-    res.status(201).json({
-      message: 'Team registered successfully',
-      teamId: newTeam._id,
-      debate: updatedDebate // Return updated debate details
-    });
-
+    const { id } = req.params;
+    console.log(`[Placeholder] getJudgeLeaderboard called for tournament ${id}`);
+    // TODO: Implement logic to retrieve the judge leaderboard for a tournament
+    res.status(501).json({ message: `getJudgeLeaderboard for tournament ${id} not yet implemented.` });
   } catch (error) {
-    await session.abortTransaction(); // Rollback on error
-    console.error('Error registering team with participants:', error);
-    res.status(400).json({ message: error.message || 'Failed to register team' });
-  } finally {
-    session.endSession(); // End the session
+    console.error(`Error in getJudgeLeaderboard (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in getJudgeLeaderboard (placeholder)' });
+  }
+};
+// Placeholder for getParticipantStandings
+exports.getParticipantStandings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[Placeholder] getParticipantStandings called for tournament ${id}`);
+    // TODO: Implement logic to retrieve participant standings for a tournament
+    res.status(501).json({ message: `getParticipantStandings for tournament ${id} not yet implemented.` });
+  } catch (error) {
+    console.error(`Error in getParticipantStandings (placeholder) for tournament ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed in getParticipantStandings (placeholder)' });
   }
 };

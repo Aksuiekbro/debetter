@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
+
+const debateController = require('../controllers/debateController');
+
+// Now destructure the required functions from the inspected object
 const {
     createDebate,
     getDebates,
     getDebate,
-    getUserDebates,
     updateDebate,
     joinDebate,
     leaveDebate,
@@ -26,6 +29,8 @@ const {
     createApfPosting,
     registerTeam,
     getPostingDetails,
+    getDebateTeams, // Added missing import
+    getUserDebates, // Added missing import for user's debates route
     // randomizeTeams, // Removed - Not exported by controller
     createApfBatchPostings,
     updateApfPostingStatus,
@@ -40,10 +45,10 @@ const {
     uploadAudio, // Import for uploading audio
     uploadBallot, // Import for uploading ballot
     getJudgeLeaderboard, // Import for judge leaderboard
-    getDebateTeams, // Import for getting teams of a debate
     updateOrganizers, // Import the new controller function
     registerTeamWithParticipants, // Import the new controller function for team registration
-} = require('../controllers/debateController');
+} = require('../controllers/debateController'); // Use the actual controller object here
+
 const { getParticipantStandings } = require('../controllers/debateController'); // Import for participant standings
 const announcementRoutes = require('./announcementRoutes'); // Import announcement ROUTES
 const commentRoutes = require('./commentRoutes'); // Import comment ROUTES
@@ -84,7 +89,7 @@ router.use(protect); // Apply basic authentication to all subsequent routes
 router.post('/', isAdminOrGlobalOrganizer, createDebate);
 
 // User-specific routes (no specific tournament role needed beyond being logged in)
-router.get('/user/mydebates', getUserDebates);
+router.get('/user/mydebates', getUserDebates); // Should now use the directly imported function
 router.post('/:id/join', joinDebate); // Joining doesn't require organizer role
 router.post('/:id/leave', leaveDebate); // Leaving doesn't require organizer role
 router.post('/:id/register-team', registerTeamWithParticipants); // New route for team registration
@@ -144,8 +149,6 @@ router.get('/:id/judges/leaderboard', getJudgeLeaderboard); // Public leaderboar
 router.get('/:id/participant-standings', getParticipantStandings);
 
 router.get('/:id/participant-standings', getParticipantStandings); // Public standings view
-router.get('/:id/postings/:postingId', getPostingDetails); // Public posting details view
-router.get('/:id/map', getMap); // Public map view
 router.get('/:id/themes', themeController.getThemes); // Public themes view
 
 // Routes using nested routers (assuming they handle their own auth internally or inherit 'protect')

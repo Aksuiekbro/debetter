@@ -29,6 +29,69 @@
       "addNewDebate": "Добавить новые дебаты"
     }
   },
+"debatesList": {
+    "card": {
+      "tournamentChip": "Турнир",
+      "statusLabel": "Статус: {{status}}",
+      "debatersCount": "Дебатеры: {{count}}/{{max}}",
+      "judgesCount": "Судьи: {{count}}/{{max}}",
+      "modeLabel": "Режим: {{mode}}",
+      "defaultMode": "Соло",
+      "participantsCount": "Участники: {{count}}/{{max}}",
+      "startDateLabel": "Дата начала:",
+      "registrationDeadlineLabel": "Крайний срок регистрации:",
+      "viewButton": "Посмотреть детали",
+      "manageButton": "Управлять",
+      "cannotLeaveOwnTournamentButton": "Нельзя покинуть собственный турнир",
+      "leaveButton": "Покинуть дебаты",
+      "judgesFullButton": "Судьи заполнены",
+      "debatersFullButton": "Дебатеры заполнены",
+      "fullButton": "Заполнено",
+      "joinAsJudgeButton": "Присоединиться как судья",
+      "joinAsDebaterButton": "Присоединиться как дебатер",
+      "joinButton": "Присоединиться к дебатам",
+      "leagueLabel": "Лига: {{league}}"
+    },
+    "filters": {
+      "mainTitle": "Фильтры",
+      "categoriesTitle": "Категории",
+      "statusTitle": "Статус",
+      "difficultyTitle": "Сложность",
+      "categories": {
+        "politics": "Политика",
+        "technology": "Технологии",
+        "science": "Наука",
+        "society": "Общество",
+        "economics": "Экономика"
+      },
+      "status": {
+        "upcoming": "Предстоящие",
+        "ongoing": "Текущие",
+        "completed": "Завершенные"
+      },
+      "difficulty": {
+        "beginner": "Начинающий",
+        "intermediate": "Средний",
+        "advanced": "Продвинутый"
+      }
+    },
+    "searchPlaceholder": "Поиск дебатов...",
+    "sort": {
+      "label": "Сортировать по",
+      "options": {
+        "recent": "Самые новые",
+        "popular": "Самые популярные",
+        "upcoming": "Предстоящие сначала",
+        "difficulty": "Уровень сложности"
+      }
+    },
+    "loading": "Загрузка дебатов...",
+    "noDebatesFound": "Дебаты, соответствующие вашим критериям, не найдены",
+    "fetchError": "Не удалось загрузить дебаты",
+    "joinErrorInvalid": "Невозможно присоединиться к дебатам: Неверные данные дебатов.",
+    "joinError": "Не удалось присоединиться к дебатам.",
+    "joinErrorNetwork": "Сетевая ошибка при присоединении к дебатам."
+  },
   "profile": {
     "role": {
       "debater": "Дебатер",

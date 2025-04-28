@@ -203,6 +203,11 @@
     "registerErrorGeneral": "Failed to register for the tournament.",
     "registerSuccess": "Successfully registered for the tournament!"
   },
+  "tournamentRegistrationModal": {
+    "title": "Register for Tournament",
+    "noCustomFields": "No additional information required for registration.",
+    "joinButton": "Join Tournament"
+  },
   "tournamentManagement": {
     "title": "Tournament: {{name}}",
     "tabs": {
@@ -592,6 +597,7 @@
       "fullButton": "Full",
       "joinAsJudgeButton": "Join as Judge",
       "joinAsDebaterButton": "Join as Debater",
+      "leagueLabel": "League: {{league}}",
       "joinButton": "Join Debate"
     }
   },

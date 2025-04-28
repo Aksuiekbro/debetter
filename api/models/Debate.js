@@ -205,6 +205,7 @@ const debateSchema = new Schema({
   },
   tournamentFormats: { type: [String], enum: ['APD', 'BP', 'LD', 'WSDC', 'Other'] }, // Expanded tournament format options
   leagueType: { type: String, enum: ['school', 'university', 'open', 'other'], default: 'open' }, // Added league type
+league: { type: String, trim: true }, // Added league field
   customRegistrationFields: { type: Boolean, default: false }, // Flag to indicate if tournament has custom registration fields
   eligibilityCriteria: { type: String }, // Added for tournament eligibility rules
   mode: { type: String, enum: ['solo', 'duo'] },

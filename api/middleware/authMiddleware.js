@@ -7,6 +7,7 @@ exports.protect = async (req, res, next) => {
 
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
+            console.log('[DEBUG] Extracted Token:', token); // Added for debugging
         }
 
         if (!token) {
@@ -15,6 +16,7 @@ exports.protect = async (req, res, next) => {
 
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+            console.log('[DEBUG] Decoded Token Payload:', decoded); // Added for debugging
             const userLookupTimeout = 10000; // 10 seconds
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => {
@@ -28,6 +30,7 @@ exports.protect = async (req, res, next) => {
 
             // Race the user lookup against the timeout
             const user = await Promise.race([userPromise, timeoutPromise]);
+            console.log('[DEBUG] User found in DB:', JSON.stringify(user, null, 2)); // Added for debugging
 
             if (!user) {
                 return res.status(401).json({ message: 'User not found' });
@@ -36,7 +39,7 @@ exports.protect = async (req, res, next) => {
             req.user = user;
             next();
         } catch (error) {
-            console.error('Auth middleware inner error:', error); // Updated console log message
+            console.error('[DEBUG] Auth middleware inner error (Token verification/User lookup):', error, 'Token:', token); // Enhanced logging
             // Handle specific errors from the try block above
             if (error.name === 'TimeoutError') {
                 // Handle the specific timeout error from Promise.race
@@ -75,6 +78,8 @@ exports.isOrganizer = async (req, res, next) => {
 // For test data generation, require organizer role
 exports.canGenerateTestData = async (req, res, next) => {
     try {
+        console.log('[DEBUG] User object received by canGenerateTestData:', JSON.stringify(req.user, null, 2)); // Added for debugging
+        console.log('[DEBUG] Role check:', req.user.role, '=== "organizer" ->', req.user.role === 'organizer'); // Added for debugging
         if (req.user.role !== 'organizer') {
             return res.status(403).json({ message: 'Only organizers can generate test data' });
         }

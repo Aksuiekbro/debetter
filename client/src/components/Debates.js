@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react'; // Add useContext
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,17 +25,22 @@ import {
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { TournamentRegistrationModal } from './TournamentRegistrationModal'; // Named import for custom field registration modal
 import { api } from '../config/api';
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth hook
 
-const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
+// Update prop name from currentUser to user
+const DebateCard = ({ debate, user, onJoin, onLeave }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const canJoinDebate = () => {
     if (!debate) return false;
     if (debate.format === 'tournament') {
-      if (currentUser?.role === 'judge') {
+      // Use user prop
+      if (user?.role === 'judge') {
         return (debate.counts?.judges || 0) < (debate.counts?.maxJudges || 8);
       }
+      // Use user prop
       return (debate.counts?.debaters || 0) < (debate.counts?.maxDebaters || 32);
     }
     return debate.participants.length < (debate.maxParticipants || 6);
@@ -60,55 +65,38 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
           {debate.description}
         </Typography>
 
-        <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Chip 
-            size="small"
-            label={t('debatesList.card.categoryLabel', 'Category: {{category}}', { category: t(`debatesList.filters.categories.${debate.category}`, debate.category) })}
-            color="primary"
-            variant="outlined"
-          />
-          <Chip 
-            size="small"
-            label={t('debatesList.card.difficultyLabel', 'Difficulty: {{difficulty}}', { difficulty: t(`debatesList.filters.difficulty.${debate.difficulty}`, debate.difficulty) })}
-            color="primary"
-            variant="outlined"
-          />
-          <Chip 
-            size="small"
-            label={t('debatesList.card.statusLabel', 'Status: {{status}}', { status: t(`debatesList.filters.status.${debate.status}`, debate.status) })}
-            color="primary"
-            variant="outlined"
-          />
+        {/* Status Information Block */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
+            {t('debatesList.card.statusLabel', 'Status: {{status}}', { status: t(`debatesList.filters.status.${debate.status}`, debate.status) })}
+          </Typography>
+
           {debate.format === 'tournament' ? (
             <>
-              <Chip 
-                size="small"
-                label={t('debatesList.card.debatersCount', 'Debaters: {{count}}/{{max}}', { count: debate.counts?.debaters || 0, max: 32 })}
-                color="primary"
-                variant="outlined"
-              />
-              <Chip 
-                size="small"
-                label={t('debatesList.card.judgesCount', 'Judges: {{count}}/{{max}}', { count: debate.counts?.judges || 0, max: 8 })}
-                color="primary"
-                variant="outlined"
-              />
-              <Chip 
-                size="small"
-                label={t('debatesList.card.modeLabel', 'Mode: {{mode}}', { mode: debate.mode || t('debatesList.card.defaultMode', 'Solo') })}
-                color="primary"
-                variant="outlined"
-              />
+              <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
+                {t('debatesList.card.debatersCount', 'Debaters: {{count}}/{{max}}', { count: debate.counts?.debaters || 0, max: 32 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
+                {t('debatesList.card.judgesCount', 'Judges: {{count}}/{{max}}', { count: debate.counts?.judges || 0, max: 8 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
+                {t('debatesList.card.modeLabel', 'Mode: {{mode}}', { mode: debate.mode || t('debatesList.card.defaultMode', 'Solo') })}
+              </Typography>
             </>
           ) : (
-            <Chip 
-              size="small"
-              label={t('debatesList.card.participantsCount', 'Participants: {{count}}/{{max}}', { count: debate.participants.length, max: debate.maxParticipants })}
-              color="primary"
-              variant="outlined"
-            />
+            <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
+              {t('debatesList.card.participantsCount', 'Participants: {{count}}/{{max}}', { count: debate.participants.length, max: debate.maxParticipants })}
+            </Typography>
           )}
-        </Stack>
+
+          {debate.leagueType && ( // Changed from debate.league
+            <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
+            {/* Reverted to original nested key */}
+            {t('debatesList.card.leagueLabel', { league: debate.leagueType })}
+            </Typography>
+          )}
+        </Box>
+        {/* End Status Information Block */}
 
         <Typography variant="body2" sx={{ mt: 2 }}>
           {t('debatesList.card.startDateLabel', 'Start Date:')} {new Date(debate.startDate).toLocaleString()}
@@ -129,9 +117,11 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
         >
           {t('debatesList.card.viewButton', 'View Details')}
         </Button>
-        {currentUser && (
+        {/* Use user prop */}
+        {user && (
           <>
-            {debate.creator?._id === currentUser._id ? ( // Add the opening parenthesis back
+            {/* Use user prop */}
+            {debate.creator?._id === user._id ? (
               <Button
                 size="small"
                 color="primary"
@@ -143,16 +133,19 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
             ) : debate.participants.some(p => {
                   // Check if p.userId is populated (object with _id) or just an ID string
                   const participantUserId = (typeof p.userId === 'object' && p.userId !== null) ? p.userId._id : p.userId;
-                  return currentUser && participantUserId && currentUser._id && participantUserId.toString() === currentUser._id.toString();
+                  // Use user prop
+                  return user && participantUserId && user._id && participantUserId.toString() === user._id.toString();
                 }) ? ( // Flexible check
-              <Button 
-                size="small" 
-                color="secondary" 
+              <Button
+                size="small"
+                color="secondary"
                 variant="contained"
                 onClick={() => onLeave(debate._id)}
-                disabled={debate.format === 'tournament' && currentUser.role === 'judge' && debate.creator._id === currentUser._id}
+                 // Use user prop
+                disabled={debate.format === 'tournament' && user.role === 'judge' && debate.creator._id === user._id}
               >
-                {debate.format === 'tournament' && currentUser.role === 'judge' && debate.creator._id === currentUser._id 
+                 {/* Use user prop */}
+                {debate.format === 'tournament' && user.role === 'judge' && debate.creator._id === user._id
                   ? t('debatesList.card.cannotLeaveOwnTournamentButton', 'Cannot Leave Own Tournament')
                   : t('debatesList.card.leaveButton', 'Leave Debate')}
               </Button>
@@ -161,15 +154,17 @@ const DebateCard = ({ debate, currentUser, onJoin, onLeave }) => {
                 size="small" 
                 color="primary" 
                 variant="contained"
-                onClick={() => onJoin(debate._id)}
+                onClick={() => onJoin(debate)}
                 disabled={!canJoinDebate()}
               >
-                {!canJoinDebate() 
-                  ? (debate.format === 'tournament' 
-                      ? (currentUser.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
+                {!canJoinDebate()
+                  ? (debate.format === 'tournament'
+                       // Use user prop
+                      ? (user.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
                       : t('debatesList.card.fullButton', 'Full'))
                   : debate.format === 'tournament'
-                    ? (currentUser.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
+                     // Use user prop
+                    ? (user.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
                     : t('debatesList.card.joinButton', 'Join Debate')}
               </Button>
             )}
@@ -192,7 +187,12 @@ const Debates = () => {
     status: new Set(),
     difficulty: new Set(),
   });
-  const [currentUser, setCurrentUser] = useState(null);
+  // const [currentUser, setCurrentUser] = useState(null); // Remove currentUser state
+  const { user } = useAuth(); // Get user from useAuth hook
+  const [isRegModalOpen, setIsRegModalOpen] = useState(false); // controls registration modal for custom fields
+  const [selectedTournamentId, setSelectedTournamentId] = useState(null); // for custom field modal
+  const [showDebaterRegForm, setShowDebaterRegForm] = useState(false); // New state for debater form
+  const [selectedDebateForReg, setSelectedDebateForReg] = useState(null); // New state for debater form context
 
   const fetchDebates = useCallback(async () => {
     try {
@@ -231,28 +231,13 @@ const Debates = () => {
     }
   }, [searchQuery, sortBy, filters, t]);
 
-  const getCurrentUser = async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const response = await fetch(`${api.baseUrl}/api/users/profile`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (response.ok) {
-          const userData = await response.json();
-          setCurrentUser(userData);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    }
-  };
+  // Remove getCurrentUser function - user comes from context now
+  // const getCurrentUser = async () => { ... };
 
-  useEffect(() => {
-    getCurrentUser();
-  }, []);
+  // Remove useEffect for getCurrentUser
+  // useEffect(() => {
+  //   getCurrentUser();
+  // }, []);
 
   useEffect(() => {
     fetchDebates();
@@ -274,37 +259,53 @@ const Debates = () => {
     });
   };
 
-  const handleJoinDebate = async (debateId) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
+  // Modified handleJoinDebate
+  const handleJoinDebate = async (debate) => {
+    const token = localStorage.getItem('token');
+    if (!token || !user) { // Also check if user context is loaded
+      navigate('/login');
+      return;
+    }
 
-      const response = await fetch(`${api.baseUrl}/api/debates/${debateId}/join`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+    // --- Add Check for valid debate._id ---
+    if (!debate || !debate._id) {
+      console.error('handleJoinDebate called with invalid debate object:', debate);
+      alert(t('debatesList.joinErrorInvalid', 'Cannot join debate: Invalid debate data.'));
+      return;
+    }
+    // --- End Check ---
+
+    // --- New Logic: Check if user is a debater joining a tournament ---
+    if (debate.format === 'tournament' && user.role === 'debater') {
+      // Trigger the debater-specific registration form/modal
+      setSelectedDebateForReg(debate); // Store the whole debate object if needed, or just id
+      setShowDebaterRegForm(true);
+      console.log(`Debater ${user.username} attempting to join tournament ${debate.title}. Showing debater registration form.`);
+      // --- End New Logic ---
+    } else if (debate.format === 'tournament' && debate.customRegistrationFields) {
+      // Existing logic: If tournament has custom fields (and user is not a debater or role check failed), open standard modal
+      setSelectedTournamentId(debate._id);
+      setIsRegModalOpen(true);
+    } else {
+      // Existing logic: Direct join for non-tournaments or tournaments without custom fields
+      try {
+        const response = await fetch(`${api.baseUrl}/api/debates/${debate._id}/join`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (response.ok) {
+          fetchDebates();
+        } else {
+          const error = await response.json();
+          alert(error.message || t('debatesList.joinError', 'Failed to join debate.'));
         }
-      });
-
-      if (response.ok) {
-        // Backend now returns the updated debate object directly
-        const updatedDebate = await response.json(); 
-        // Update the specific debate in the local state
-        setDebates(prevDebates => 
-          prevDebates.map(debate => 
-            debate._id === debateId ? updatedDebate : debate
-          )
-        );
-      } else {
-        const error = await response.json();
-        alert(error.message);
+      } catch (error) {
+        console.error('Error joining debate directly:', error);
+        alert(t('debatesList.joinErrorNetwork', 'Network error while joining debate.'));
       }
-    } catch (error) {
-      console.error('Error joining debate:', error);
     }
   };
 
@@ -458,7 +459,7 @@ const Debates = () => {
                 <Grid item xs={12} key={debate._id}>
                   <DebateCard 
                     debate={debate}
-                    currentUser={currentUser}
+                    user={user} // Pass user from context
                     onJoin={handleJoinDebate}
                     onLeave={handleLeaveDebate}
                   />
@@ -468,6 +469,28 @@ const Debates = () => {
           </Grid>
         </Grid>
       </Grid>
+
+      {/* Registration modal for custom fields */}
+      <TournamentRegistrationModal
+        open={isRegModalOpen}
+        onClose={() => setIsRegModalOpen(false)}
+        tournamentId={selectedTournamentId}
+        onSuccess={() => {
+          fetchDebates();
+          setIsRegModalOpen(false);
+        }}
+      />
+
+      {/* Placeholder for Debater Registration Form/Modal */}
+      {showDebaterRegForm && selectedDebateForReg && (
+        <Paper elevation={3} sx={{ p: 3, mt: 3, backgroundColor: 'rgba(200, 255, 200, 0.9)' }}>
+          <Typography variant="h6">Debater Registration Form Placeholder</Typography>
+          <Typography>Registering for: {selectedDebateForReg.title}</Typography>
+          <Typography>User Role: {user?.role}</Typography>
+          {/* Add actual form fields here later */}
+          <Button onClick={() => setShowDebaterRegForm(false)} sx={{ mt: 2 }}>Close Placeholder</Button>
+        </Paper>
+      )}
     </Container>
   );
 };

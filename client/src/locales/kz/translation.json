@@ -29,6 +29,69 @@
       "addNewDebate": "Жаңа дебат қосу"
     }
   },
+"debatesList": {
+    "card": {
+      "tournamentChip": "Турнир",
+      "statusLabel": "Статус: {{status}}",
+      "debatersCount": "Пікірсайысшылар: {{count}}/{{max}}",
+      "judgesCount": "Төрешілер: {{count}}/{{max}}",
+      "modeLabel": "Режим: {{mode}}",
+      "defaultMode": "Жеке",
+      "participantsCount": "Қатысушылар: {{count}}/{{max}}",
+      "startDateLabel": "Басталу күні:",
+      "registrationDeadlineLabel": "Тіркелу мерзімі:",
+      "viewButton": "Толығырақ көру",
+      "manageButton": "Басқару",
+      "cannotLeaveOwnTournamentButton": "Өз турниріңізден шыға алмайсыз",
+      "leaveButton": "Дебаттан шығу",
+      "judgesFullButton": "Төрешілер толық",
+      "debatersFullButton": "Пікірсайысшылар толық",
+      "fullButton": "Толық",
+      "joinAsJudgeButton": "Төреші ретінде қосылу",
+      "joinAsDebaterButton": "Пікірсайысшы ретінде қосылу",
+      "joinButton": "Дебатқа қосылу",
+      "leagueLabel": "Лига: {{league}}"
+    },
+    "filters": {
+      "mainTitle": "Сүзгілер",
+      "categoriesTitle": "Санаттар",
+      "statusTitle": "Статус",
+      "difficultyTitle": "Қиындық",
+      "categories": {
+        "politics": "Саясат",
+        "technology": "Технология",
+        "science": "Ғылым",
+        "society": "Қоғам",
+        "economics": "Экономика"
+      },
+      "status": {
+        "upcoming": "Алдағы",
+        "ongoing": "Жалғасуда",
+        "completed": "Аяқталған"
+      },
+      "difficulty": {
+        "beginner": "Бастаушы",
+        "intermediate": "Орташа",
+        "advanced": "Жетілдірілген"
+      }
+    },
+    "searchPlaceholder": "Дебаттарды іздеу...",
+    "sort": {
+      "label": "Сұрыптау",
+      "options": {
+        "recent": "Ең жаңа",
+        "popular": "Ең танымал",
+        "upcoming": "Алдағылар бірінші",
+        "difficulty": "Қиындық деңгейі"
+      }
+    },
+    "loading": "Дебаттар жүктелуде...",
+    "noDebatesFound": "Сіздің критерийлеріңізге сәйкес дебаттар табылмады",
+    "fetchError": "Дебаттарды жүктеу мүмкін болмады",
+    "joinErrorInvalid": "Дебатқа қосылу мүмкін емес: Жарамсыз дебат деректері.",
+    "joinError": "Дебатқа қосылу мүмкін болмады.",
+    "joinErrorNetwork": "Дебатқа қосылу кезінде желі қатесі."
+  },
   "profile": {
     "role": {
       "debater": "Пікірсайысшы",

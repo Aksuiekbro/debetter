@@ -1,4 +1,5 @@
 {
+  "testKey": "Test Translation OK",
   "greeting": "Hello",
   "navbar": {
     "home": "Home",
@@ -28,6 +29,69 @@
       "addFriend": "Add friend",
       "addNewDebate": "Add new debate"
     }
+  },
+"debatesList": {
+    "card": {
+      "tournamentChip": "Tournament",
+      "statusLabel": "Status: {{status}}",
+      "debatersCount": "Debaters: {{count}}/{{max}}",
+      "judgesCount": "Judges: {{count}}/{{max}}",
+      "modeLabel": "Mode: {{mode}}",
+      "defaultMode": "Solo",
+      "participantsCount": "Participants: {{count}}/{{max}}",
+      "startDateLabel": "Start Date:",
+      "registrationDeadlineLabel": "Registration Deadline:",
+      "viewButton": "View Details",
+      "manageButton": "Manage",
+      "cannotLeaveOwnTournamentButton": "Cannot Leave Own Tournament",
+      "leaveButton": "Leave Debate",
+      "judgesFullButton": "Judges Full",
+      "debatersFullButton": "Debaters Full",
+      "fullButton": "Full",
+      "joinAsJudgeButton": "Join as Judge",
+      "joinAsDebaterButton": "Join as Debater",
+      "joinButton": "Join Debate",
+      "leagueLabel": "League: {{league}}"
+    },
+    "filters": {
+      "mainTitle": "Filters",
+      "categoriesTitle": "Categories",
+      "statusTitle": "Status",
+      "difficultyTitle": "Difficulty",
+      "categories": {
+        "politics": "Politics",
+        "technology": "Technology",
+        "science": "Science",
+        "society": "Society",
+        "economics": "Economics"
+      },
+      "status": {
+        "upcoming": "Upcoming",
+        "ongoing": "Ongoing",
+        "completed": "Completed"
+      },
+      "difficulty": {
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      }
+    },
+    "searchPlaceholder": "Search debates...",
+    "sort": {
+      "label": "Sort By",
+      "options": {
+        "recent": "Most Recent",
+        "popular": "Most Popular",
+        "upcoming": "Upcoming First",
+        "difficulty": "Difficulty Level"
+      }
+    },
+    "loading": "Loading debates...",
+    "noDebatesFound": "No debates found matching your criteria",
+    "fetchError": "Failed to fetch debates",
+    "joinErrorInvalid": "Cannot join debate: Invalid debate data.",
+    "joinError": "Failed to join debate.",
+    "joinErrorNetwork": "Network error while joining debate."
   },
   "profile": {
     "role": {
