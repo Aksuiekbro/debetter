@@ -48,14 +48,14 @@ describe('User Routes - Organizer Promotion', () => {
       username: 'regular',
       email: 'regular@example.com',
       password: 'password123',
-      role: 'user'
+      role: 'participant' // Corrected role
     });
 
     anotherUser = await User.create({
       username: 'another',
       email: 'another@example.com',
       password: 'password123',
-      role: 'user'
+      role: 'participant' // Corrected role
     });
   });
 
@@ -89,7 +89,7 @@ describe('User Routes - Organizer Promotion', () => {
       
       // Verify that user was not promoted
       const user = await User.findById(regularUser._id);
-      expect(user.role).toBe('user');
+      expect(user.role).toBe('participant'); // Check for correct role
     });
 
     it('should prevent regular users from promoting other users', async () => {
@@ -104,7 +104,7 @@ describe('User Routes - Organizer Promotion', () => {
       
       // Verify that user was not promoted
       const user = await User.findById(anotherUser._id);
-      expect(user.role).toBe('user');
+      expect(user.role).toBe('participant'); // Check for correct role
     });
 
     it('should return 400 if userId is not provided', async () => {

@@ -203,6 +203,11 @@
     "registerErrorGeneral": "Турнирге тіркелу сәтсіз аяқталды.",
     "registerSuccess": "Турнирге сәтті тіркелдіңіз!"
   },
+  "tournamentRegistrationModal": {
+    "title": "Турнирге тіркелу",
+    "noCustomFields": "Тіркелу үшін қосымша ақпарат қажет емес.",
+    "joinButton": "Турнирге қосылу"
+  },
   "tournamentManagement": {
     "title": "Турнир: {{name}}",
     "tabs": {
@@ -212,7 +217,13 @@
       "judges": "Төрешілер",
       "posting": "Парингтер",
       "standings": "Кесте",
-      "bracket": "Тор"
+      "bracket": "Тор",
+      "tournamentPosting": "Турнир Жарияланымы",
+      "matchPostings": "Матч Жарияланымдары",
+      "results": "Нәтижелер",
+      "checkIn": "Тіркелу",
+      "organizers": "Ұйымдастырушылар",
+      "customFields": "Бапталатын Өрістер"
     },
     "bracketTab": {
       "title": "Турнир Торы",

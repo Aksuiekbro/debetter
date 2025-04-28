@@ -7,7 +7,7 @@ const tempAdmin = {
   username: 'tempadmin',
   email: 'admin@temp.com',
   password: 'password123', // Plain text password
-  role: 'admin'
+  role: 'organizer'
 };
 
 async function createAdmin() {
@@ -47,7 +47,7 @@ async function createAdmin() {
       username: tempAdmin.username,
       email: tempAdmin.email,
       password: hashedPassword,
-      role: tempAdmin.role,
+      role: tempAdmin.role, // Changed from 'admin' to 'organizer' via tempAdmin object update
       createdAt: new Date(),
       updatedAt: new Date()
       // Add other default fields if necessary based on the schema

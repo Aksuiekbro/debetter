@@ -177,6 +177,7 @@ export const useTournamentData = () => {
 
       const data = await response.json();
       // console.log('[useTournamentData] Fetched data:', data); // Removed debug log
+console.log('[useTournamentData] Raw data received from /api/debates/:id:', JSON.stringify(data, null, 2)); // <-- Added for debugging
       processFetchedData(data);
 
     } catch (err) {

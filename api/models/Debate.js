@@ -167,9 +167,9 @@ const postingSchema = new Schema({
 const debateSchema = new Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, required: true },
-  category: { type: String, required: true, lowercase: true, enum: ['politics', 'technology', 'science', 'society', 'economics'] },
+  category: { type: String, lowercase: true, enum: ['politics', 'technology', 'science', 'society', 'economics'] }, // Removed required: true
   status: { type: String, required: true, enum: ['upcoming', 'team-assignment', 'in-progress', 'completed'], default: 'upcoming' },
-  difficulty: { type: String, required: true, enum: ['beginner', 'intermediate', 'advanced'] },
+  difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'] }, // Removed required: true
   startDate: { type: Date, required: true },
   registrationDeadline: { type: Date },
   participants: [{
@@ -205,6 +205,7 @@ const debateSchema = new Schema({
   },
   tournamentFormats: { type: [String], enum: ['APD', 'BP', 'LD', 'WSDC', 'Other'] }, // Expanded tournament format options
   leagueType: { type: String, enum: ['school', 'university', 'open', 'other'], default: 'open' }, // Added league type
+league: { type: String, trim: true }, // Added league field
   customRegistrationFields: { type: Boolean, default: false }, // Flag to indicate if tournament has custom registration fields
   eligibilityCriteria: { type: String }, // Added for tournament eligibility rules
   mode: { type: String, enum: ['solo', 'duo'] },

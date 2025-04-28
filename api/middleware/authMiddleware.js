@@ -7,6 +7,7 @@ exports.protect = async (req, res, next) => {
 
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
+            console.log('[DEBUG] Extracted Token:', token); // Added for debugging
         }
 
         if (!token) {
@@ -15,7 +16,21 @@ exports.protect = async (req, res, next) => {
 
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-            const user = await User.findById(decoded.id).select('-password');
+            console.log('[DEBUG] Decoded Token Payload:', decoded); // Added for debugging
+            const userLookupTimeout = 10000; // 10 seconds
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => {
+                    const timeoutError = new Error('User lookup timed out');
+                    timeoutError.name = 'TimeoutError'; // Custom name for easier identification
+                    reject(timeoutError);
+                }, userLookupTimeout)
+            );
+
+            const userPromise = User.findById(decoded.id).select('-password'); // Original query
+
+            // Race the user lookup against the timeout
+            const user = await Promise.race([userPromise, timeoutPromise]);
+            console.log('[DEBUG] User found in DB:', JSON.stringify(user, null, 2)); // Added for debugging
 
             if (!user) {
                 return res.status(401).json({ message: 'User not found' });
@@ -24,8 +39,20 @@ exports.protect = async (req, res, next) => {
             req.user = user;
             next();
         } catch (error) {
-            console.error('Token verification error:', error);
-            return res.status(401).json({ message: 'Not authorized, token failed' });
+            console.error('[DEBUG] Auth middleware inner error (Token verification/User lookup):', error, 'Token:', token); // Enhanced logging
+            // Handle specific errors from the try block above
+            if (error.name === 'TimeoutError') {
+                // Handle the specific timeout error from Promise.race
+                return res.status(503).json({ message: 'User lookup timed out' });
+            } else if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+                // Handle JWT verification errors specifically
+                return res.status(401).json({ message: 'Not authorized, token failed' });
+            } else {
+                // For any other errors caught here (e.g., unexpected DB errors not caught by timeout,
+                // or other errors from jwt.verify if they occur),
+                // rethrow to be handled by the outer catch block as a general server error.
+                throw error;
+            }
         }
     } catch (error) {
         console.error('Auth middleware error:', error);
@@ -51,6 +78,8 @@ exports.isOrganizer = async (req, res, next) => {
 // For test data generation, require organizer role
 exports.canGenerateTestData = async (req, res, next) => {
     try {
+        console.log('[DEBUG] User object received by canGenerateTestData:', JSON.stringify(req.user, null, 2)); // Added for debugging
+        console.log('[DEBUG] Role check:', req.user.role, '=== "organizer" ->', req.user.role === 'organizer'); // Added for debugging
         if (req.user.role !== 'organizer') {
             return res.status(403).json({ message: 'Only organizers can generate test data' });
         }

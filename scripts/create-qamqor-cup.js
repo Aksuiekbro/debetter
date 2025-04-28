@@ -104,6 +104,7 @@ async function createQamqorCup() {
             category: 'society',
             format: 'tournament', // Ensure format is set
             creator: organizer._id, // Use the ID of the created organizer
+            organizers: [organizer._id], // Also add the creator to the organizers array for middleware checks
             // Using temporary future dates to pass validation
             startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
             registrationDeadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
@@ -127,6 +128,10 @@ async function createQamqorCup() {
         const participantsData = {
             judges: [], // No judges to add in this step
             debaters: debaterIds
+// Note: This step requires the provided AUTH_TOKEN to belong to a user who is
+        // recognized as an organizer for this specific tournament (e.g., the creator
+        // added to the 'organizers' array during creation, or a global admin/organizer).
+        // The isTournamentOrganizer middleware on the API route verifies this permission.
         };
         await axiosInstance.post(`/debates/${tournamentId}/register-participants`, participantsData);
         console.log('Successfully added debaters as participants.');

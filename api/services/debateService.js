@@ -13,9 +13,10 @@ class DebateService {
         throw new Error('Invalid debate ID format');
       }
 
-      // Fetch debate without populating participants.userId initially
+      // Fetch debate, populating creator and organizers
       let debate = await Debate.findById(debateId)
-        .populate('creator', 'username role name')
+        .populate('creator', 'username role name _id') // Ensure _id is included
+        .populate('organizers', 'username role name _id') // Populate organizers, include _id
         .populate('teams') // Populate only the top-level teams array
         .exec();
 

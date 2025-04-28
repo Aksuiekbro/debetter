@@ -28,7 +28,7 @@ import JudgesTab from './TournamentManagement/JudgesTab';
 import PostingTab from './TournamentManagement/PostingTab';
 import TournamentPostingTab from './TournamentManagement/TournamentPostingTab'; // Import new tournament posting tab
 import StandingsTab from './TournamentManagement/StandingsTab';
-import BracketTab from './TournamentManagement/BracketTab';
+// import BracketTab from './TournamentManagement/BracketTab'; // Commented out
 import AnnouncementsTab from './TournamentManagement/AnnouncementsTab'; // Added import
 import CustomRegistrationFields from './TournamentManagement/CustomRegistrationFields'; // Import custom fields component
 import CheckInTab from './TournamentManagement/CheckInTab'; // Import check-in component
@@ -64,7 +64,14 @@ const TournamentManagement = () => {
   const { t } = useTranslation(); // Initialize useTranslation
 
   // --- Initialize Hooks ---
-  const { currentUser } = useAuth(); // Get current user
+  const { user: currentUser, loading: authLoading } = useAuth(); // Get current user AND loading state
+  console.log('[TournamentManagement] useAuth() hook result - currentUser:', currentUser ? `ID: ${currentUser._id}` : 'null/undefined', 'authLoading:', authLoading); // Log context values immediately
+
+  // Add a useEffect to log changes to currentUser and authLoading
+  React.useEffect(() => {
+    console.log('[TournamentManagement] useEffect detected change - currentUser:', currentUser ? `ID: ${currentUser._id}` : 'null/undefined', 'authLoading:', authLoading);
+  }, [currentUser, authLoading]);
+
   const uiManager = useTournamentUIManager();
   const dataManager = useTournamentData(); // Fetches core data
   const [selectedOrganizers, setSelectedOrganizers] = useState([]); // State for the organizer management UI (will be populated later)
@@ -96,7 +103,10 @@ const TournamentManagement = () => {
   // Removed entrantCheckIn initialization
 
   // --- Loading and Error States ---
-  if (dataManager.loading) {
+  // Combine loading checks
+  // Ensure both authentication status (currentUser) and tournament data are loaded
+  if (authLoading || dataManager.loading) {
+    console.log('[TournamentManagement] Showing loading spinner (authLoading || dataManager.loading)');
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
         <CircularProgress />
@@ -104,13 +114,29 @@ const TournamentManagement = () => {
     );
   }
 
-  if (dataManager.error || !dataManager.tournament) {
+  // Check ONLY for data loading error AFTER loading is complete
+  if (dataManager.error) {
+    console.log('[TournamentManagement] Showing dataManager error alert');
     return (
       <Container>
-        <Alert severity="error">{dataManager.error || 'Tournament not found'}</Alert>
+        <Alert severity="error">{dataManager.error || 'Failed to load tournament data.'}</Alert>
       </Container>
     );
   }
+
+  // **** ADDED CHECK: Explicitly check for currentUser AFTER loading is done ****
+  if (!currentUser) {
+    // Corrected console.log statement
+    console.log("[TournamentManagement] Showing 'Not Logged In' alert because currentUser is missing after loading.");
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Alert severity="warning">{t('errors.mustBeLoggedIn', 'You must be logged in to manage a tournament.')}</Alert>
+      </Container>
+    );
+  }
+
+  // If loading is finished, no data error, AND currentUser exists, proceed to render.
+  console.log('[TournamentManagement] Proceeding to render main content, currentUser exists:', !!currentUser);
 
   // --- Extract Creator ID ---
   const tournamentCreatorId = dataManager.tournament?.creator?._id; // Get creator ID safely
@@ -125,7 +151,13 @@ const TournamentManagement = () => {
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={uiManager.tabValue} onChange={uiManager.handleTabChange} aria-label="tournament management tabs">
+        <Tabs
+          value={uiManager.tabValue}
+          onChange={uiManager.handleTabChange}
+          aria-label="tournament management tabs"
+          variant="scrollable" // Ensure tabs can scroll if needed
+          scrollButtons="auto" // Show scroll buttons automatically
+        >
           <Tab label={t('tournamentManagement.tabs.announcements', 'Announcements')} /> {/* Index 0 */}
           {/* Removed Entrants Tab */}
           <Tab label={t('tournamentManagement.tabs.teams', 'Teams')} /> {/* Now Index 1 */}
@@ -135,10 +167,10 @@ const TournamentManagement = () => {
           <Tab label={t('tournamentManagement.tabs.matchPostings', 'Match Postings')} /> {/* Now Index 5 */}
           <Tab label={t('tournamentManagement.tabs.standings', 'Standings')} /> {/* Now Index 6 */}
           <Tab label={t('tournamentManagement.tabs.results', 'Results')} /> {/* Now Index 7 */}
-          <Tab label={t('tournamentManagement.tabs.bracket', 'Bracket')} /> {/* Now Index 8 */}
-          <Tab label={t('tournamentManagement.tabs.checkIn', 'Check-In')} /> {/* Now Index 9 */}
-          <Tab label={t('tournamentManagement.tabs.registrationFields', 'Registration Fields')} /> {/* Now Index 10 */}
-          <Tab label={t('tournamentManagement.tabs.organizers', 'Organizers')} /> {/* Now Index 11 */}
+          {/* <Tab label={t('tournamentManagement.tabs.bracket', 'Bracket')} /> */}{/* Index 8 - Commented out */}
+          <Tab label={t('tournamentManagement.tabs.checkIn', 'Check-In')} /> {/* Now Index 8 (was 9) */}
+          <Tab label={t('tournamentManagement.tabs.organizers', 'Organizers')} /> {/* Now Index 9 (was 10) */}
+          <Tab label={t('tournamentManagement.tabs.customFields', 'Custom Fields')} /> {/* Now Index 10 (was 11) */}
         </Tabs>
       </Box>
 
@@ -227,15 +259,13 @@ const TournamentManagement = () => {
           tournamentId={dataManager.tournamentId}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={8}> {/* Bracket Panel - Index updated */}
-        <BracketTab
+      {/* <TabPanel value={uiManager.tabValue} index={8}> */}{/* Bracket Panel - Commented out */}
+        {/* <BracketTab
           tournamentRounds={dataManager.tournament?.tournamentRounds || []}
-          // Removed entrants prop
           teams={dataManager.teams} // Pass teams data
           loading={dataManager.loading}
           onInitializeBracket={async () => {
             try {
-              // This function should be added to dataManager
               await dataManager.initializeBracket();
               uiManager.showNotification('Tournament bracket initialized successfully', 'success');
             } catch (error) {
@@ -245,19 +275,38 @@ const TournamentManagement = () => {
           initializing={dataManager.initializingBracket}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
-        />
-      </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={9}> {/* Check-In Panel - Index updated */}
+        /> */}
+      {/* </TabPanel> */}
+      <TabPanel value={uiManager.tabValue} index={8}> {/* Check-In Panel - Index updated */}
         <CheckInTab
           tournamentId={dataManager.tournamentId}
           currentUser={currentUser}
         />
       </TabPanel>
-      <TabPanel value={uiManager.tabValue} index={10}> {/* Custom Registration Fields Panel - Index updated */}
-        <CustomRegistrationFields
-          tournament={dataManager.tournament}
+      <TabPanel value={uiManager.tabValue} index={9}> {/* Organizer Management Panel - Index updated */}
+        {/* Placeholder or actual component for Organizer Management */}
+        <OrganizerManagementTab
+          tournamentId={dataManager.tournamentId}
+          organizers={dataManager.tournament?.organizers || []} // Pass organizers
           currentUser={currentUser}
+          tournamentCreatorId={tournamentCreatorId}
+          onUpdateOrganizers={dataManager.refreshData} // Assuming refreshData updates organizers
+          showNotification={uiManager.showNotification}
         />
+      </TabPanel>
+      <TabPanel value={uiManager.tabValue} index={10}> {/* Custom Fields Panel - Index updated */}
+        {(() => { // IIFE for logging before rendering the component
+          console.log('[TournamentManagement] Rendering CustomRegistrationFields TabPanel with props:');
+          console.log('  - currentUser exists:', !!currentUser); // Should now always be true here
+          console.log('  - tournament exists:', !!dataManager.tournament);
+          return (
+            <CustomRegistrationFields
+              tournament={dataManager.tournament}
+              currentUser={currentUser} // Pass the confirmed currentUser
+              // authLoading={authLoading} // authLoading is confirmed false here, no need to pass
+            />
+          );
+        })()}
       </TabPanel>
 
       {/* --- Render Dialogs --- */}

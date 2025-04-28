@@ -1,5 +1,6 @@
 const RegistrationField = require('../models/RegistrationField');
-const Debate = require('../models/Debate');
+const Debate = require('../models/Debate'); // Import Debate model
+const mongoose = require('mongoose');
 
 /**
  * Service for managing custom registration fields for tournaments
@@ -13,19 +14,23 @@ class RegistrationFieldService {
    * @returns {Promise<Object>} The created field
    */
   async createField(tournamentId, fieldData, userId) {
-    // Check if tournament exists and is in upcoming status
-    const tournament = await Debate.findById(tournamentId);
-    if (!tournament) {
-      throw new Error('Tournament not found');
+    // Check if the DEBATE (acting as a tournament) exists and is in upcoming status
+    const debate = await Debate.findById(tournamentId);
+
+    if (!debate) {
+      console.error(`[Service] createField failed: Debate (tournament) with ID ${tournamentId} not found.`);
+      throw new Error(`Debate (tournament) not found with ID: ${tournamentId}`);
     }
-    
-    if (tournament.status !== 'upcoming') {
-      throw new Error('Custom fields can only be added to upcoming tournaments');
+
+    // Check status on the debate object
+    if (debate.status !== 'upcoming') {
+      throw new Error('Custom fields can only be added to upcoming tournaments (debates)');
     }
-    
-    // Create the field
+
+    // Create the field, referencing the debate ID
     const field = await RegistrationField.create({
-      tournament: tournamentId,
+      tournament: tournamentId, // Keep field name as 'tournament' for consistency? Or rename?
+      // Consider renaming the field in RegistrationField model to debateId or entityId if applicable
       fieldName: fieldData.fieldName,
       fieldType: fieldData.fieldType,
       isRequired: fieldData.isRequired || false,
@@ -33,13 +38,14 @@ class RegistrationFieldService {
       displayOrder: fieldData.displayOrder || 0,
       createdBy: userId
     });
-    
-    // Update the tournament to indicate it has custom fields
-    if (!tournament.customRegistrationFields) {
-      tournament.customRegistrationFields = true;
-      await tournament.save();
+
+    // Update the debate to indicate it has custom fields
+    // Check if Debate model has a 'customRegistrationFields' field
+    if (debate.customRegistrationFields !== undefined && !debate.customRegistrationFields) {
+      debate.customRegistrationFields = true;
+      await debate.save();
     }
-    
+
     return field;
   }
   
@@ -49,6 +55,7 @@ class RegistrationFieldService {
    * @returns {Promise<Array>} Array of registration fields
    */
   async getFieldsByTournament(tournamentId) {
+    // This method just queries RegistrationField, might not need changes unless validation is added
     return await RegistrationField.find({ tournament: tournamentId })
       .sort({ displayOrder: 1 })
       .lean();
@@ -87,17 +94,18 @@ class RegistrationFieldService {
     if (!field) {
       throw new Error('Registration field not found');
     }
-    
+
     await RegistrationField.findByIdAndDelete(fieldId);
-    
-    // Check if this was the last field for the tournament
+
+    // Check if this was the last field for the DEBATE
     const remainingFields = await RegistrationField.countDocuments({ tournament: field.tournament });
     if (remainingFields === 0) {
-      // Update the tournament to indicate it no longer has custom fields
+      // Update the DEBATE to indicate it no longer has custom fields
+      // Ensure Debate model has 'customRegistrationFields' field
       await Debate.findByIdAndUpdate(field.tournament, { customRegistrationFields: false });
     }
   }
-  
+
   /**
    * Save participant's custom field values
    * @param {string} tournamentId - The ID of the tournament
@@ -106,23 +114,34 @@ class RegistrationFieldService {
    * @returns {Promise<Object>} Updated participant data
    */
   async saveParticipantFieldValues(tournamentId, userId, fieldValues) {
-    const tournament = await Debate.findById(tournamentId);
-    if (!tournament) {
-      throw new Error('Tournament not found');
+    // Find the DEBATE
+    const debate = await Debate.findById(tournamentId);
+    if (!debate) {
+      throw new Error('Debate (tournament) not found');
     }
-    
-    // Find the participant in the tournament
-    const participantIndex = tournament.participants.findIndex(
-      p => p.userId.toString() === userId
-    );
-    
+
+    // Find the participant in the DEBATE
+    // Adjust participant lookup based on how participants are stored in Debate model
+    // Assuming debate.participants or debate.teams structure
+    let participantIndex = -1;
+    if (debate.participants) {
+        participantIndex = debate.participants.findIndex(
+            p => p.userId?.toString() === userId
+        );
+    } else if (debate.teams) {
+        // Need logic to find the correct team/participant within teams
+        console.warn("[Service] saveParticipantFieldValues needs logic for 'teams' structure in Debate model");
+        // Placeholder: find team, then member
+        // This needs refinement based on actual Debate schema
+    }
+
     if (participantIndex === -1) {
-      throw new Error('Participant not found in this tournament');
+      throw new Error('Participant not found in this tournament (debate)');
     }
-    
-    // Get all fields for validation
+
+    // Get all fields for validation (using the existing method is fine)
     const fields = await this.getFieldsByTournament(tournamentId);
-    
+
     // Validate required fields
     const requiredFields = fields.filter(f => f.isRequired).map(f => f.fieldName);
     for (const fieldName of requiredFields) {
@@ -131,22 +150,25 @@ class RegistrationFieldService {
       }
     }
     
-    // Initialize customFields if it doesn't exist
-    if (!tournament.participants[participantIndex].customFields) {
-      tournament.participants[participantIndex].customFields = new Map();
+    // Initialize customFields if it doesn't exist on the participant object
+    // Adjust path based on Debate model structure
+    const participantRef = debate.participants[participantIndex]; // Adjust if using teams
+    if (!participantRef.customFields) {
+      participantRef.customFields = new Map();
     }
-    
+
     // Update the custom fields
     for (const [key, value] of Object.entries(fieldValues)) {
-      tournament.participants[participantIndex].customFields.set(key, value);
+      participantRef.customFields.set(key, value);
     }
-    
-    // Mark the array as modified
-    tournament.markModified('participants');
-    await tournament.save();
-    
-    return tournament.participants[participantIndex];
+
+    // Mark the array/document as modified
+    debate.markModified('participants'); // Adjust if using teams
+    await debate.save();
+
+    return participantRef;
   }
+
 }
 
 module.exports = new RegistrationFieldService();

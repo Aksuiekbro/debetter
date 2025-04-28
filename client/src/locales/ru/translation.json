@@ -13,7 +13,84 @@
     "search_placeholder": "Поиск дебатов..."
   },
   "common": {
-    "notAvailable": "Н/Д"
+    "notAvailable": "Н/Д",
+    "notApplicable": "Н/Д",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "aria": {
+      "delete": "удалить"
+    },
+    "button": {
+      "add": "Добавить",
+      "saveChanges": "Сохранить изменения",
+      "retry": "Повторить",
+      "editInfo": "Редактировать инфо и настройки",
+      "addFriend": "Добавить в друзья",
+      "addNewDebate": "Добавить новые дебаты"
+    }
+  },
+"debatesList": {
+    "card": {
+      "tournamentChip": "Турнир",
+      "statusLabel": "Статус: {{status}}",
+      "debatersCount": "Дебатеры: {{count}}/{{max}}",
+      "judgesCount": "Судьи: {{count}}/{{max}}",
+      "modeLabel": "Режим: {{mode}}",
+      "defaultMode": "Соло",
+      "participantsCount": "Участники: {{count}}/{{max}}",
+      "startDateLabel": "Дата начала:",
+      "registrationDeadlineLabel": "Крайний срок регистрации:",
+      "viewButton": "Посмотреть детали",
+      "manageButton": "Управлять",
+      "cannotLeaveOwnTournamentButton": "Нельзя покинуть собственный турнир",
+      "leaveButton": "Покинуть дебаты",
+      "judgesFullButton": "Судьи заполнены",
+      "debatersFullButton": "Дебатеры заполнены",
+      "fullButton": "Заполнено",
+      "joinAsJudgeButton": "Присоединиться как судья",
+      "joinAsDebaterButton": "Присоединиться как дебатер",
+      "joinButton": "Присоединиться к дебатам",
+      "leagueLabel": "Лига: {{league}}"
+    },
+    "filters": {
+      "mainTitle": "Фильтры",
+      "categoriesTitle": "Категории",
+      "statusTitle": "Статус",
+      "difficultyTitle": "Сложность",
+      "categories": {
+        "politics": "Политика",
+        "technology": "Технологии",
+        "science": "Наука",
+        "society": "Общество",
+        "economics": "Экономика"
+      },
+      "status": {
+        "upcoming": "Предстоящие",
+        "ongoing": "Текущие",
+        "completed": "Завершенные"
+      },
+      "difficulty": {
+        "beginner": "Начинающий",
+        "intermediate": "Средний",
+        "advanced": "Продвинутый"
+      }
+    },
+    "searchPlaceholder": "Поиск дебатов...",
+    "sort": {
+      "label": "Сортировать по",
+      "options": {
+        "recent": "Самые новые",
+        "popular": "Самые популярные",
+        "upcoming": "Предстоящие сначала",
+        "difficulty": "Уровень сложности"
+      }
+    },
+    "loading": "Загрузка дебатов...",
+    "noDebatesFound": "Дебаты, соответствующие вашим критериям, не найдены",
+    "fetchError": "Не удалось загрузить дебаты",
+    "joinErrorInvalid": "Невозможно присоединиться к дебатам: Неверные данные дебатов.",
+    "joinError": "Не удалось присоединиться к дебатам.",
+    "joinErrorNetwork": "Сетевая ошибка при присоединении к дебатам."
   },
   "profile": {
     "role": {
@@ -72,6 +149,203 @@
     "judgeInfoTitle": "Информация о судье",
     "awards": {
       "placeholder": "Награды не указаны"
+    }
+  },
+  "tournamentPostingTab": {
+    "title": "Публикации Турнира",
+    "refreshing": "Обновление...",
+    "refresh": "Обновить",
+    "error": {
+      "loadFailed": "Не удалось загрузить данные турнира.",
+      "notFound": "Турнир с ID {{tournamentId}} не найден. Проверьте ID или перейдите из списка турниров.",
+      "apiError": "Ошибка API ({{status}}): {{message}}",
+      "unknownApiError": "Произошла неизвестная ошибка API.",
+      "networkError": "Сетевая ошибка: Не удалось подключиться к серверу.",
+      "unexpectedError": "Произошла непредвиденная ошибка: {{message}}",
+      "randomizeFailed": "Не удалось рандомизировать пары",
+      "submitFailed": "Не удалось отправить пары",
+      "selectTeam1": "Пожалуйста, выберите Команду 1",
+      "team1AlreadyPaired": "Команда 1 уже имеет пару в этом раунде",
+      "team2AlreadyPaired": "Команда 2 уже имеет пару в этом раунде"
+    },
+    "autoProgressedToRound": "Автоматический переход к раунду {{round}}",
+    "previewModeManual": "Предпросмотр пар, введенных вручную для раунда {{round}}. Нажмите Отправить для завершения или Отмена для отмены.",
+    "previewMode": "Предпросмотр рандомизированных пар для раунда {{round}}. Нажмите Отправить для завершения или Отмена для отмены.",
+    "activeRound": "Активный Раунд",
+    "autoProgressRounds": "Автопереход к следующему раунду",
+    "randomize": "Рандомизировать",
+    "manualEntry": "Ручной Ввод",
+    "roundSubmitted": "Раунд отправлен и опубликован",
+    "submitting": "Отправка...",
+    "submit": "Отправить",
+    "team": "Команда",
+    "preview": "Предпросмотр",
+    "submitted": "Отправлено",
+    "bye": "BYE",
+    "room": "Комната",
+    "judge": "Судья",
+    "notSubmitted": "Не отправлено",
+    "pendingRandomization": "Ожидание рандомизации",
+    "pending": "Ожидание",
+    "randomizeTitle": "Рандомизировать Пары",
+    "randomizeDescription": "Вы собираетесь рандомизировать пары для раунда {{round}}.",
+    "options": "Опции",
+    "avoidRematches": "Избегать рематчей",
+    "avoidSameClub": "Избегать матчей внутри клуба",
+    "randomizing": "Рандомизация...",
+    "manualEntryTitle": "Ручной Ввод Пар",
+    "manualEntryDescription": "Создайте пары вручную для раунда {{round}}.",
+    "editPairing": "Редактировать Пару",
+    "addPairing": "Добавить Пару",
+    "team1": "Команда 1",
+    "team2ByeOption": "Команда 2 (или оставьте пустым для BYE)",
+    "team2": "Команда 2",
+    "noJudge": "Нет Судьи",
+    "updatePairing": "Обновить Пару",
+    "currentPairings": "Текущие Пары",
+    "noPairingsYet": "Пары еще не созданы",
+    "actions": "Действия",
+    "savePairings": "Сохранить Пары",
+    "roomPlaceholder": "Комната",
+    "preliminaryRound": "{{number}} Предварительный Раунд",
+    "final": "Финал",
+    "round": "Раунд"
+  },
+  "tournamentManagement": {
+    "title": "Турнир: {{name}}",
+    "tabs": {
+      "announcements": "Объявления",
+      "teams": "Команды",
+      "judges": "Судьи",
+      "posting": "Публикация",
+      "tournamentPosting": "Публикация Турнира",
+      "matchPostings": "Публикации Матчей",
+      "standings": "Турнирная Таблица",
+      "results": "Результаты",
+      "bracket": "Сетка",
+      "checkIn": "Регистрация",
+      "registrationFields": "Поля Регистрации",
+      "organizers": "Организаторы",
+      "customFields": "Настраиваемые Поля"
+    }
+  },
+  "announcementsFeedView": {
+    "deleteAnnouncement": "Удалить"
+  },
+  "postCreation": {
+    "createPost": "Создать новый пост",
+    "title": "Создать новый пост",
+    "imageUpload": "Добавить изображение (необязательно)",
+    "backgroundColorTooltip": "Изменить цвет фона",
+    "dragDropImage": "Перетащите изображение сюда или нажмите для выбора",
+    "supportedFormats": "Поддерживаемые форматы: JPEG, PNG, GIF",
+    "titleLabel": "Заголовок",
+    "contentLabel": "Содержание",
+    "contentPlaceholder": "Напишите ваш пост здесь...",
+    "post": "Опубликовать"
+  },
+  "standingsTab": {
+    "infoTooltip": "Рейтинги основаны на победах, поражениях и общем количестве очков за все раунды",
+    "headerPlayed": "Сыграно",
+    "noTeamsSubtext": "Рейтинги появятся после отправки результатов матчей",
+    "roundResultsTitle": "Результаты по раундам",
+    "roundResultsDescription": "Подробные результаты по каждому раунду отображаются ниже. В таблице выше показаны агрегированные результаты за все раунды.",
+    "roundResultsPlaceholder": "Детали по раундам будут доступны после завершения матчей"
+  },
+  "teamDialog": {
+    "clubLabel": "Клуб",
+    "cityLabel": "Город",
+    "institutionLabel": "Учреждение"
+  },
+  "judgeDialog": {
+    "clubLabel": "Клуб",
+    "rankSectionTitle": "Информация о ранге судьи",
+    "yearsExperienceLabel": "Опыт (лет)",
+    "courseLevelLabel": "Курс/Год обучения",
+    "courseLevelPlaceholder": "напр., 2-й курс, Выпускник",
+    "rankLabel": "Уровень опыта",
+    "rankNovice": "Новичок",
+    "rankExperienced": "Опытный",
+    "rankExpert": "Эксперт",
+    "rankHeadJudge": "Главный судья",
+    "statusLabel": "Статус (напр., уровень опыта, год обучения)"
+  },
+  "checkInTab": {
+    "title": "Регистрация на турнир",
+    "searchPlaceholder": "Поиск...",
+    "refreshing": "Обновление...",
+    "refresh": "Обновить",
+    "teamsTab": "Команды ({{present}}/{{total}})",
+    "judgesTab": "Судьи ({{present}}/{{total}})",
+    "teamName": "Название команды",
+    "members": "Участники",
+    "club": "Клуб",
+    "city": "Город",
+    "institution": "Учреждение",
+    "status": "Статус",
+    "checkedInAt": "Время регистрации",
+    "actions": "Действия",
+    "present": "Присутствует",
+    "absent": "Отсутствует",
+    "markAbsent": "Отметить как отсутствующего",
+    "markPresent": "Отметить как присутствующего",
+    "noTeamsMatch": "Команды не найдены по запросу",
+    "noTeams": "Команды не найдены",
+    "judgeName": "Имя судьи",
+    "judgeStatus": "Статус",
+    "presence": "Присутствие",
+    "noJudgesMatch": "Судьи не найдены по запросу",
+    "noJudges": "Судьи не найдены",
+    "errors": {
+      "loadFailed": "Не удалось загрузить данные регистрации",
+      "checkInTeamFailed": "Не удалось зарегистрировать команду",
+      "checkOutTeamFailed": "Не удалось отменить регистрацию команды",
+      "checkInJudgeFailed": "Не удалось зарегистрировать судью",
+      "checkOutJudgeFailed": "Не удалось отменить регистрацию судьи"
+    }
+  },
+  "organizersTab": {
+    "title": "Управление организаторами",
+    "description": "Добавляйте или удаляйте пользователей, которые могут помогать в управлении этим турниром.",
+    "currentOrganizers": "Текущие организаторы:",
+    "noOrganizers": "Дополнительные организаторы не назначены.",
+    "addUser": "Добавить пользователя как организатора",
+    "noUsersAvailable": "Нет доступных пользователей",
+    "noEmail": "Нет Email",
+    "unknownUser": "Неизвестный пользователь",
+    "errors": {
+      "updateFailed": "Не удалось обновить организаторов"
+    },
+    "notifications": {
+      "updateSuccess": "Организаторы успешно обновлены"
+    }
+  },
+  "customFieldsTab": {
+    "title": "Дополнительные поля регистрации",
+    "addField": "Добавить поле",
+    "editField": "Редактировать поле",
+    "noFieldsOrganizer": "Дополнительные поля не определены. Добавьте поля для сбора дополнительной информации от участников.",
+    "noFields": "Для этого турнира не определены дополнительные поля.",
+    "required": "Обязательное",
+    "options": "Опции",
+    "fieldName": "Название поля",
+    "fieldTypeLabel": "Тип поля",
+    "optionsLabel": "Опции (через запятую)",
+    "optionsHelp": "Введите опции, разделенные запятыми",
+    "confirmDelete": "Вы уверены, что хотите удалить это поле?",
+    "fieldType": {
+      "text": "Текст",
+      "number": "Число",
+      "select": "Выпадающий список",
+      "checkbox": "Флажок",
+      "date": "Дата"
+    },
+    "errors": {
+      "loadFailed": "Не удалось загрузить поля регистрации",
+      "nameRequired": "Название поля обязательно",
+      "saveFailed": "Не удалось сохранить поле",
+      "deleteFailed": "Не удалось удалить поле",
+      "orderUpdateFailed": "Не удалось обновить порядок полей"
     }
   }
 }

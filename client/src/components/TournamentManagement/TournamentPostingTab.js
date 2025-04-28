@@ -196,19 +196,23 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
 
     } catch (err) {
       console.error('Error fetching tournament data:', err);
-      let specificErrorMessage = 'Failed to load tournament data.';
+      let specificErrorMessage = t('tournamentPostingTab.error.loadFailed', { defaultValue: 'Failed to load tournament data.' });
       // Check if it's an Axios error with a 404 response
       if (err.response && err.response.status === 404) {
-        specificErrorMessage = `Tournament with ID ${tournamentId} not found. Please check the ID or navigate from the tournaments list.`;
+        specificErrorMessage = t('tournamentPostingTab.error.notFound', {
+          tournamentId: tournamentId,
+          defaultValue: `Tournament with ID ${tournamentId} not found. Please check the ID or navigate from the tournaments list.`
+        });
       } else if (err.response) {
-        // Other API errors
-        specificErrorMessage = `API Error (${err.response.status}): ${err.response.data?.message || 'An unknown API error occurred.'}`;
+        specificErrorMessage = t('tournamentPostingTab.error.apiError', {
+          status: err.response.status,
+          message: err.response.data?.message || t('tournamentPostingTab.error.unknownApiError', { defaultValue: 'An unknown API error occurred.' }),
+          defaultValue: `API Error (${err.response.status}): ${err.response.data?.message || 'An unknown API error occurred.'}`
+        });
       } else if (err.request) {
-        // Network error
-        specificErrorMessage = 'Network error: Could not connect to the server.';
+        specificErrorMessage = t('tournamentPostingTab.error.networkError', { defaultValue: 'Network error: Could not connect to the server.' });
       } else {
-        // Other errors (e.g., processing data in the try block)
-        specificErrorMessage = `An unexpected error occurred: ${err.message}`;
+        specificErrorMessage = t('tournamentPostingTab.error.unexpectedError', { message: err.message, defaultValue: `An unexpected error occurred: ${err.message}` });
       }
       setError(specificErrorMessage);
     } finally {
@@ -285,7 +289,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
       handleCloseRandomizeDialog();
     } catch (err) {
       console.error('Error randomizing pairings:', err);
-      setError(err.response?.data?.message || 'Failed to randomize pairings');
+      setError(err.response?.data?.message || t('tournamentPostingTab.error.randomizeFailed', { defaultValue: 'Failed to randomize pairings' }));
     } finally {
       setRandomizing(false);
     }
@@ -345,7 +349,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
       }
     } catch (err) {
       console.error('Error submitting pairings:', err);
-      setError(err.response?.data?.message || 'Failed to submit pairings');
+      setError(err.response?.data?.message || t('tournamentPostingTab.error.submitFailed', { defaultValue: 'Failed to submit pairings' }));
     } finally {
       setSubmitting(false);
     }
@@ -368,7 +372,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
   // Handle add manual pairing
   const handleAddManualPairing = () => {
     if (!selectedTeam1) {
-      setError(t('tournamentPostingTab.selectTeam1', { defaultValue: 'Please select Team 1' }));
+      setError(t('tournamentPostingTab.error.selectTeam1', { defaultValue: 'Please select Team 1' }));
       return;
     }
 
@@ -396,12 +400,12 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
     );
 
     if (team1AlreadyPaired) {
-      setError(t('tournamentPostingTab.team1AlreadyPaired', { defaultValue: 'Team 1 is already paired in this round' }));
+      setError(t('tournamentPostingTab.error.team1AlreadyPaired', { defaultValue: 'Team 1 is already paired in this round' }));
       return;
     }
 
     if (team2AlreadyPaired) {
-      setError(t('tournamentPostingTab.team2AlreadyPaired', { defaultValue: 'Team 2 is already paired in this round' }));
+      setError(t('tournamentPostingTab.error.team2AlreadyPaired', { defaultValue: 'Team 2 is already paired in this round' }));
       return;
     }
 
@@ -615,13 +619,13 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
             <Typography variant="body1">
               {randomizedPairings.length > 0 && randomizedPairings[0]._manuallyCreated ? (
                 t('tournamentPostingTab.previewModeManual', {
-                  round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`,
-                  defaultValue: `Previewing manually entered pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}. Click Submit to finalize or Cancel to discard.`
+                  round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
+                  defaultValue: `Previewing manually entered pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}. Click Submit to finalize or Cancel to discard.` // Keep existing t()
                 })
               ) : (
                 t('tournamentPostingTab.previewMode', {
-                  round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`,
-                  defaultValue: `Previewing randomized pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}. Click Submit to finalize or Cancel to discard.`
+                  round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
+                  defaultValue: `Previewing randomized pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}. Click Submit to finalize or Cancel to discard.` // Keep existing t()
                 })
               )}
             </Typography>
@@ -734,7 +738,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 'bold' }}>
-                    {t('tournamentPostingTab.team', { defaultValue: 'Команда' })}
+                    {t('tournamentPostingTab.team', { defaultValue: 'Team' })}
                   </TableCell>
                   {rounds.map(round => (
                     <TableCell
@@ -808,8 +812,8 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
           <Box sx={{ pt: 2 }}>
             <Typography variant="body1" gutterBottom>
               {t('tournamentPostingTab.randomizeDescription', {
-                round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`,
-                defaultValue: `You are about to randomize pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}.`
+                round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
+                defaultValue: `You are about to randomize pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}.` // Keep existing t()
               })}
             </Typography>
 
@@ -859,8 +863,8 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
             disabled={randomizing}
           >
             {randomizing
-              ? t('tournamentPostingTab.randomizing', { defaultValue: 'Randomizing...' })
-              : t('tournamentPostingTab.randomize', { defaultValue: 'Randomize' })}
+              ? t('tournamentPostingTab.randomizing', { defaultValue: 'Randomizing...' }) // Keep existing t()
+              : t('tournamentPostingTab.randomize', { defaultValue: 'Randomize' })} // Keep existing t()
           </Button>
         </DialogActions>
       </Dialog>
@@ -874,8 +878,8 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
           <Box sx={{ pt: 2 }}>
             <Typography variant="body1" gutterBottom>
               {t('tournamentPostingTab.manualEntryDescription', {
-                round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`,
-                defaultValue: `Manually create pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}.`
+                round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
+                defaultValue: `Manually create pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}.` // Keep existing t()
               })}
             </Typography>
 
@@ -883,8 +887,8 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
             <Box sx={{ mt: 3, mb: 3, p: 2, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: 1 }}>
               <Typography variant="subtitle1" gutterBottom>
                 {editingPairingIndex >= 0
-                  ? t('tournamentPostingTab.editPairing', { defaultValue: 'Edit Pairing' })
-                  : t('tournamentPostingTab.addPairing', { defaultValue: 'Add New Pairing' })}
+                  ? t('tournamentPostingTab.editPairing', { defaultValue: 'Edit Pairing' }) // Keep existing t()
+                  : t('tournamentPostingTab.addPairing', { defaultValue: 'Add New Pairing' })} // Keep existing t()
               </Typography>
 
               <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -916,12 +920,12 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel id="team2-select-label">
-                      {t('tournamentPostingTab.team2', { defaultValue: 'Team 2 (or leave empty for BYE)' })}
+                      {t('tournamentPostingTab.team2ByeOption', { defaultValue: 'Team 2 (or leave empty for BYE)' })}
                     </InputLabel>
                     <Select
                       labelId="team2-select-label"
                       value={selectedTeam2}
-                      label={t('tournamentPostingTab.team2', { defaultValue: 'Team 2 (or leave empty for BYE)' })}
+                      label={t('tournamentPostingTab.team2ByeOption', { defaultValue: 'Team 2 (or leave empty for BYE)' })}
                       onChange={(e) => setSelectedTeam2(e.target.value)}
                     >
                       <MenuItem value="">
@@ -973,7 +977,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
                     label={t('tournamentPostingTab.room', { defaultValue: 'Room' })}
                     value={roomLocation}
                     onChange={(e) => setRoomLocation(e.target.value)}
-                    placeholder={`Room ${manualPairings.length + 1}`}
+                    placeholder={`${t('tournamentPostingTab.roomPlaceholder', { defaultValue: 'Room' })} ${manualPairings.length + 1}`}
                   />
                 </Grid>
 
@@ -1002,8 +1006,8 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
                       startIcon={editingPairingIndex >= 0 ? <EditIcon /> : <AddIcon />}
                     >
                       {editingPairingIndex >= 0
-                        ? t('tournamentPostingTab.updatePairing', { defaultValue: 'Update Pairing' })
-                        : t('tournamentPostingTab.addPairing', { defaultValue: 'Add Pairing' })}
+                        ? t('tournamentPostingTab.updatePairing', { defaultValue: 'Update Pairing' }) // Keep existing t()
+                        : t('tournamentPostingTab.addPairing', { defaultValue: 'Add Pairing' })} // Keep existing t()
                     </Button>
                   </Box>
                 </Grid>
@@ -1038,7 +1042,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
                         <TableCell>
                           {pairing.team2?.name || (
                             <Chip
-                              label={t('tournamentPostingTab.bye', { defaultValue: 'BYE' })}
+                              label={t('tournamentPostingTab.bye', { defaultValue: 'BYE' })} // Keep existing t()
                               size="small"
                               color="secondary"
                               variant="outlined"

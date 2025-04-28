@@ -1,39 +1,48 @@
 const express = require('express');
 const router = express.Router();
-const Tournament = require('../models/Tournament');
+// const Tournament = require('../models/Tournament'); // No longer needed here
+const Debate = require('../models/Debate'); // Import Debate model
 const { protect: auth } = require('../middleware/authMiddleware'); // Import the 'protect' function specifically and rename it to 'auth'
 const { check, validationResult } = require('express-validator');
+const registrationFieldRoutes = require('./registrationFieldRoutes'); // Import registration field routes
 
 // @route   GET api/tournaments
-// @desc    Get all tournaments
+// @desc    Get all tournaments (which are debates with format: 'tournament')
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const tournaments = await Tournament.find().sort({ startDate: -1 });
+    // Find debates with format 'tournament'
+    const tournaments = await Debate.find({ format: 'tournament' }).sort({ startDate: -1 });
+    console.log(`[API /tournaments] Found ${tournaments.length} debates with format 'tournament'.`);
     res.json(tournaments);
   } catch (err) {
-    console.error(err.message);
+    console.error('[API /tournaments] Error fetching tournament-debates:', err.message);
     res.status(500).send('Server Error');
   }
 });
 
 // @route   GET api/tournaments/:id
-// @desc    Get tournament by ID
+// @desc    Get tournament (debate) by ID
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
-    const tournament = await Tournament.findById(req.params.id)
-      .populate('judges', 'name surname email');
-      
+    // Find debate by ID
+    const tournament = await Debate.findById(req.params.id)
+      .populate('judges', 'name surname email'); // Keep populate if Debate model has judges
+
     if (!tournament) {
-      return res.status(404).json({ msg: 'Tournament not found' });
+      return res.status(404).json({ msg: 'Tournament (Debate) not found' });
     }
-    
+    // Optional: Check if the found debate is actually a tournament format
+    // if (tournament.format !== 'tournament') {
+    //   return res.status(404).json({ msg: 'Item found is not a tournament' });
+    // }
+
     res.json(tournament);
   } catch (err) {
     console.error(err.message);
     if (err.kind === 'ObjectId') {
-      return res.status(404).json({ msg: 'Tournament not found' });
+      return res.status(404).json({ msg: 'Tournament (Debate) not found' });
     }
     res.status(500).send('Server Error');
   }
@@ -68,7 +77,7 @@ router.post(
     try {
       const { name, description, startDate, endDate, location, teams, judges, rounds } = req.body;
 
-      const tournament = new Tournament({
+      const tournament = new Debate({
         name,
         description,
         startDate,
@@ -77,7 +86,8 @@ router.post(
         teams,
         judges,
         rounds,
-        status: 'upcoming'
+        status: 'upcoming',
+        format: 'tournament' // Set format to 'tournament'
       });
 
       await tournament.save();
@@ -94,7 +104,7 @@ router.post(
 // @access  Private/Admin
 router.put('/:id', auth, async (req, res) => {
   try {
-    const tournament = await Tournament.findById(req.params.id).select('+creator +organizers'); // Select necessary fields for permission check
+    const tournament = await Debate.findById(req.params.id).select('+creator +organizers'); // Select necessary fields for permission check
 
     if (!tournament) {
       return res.status(404).json({ msg: 'Tournament not found' });
@@ -149,7 +159,7 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(403).json({ msg: 'Not authorized to delete tournaments' });
     }
 
-    const tournament = await Tournament.findById(req.params.id);
+    const tournament = await Debate.findById(req.params.id);
     
     if (!tournament) {
       return res.status(404).json({ msg: 'Tournament not found' });
@@ -176,7 +186,7 @@ router.put('/:id/scores/:roundIndex/:matchIndex', auth, async (req, res) => {
       return res.status(403).json({ msg: 'Not authorized to update scores' });
     }
 
-    const tournament = await Tournament.findById(req.params.id);
+    const tournament = await Debate.findById(req.params.id);
     
     if (!tournament) {
       return res.status(404).json({ msg: 'Tournament not found' });
@@ -279,5 +289,7 @@ router.put('/:id/scores/:roundIndex/:matchIndex', auth, async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
+// Mount registration field routes
+router.use('/:id/registration-fields', registrationFieldRoutes);
 
-module.exports = router; 
+module.exports = router;

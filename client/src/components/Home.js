@@ -98,7 +98,11 @@ const Home = () => {
     try {
       const response = await api.client.get('/api/debates/user/mydebates', { headers: getAuthHeaders() });
       // Combine created and participated debates, sort by date
-      const allDebates = [...response.data.created, ...response.data.participated]
+      // Ensure created and participated are arrays before spreading
+      const createdDebates = Array.isArray(response.data.created) ? response.data.created : [];
+      const participatedDebates = Array.isArray(response.data.participated) ? response.data.participated : [];
+      
+      const allDebates = [...createdDebates, ...participatedDebates]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 5); // Get only the 5 most recent
       

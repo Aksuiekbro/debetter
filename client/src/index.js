@@ -4,6 +4,8 @@ import App from './App';
 import './i18n'; // Import i18n configuration
 import { AuthProvider } from './contexts/AuthContext'; // Import AuthProvider
 import { SocketProvider } from './contexts/SocketContext'; // Import SocketProvider
+import { I18nextProvider } from 'react-i18next';
+import i18n from './i18n';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -11,7 +13,9 @@ root.render(
     <Suspense fallback="Loading..."> {/* Or a proper loading spinner */}
       <AuthProvider>
         <SocketProvider>
-          <App />
+          <I18nextProvider i18n={i18n}>
+            <App />
+          </I18nextProvider>
         </SocketProvider>
       </AuthProvider>
     </Suspense>

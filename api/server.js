@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: __dirname + '/.env' }); // Load .env from the api directory
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -116,32 +116,43 @@ app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.url} not found` });
 });
 
-// MongoDB Atlas connection with all required options
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000,
-  ssl: true,
-  retryWrites: true,
-  w: 'majority'
-})
-.then(() => {
-  console.log('✅ MongoDB Atlas connection established successfully');
-})
-.catch((err) => {
-  console.error('❌ MongoDB connection error during startup:', err);
-  console.error('Error details:', err.message);
-  // Do not exit process here in serverless environment, allow app export
-  // The function might still be able to serve requests that don't require DB initially,
-  // or the connection might succeed on subsequent invocations.
-});
+// Function to connect to DB and start server
+const startServer = async () => {
+  try {
+    // Ensure MONGODB_URI is set
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI environment variable is not set.');
+    }
 
-const PORT = process.env.PORT || 5001;
-// Start the HTTP server instead of the Express app directly
-// Render requires the application to bind to the port it provides.
-httpServer.listen(PORT, () => {
-    console.log(`🚀 Server (with Socket.IO) is running on port ${PORT}`);
-});
+    await mongoose.connect(process.env.MONGODB_URI, {
+      // Specify the database name directly
+      dbName: 'debate-platform',
+      // Keep other valid options
+      serverSelectionTimeoutMS: 5000,
+      ssl: true,
+      retryWrites: true,
+      w: 'majority'
+      // useNewUrlParser and useUnifiedTopology are deprecated and default in Mongoose 7+
+    });
+    console.log('✅ MongoDB Atlas connection established successfully');
 
-// Export the app and potentially the httpServer if needed elsewhere
-module.exports = app; // Export the Express app directly for serverless compatibility
+    const PORT = process.env.PORT || 5001;
+    // Start the HTTP server instead of the Express app directly
+    httpServer.listen(PORT, () => {
+        console.log(`🚀 Server (with Socket.IO) is running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('❌ MongoDB connection error during startup:', err);
+    console.error('Error details:', err.message);
+    // Exit process if DB connection fails on direct start
+    process.exit(1);
+  }
+};
+
+// Only start the server if this script is run directly
+if (require.main === module) {
+  startServer();
+}
+
+// Export the httpServer for testing purposes (supertest needs the server instance)
+module.exports = httpServer;

@@ -13,76 +13,37 @@ class WebSocketService {
     };
   }
 
-  // Initialize the socket connection
+  // Initialize the service (connection logic removed)
   initialize() {
+    // Connection logic previously here is now removed as components
+    // should use the authenticated socket from SocketContext.
+    console.warn('WebSocketService.initialize() called, but connection logic is removed. Use SocketContext instead.');
     if (this.socket) {
-      return;
+      // If a socket somehow still exists, disconnect it.
+      this.disconnect();
     }
-
-    // Get the base URL from the API config
-    const baseURL = api.baseUrl || 'http://localhost:5001';
-
-    // Create socket connection
-    this.socket = io(baseURL, {
-      withCredentials: true,
-      transports: ['websocket'],
-      autoConnect: true
-    });
-
-    // Set up event listeners
-    this.socket.on('connect', () => {
-      console.log('WebSocket connected');
-    });
-
-    this.socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
-    });
-
-    this.socket.on('error', (error) => {
-      console.error('WebSocket error:', error);
-    });
-
-    // Set up event listeners for announcements
-    this.socket.on('announcement:created', (data) => {
-      this.notifyListeners('announcement:created', data);
-    });
-
-    this.socket.on('announcement:updated', (data) => {
-      this.notifyListeners('announcement:updated', data);
-    });
-
-    this.socket.on('announcement:deleted', (data) => {
-      this.notifyListeners('announcement:deleted', data);
-    });
-
-    // Set up event listeners for comments
-    this.socket.on('comment:created', (data) => {
-      this.notifyListeners('comment:created', data);
-    });
-
-    this.socket.on('comment:deleted', (data) => {
-      this.notifyListeners('comment:deleted', data);
-    });
   }
 
   // Join a tournament room to receive updates for that tournament
   joinTournament(tournamentId) {
-    if (!this.socket) {
-      this.initialize();
-    }
-
-    this.socket.emit('join:tournament', { tournamentId });
-    console.log(`Joined tournament room: ${tournamentId}`);
+    // This method should no longer be used. Use socket from context.
+    console.warn('WebSocketService.joinTournament() called. Use socket.emit("join:tournament", ...) from SocketContext instead.');
+    // if (!this.socket) {
+    //   this.initialize(); // Avoid re-initializing
+    // }
+    // this.socket.emit('join:tournament', { tournamentId }); // Removed
+    // console.log(`Joined tournament room: ${tournamentId}`); // Removed
   }
 
   // Leave a tournament room
   leaveTournament(tournamentId) {
-    if (!this.socket) {
-      return;
-    }
-
-    this.socket.emit('leave:tournament', { tournamentId });
-    console.log(`Left tournament room: ${tournamentId}`);
+    // This method should no longer be used. Use socket from context.
+    console.warn('WebSocketService.leaveTournament() called. Use socket.emit("leave:tournament", ...) from SocketContext instead.');
+    // if (!this.socket) {
+    //   return; // Removed
+    // }
+    // this.socket.emit('leave:tournament', { tournamentId }); // Removed
+    // console.log(`Left tournament room: ${tournamentId}`); // Removed
   }
 
   // Add event listener

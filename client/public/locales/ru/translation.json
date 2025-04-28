@@ -203,6 +203,11 @@
     "registerErrorGeneral": "Не удалось зарегистрироваться на турнир.",
     "registerSuccess": "Вы успешно зарегистрировались на турнир!"
   },
+  "tournamentRegistrationModal": {
+    "title": "Регистрация на турнир",
+    "noCustomFields": "Дополнительная информация для регистрации не требуется.",
+    "joinButton": "Присоединиться к турниру"
+  },
   "tournamentManagement": {
     "title": "Турнир: {{name}}",
     "tabs": {
@@ -212,7 +217,13 @@
       "judges": "Судьи",
       "posting": "Паринги",
       "standings": "Таблица",
-      "bracket": "Сетка"
+      "bracket": "Сетка",
+      "tournamentPosting": "Публикация Турнира",
+      "matchPostings": "Публикации Матчей",
+      "results": "Результаты",
+      "checkIn": "Регистрация",
+      "organizers": "Организаторы",
+      "customFields": "Настраиваемые Поля"
     },
     "bracketTab": {
       "title": "Турнирная Сетка",
