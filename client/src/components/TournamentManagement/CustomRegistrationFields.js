@@ -40,20 +40,42 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
 
   // Check if user is an organizer for THIS specific tournament (Revised Logic)
   const isTournamentOrganizer = React.useMemo(() => {
-    // Ensure consistent string comparison for IDs
-    const currentUserIdString = String(currentUser?._id);
+    // Early exit and log if essential data is missing to prevent errors
+    if (!currentUser?._id) {
+      console.warn("[CustomRegFields] Permission Check: currentUser._id is missing.");
+      return false;
+    }
+    // Check tournament object and its essential properties
+    if (!tournament || !tournament.creator || !tournament.organizers) {
+      // Log details about what's missing
+      console.warn("[CustomRegFields] Permission Check: tournament object or its creator/organizers property is missing.", { tournamentExists: !!tournament, creatorExists: !!tournament?.creator, organizersExist: !!tournament?.organizers });
+      return false; // Cannot determine organizer status without these
+    }
 
-    // Handle creator ID (could be object or string)
-    const creator = tournament.creator;
-    const creatorIdString = creator ? String(creator._id || creator) : null;
+    // Ensure consistent string comparison for IDs (currentUser._id is now guaranteed)
+    const currentUserIdString = String(currentUser._id);
 
-    // Handle organizers array (could be array of objects or strings)
-    const organizerIds = tournament.organizers?.map(org => String(org?._id || org)) || [];
+    // Refined Creator ID extraction
+    let creatorIdString = null;
+    if (tournament.creator) {
+      creatorIdString = String(tournament.creator._id || tournament.creator);
+    }
+
+    // Refined Organizer IDs extraction
+    let organizerIds = [];
+    if (Array.isArray(tournament.organizers)) {
+      organizerIds = tournament.organizers
+        .map(org => {
+          if (!org) return null; // Handle null/undefined entries in the array
+          return String(org._id || org); // Get ID from object or use the element itself
+        })
+        .filter(id => id !== null && id !== 'null' && id !== 'undefined'); // Filter out invalid IDs
+    }
 
     const isCreator = creatorIdString === currentUserIdString;
     const isListedOrganizer = organizerIds.includes(currentUserIdString);
 
-    // Add explicit logging before returning
+    // Logging remains the same, but values should be more reliable
     console.log("[CustomRegFields] Permission Check Values:");
     console.log("  - Current User ID:", currentUserIdString);
     console.log("  - Creator ID:", creatorIdString);
@@ -128,24 +150,26 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
 
   // Handle dialog open for new field
   const handleOpenDialog = () => {
-    setEditingField(null);
-    setFieldName('');
-    setFieldType('text');
-    setIsRequired(false);
-    setOptions('');
-    setDialogError(null);
-    setOpenDialog(true);
+  console.log("Add field clicked");
+  setEditingField(null);
+  setFieldName('');
+  setFieldType('text');
+  setIsRequired(false);
+  setOptions('');
+  setDialogError(null);
+  setOpenDialog(true);
   };
   
   // Handle dialog open for editing field
   const handleEditField = (field) => {
-    setEditingField(field);
-    setFieldName(field.fieldName);
-    setFieldType(field.fieldType);
-    setIsRequired(field.isRequired);
-    setOptions(field.options.join(', '));
-    setDialogError(null);
-    setOpenDialog(true);
+  console.log(`Edit field ${field._id} clicked`);
+  setEditingField(field);
+  setFieldName(field.fieldName);
+  setFieldType(field.fieldType);
+  setIsRequired(field.isRequired);
+  setOptions(field.options.join(', '));
+  setDialogError(null);
+  setOpenDialog(true);
   };
   
   // Handle dialog close
@@ -200,20 +224,21 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
   
   // Handle field delete
   const handleDeleteField = async (fieldId) => {
-    if (!isTournamentOrganizer) return; // Prevent non-organizers from deleting
-    if (!window.confirm(t('customFieldsTab.confirmDelete', 'Are you sure you want to delete this field?'))) {
-      return;
-    }
-    try {
-      // DELETE tournaments/:id/registration-fields/:fieldId
-      await api.client.delete(
-        `/api/tournaments/${tournamentId}/registration-fields/${fieldId}`
-      );
-      await fetchFields();
-    } catch (err) {
-      console.error('Error deleting field:', err);
-      setError(err.response?.data?.message || t('customFieldsTab.errors.deleteFailed', 'Failed to delete field'));
-    }
+  console.log(`Delete field ${fieldId} clicked`);
+  if (!isTournamentOrganizer) return; // Prevent non-organizers from deleting
+  if (!window.confirm(t('customFieldsTab.confirmDelete', 'Are you sure you want to delete this field?'))) {
+    return;
+  }
+  try {
+    // DELETE tournaments/:id/registration-fields/:fieldId
+    await api.client.delete(
+      `/api/tournaments/${tournamentId}/registration-fields/${fieldId}`
+    );
+    await fetchFields();
+  } catch (err) {
+    console.error('Error deleting field:', err);
+    setError(err.response?.data?.message || t('customFieldsTab.errors.deleteFailed', 'Failed to delete field'));
+  }
   };
   
   // Handle field reordering

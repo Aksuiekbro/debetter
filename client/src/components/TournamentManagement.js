@@ -141,6 +141,11 @@ const TournamentManagement = () => {
   // --- Extract Creator ID ---
   const tournamentCreatorId = dataManager.tournament?.creator?._id; // Get creator ID safely
 
+// --- Determine User Role ---
+  const isOrganizer = currentUser && dataManager.tournament && (
+    currentUser._id === tournamentCreatorId ||
+    dataManager.tournament.organizers?.some(org => org._id === currentUser._id)
+  );
   // --- Render Component ---
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -295,18 +300,20 @@ const TournamentManagement = () => {
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={10}> {/* Custom Fields Panel - Index updated */}
-        {(() => { // IIFE for logging before rendering the component
-          console.log('[TournamentManagement] Rendering CustomRegistrationFields TabPanel with props:');
-          console.log('  - currentUser exists:', !!currentUser); // Should now always be true here
-          console.log('  - tournament exists:', !!dataManager.tournament);
-          return (
-            <CustomRegistrationFields
-              tournament={dataManager.tournament}
-              currentUser={currentUser} // Pass the confirmed currentUser
-              // authLoading={authLoading} // authLoading is confirmed false here, no need to pass
-            />
-          );
-        })()}
+        {/* Check if core data is loading OR if tournament data/sub-properties are missing */}
+        {dataManager.loading || !dataManager.tournament || !dataManager.tournament.creator || !dataManager.tournament.organizers ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+            {/* Optional: Add a message like <Typography sx={{ ml: 2 }}>Loading tournament details...</Typography> */}
+          </Box>
+        ) : (
+          // Data is ready, render the component
+          <CustomRegistrationFields
+             tournament={dataManager.tournament} // Pass the complete tournament object
+             currentUser={currentUser} // Pass the confirmed currentUser
+             // No need to pass isOrganizer or tournamentId, component handles them internally
+           />
+        )}
       </TabPanel>
 
       {/* --- Render Dialogs --- */}
