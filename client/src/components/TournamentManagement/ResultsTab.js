@@ -59,7 +59,7 @@ function TabPanel(props) {
   );
 }
 
-const ResultsTab = ({ currentUser, tournamentId }) => {
+const ResultsTab = ({ currentUser, tournamentId, isViewOnly }) => { // Add isViewOnly prop
   const { t } = useTranslation();
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -224,6 +224,7 @@ const ResultsTab = ({ currentUser, tournamentId }) => {
 
   // Handle submitting the result form
   const handleSubmitResult = async () => {
+    if (isViewOnly) return; // Prevent submission in view-only mode
     try {
       const payload = {
         results: [
@@ -411,7 +412,8 @@ const ResultsTab = ({ currentUser, tournamentId }) => {
               </Select>
             </FormControl>
             
-            {isOrganizer && (
+            {/* Hide Record Result button if view-only */}
+            {isOrganizer && !isViewOnly && (
               <Button
                 variant="contained"
                 onClick={() => handleOpenResultDialog()}
@@ -438,7 +440,8 @@ const ResultsTab = ({ currentUser, tournamentId }) => {
                     <TableCell>{t('resultsTab.room', { defaultValue: 'Room' })}</TableCell>
                     <TableCell>{t('resultsTab.side', { defaultValue: 'Side' })}</TableCell>
                     <TableCell>{t('resultsTab.notes', { defaultValue: 'Notes' })}</TableCell>
-                    {isOrganizer && (
+                    {/* Hide Actions column if view-only */}
+                    {isOrganizer && !isViewOnly && (
                       <TableCell align="right">{t('resultsTab.actions', { defaultValue: 'Actions' })}</TableCell>
                     )}
                   </TableRow>
@@ -467,7 +470,8 @@ const ResultsTab = ({ currentUser, tournamentId }) => {
                           </Tooltip>
                         ) : 'N/A'}
                       </TableCell>
-                      {isOrganizer && (
+                      {/* Hide Actions cell content if view-only */}
+                      {isOrganizer && !isViewOnly && (
                         <TableCell align="right">
                           <IconButton
                             color="primary"
@@ -487,7 +491,8 @@ const ResultsTab = ({ currentUser, tournamentId }) => {
                   ))}
                   {currentRoundResults.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={isOrganizer ? 8 : 7} align="center">
+                      {/* Adjust colspan based on whether Actions column is visible */}
+                      <TableCell colSpan={isOrganizer && !isViewOnly ? 8 : 7} align="center">
                         {t('resultsTab.noResults', { defaultValue: 'No results recorded for this round' })}
                       </TableCell>
                     </TableRow>
@@ -499,157 +504,136 @@ const ResultsTab = ({ currentUser, tournamentId }) => {
         </TabPanel>
       </Paper>
 
-      {/* Result Dialog */}
-      <Dialog open={openResultDialog} onClose={handleCloseResultDialog} maxWidth="md" fullWidth>
+      {/* Record/Edit Result Dialog - Disable controls if view-only */}
+      <Dialog open={openResultDialog} onClose={handleCloseResultDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {t('resultsTab.recordResultTitle', { defaultValue: 'Record Round Result' })}
+          {resultForm.teamId ? t('resultsTab.editResultTitle', { defaultValue: 'Edit Result' }) : t('resultsTab.recordResultTitle', { defaultValue: 'Record Result' })}
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="team-select-label">
-                    {t('resultsTab.selectTeam', { defaultValue: 'Select Team' })}
-                  </InputLabel>
-                  <Select
-                    labelId="team-select-label"
-                    name="teamId"
-                    value={resultForm.teamId}
-                    label={t('resultsTab.selectTeam', { defaultValue: 'Select Team' })}
-                    onChange={handleFormChange}
-                    disabled={!!resultForm.teamId} // Disable if editing existing result
-                  >
-                    {rankings.map((team) => (
-                      <MenuItem key={team._id} value={team._id}>
-                        {team.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="round-select-label">
-                    {t('resultsTab.roundNumber', { defaultValue: 'Round Number' })}
-                  </InputLabel>
-                  <Select
-                    labelId="round-select-label"
-                    name="roundNumber"
-                    value={resultForm.roundNumber}
-                    label={t('resultsTab.roundNumber', { defaultValue: 'Round Number' })}
-                    onChange={handleFormChange}
-                    disabled={true} // Always disabled as we're editing for a specific round
-                  >
-                    {Array.from({ length: maxRounds }, (_, i) => (
-                      <MenuItem key={i} value={i + 1}>
-                        {t('resultsTab.roundNumber', { number: i + 1, defaultValue: `Round ${i + 1}` })}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label={t('resultsTab.points', { defaultValue: 'Points' })}
-                  name="points"
-                  type="number"
-                  value={resultForm.points}
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <Grid container spacing={2} sx={{ pt: 1 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth required>
+                <InputLabel id="team-select-label">{t('resultsTab.team', { defaultValue: 'Team' })}</InputLabel>
+                <Select
+                  labelId="team-select-label"
+                  name="teamId"
+                  value={resultForm.teamId}
+                  label={t('resultsTab.team', { defaultValue: 'Team' })}
                   onChange={handleFormChange}
-                  sx={{ mb: 2 }}
-                  InputProps={{ inputProps: { min: 0 } }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label={t('resultsTab.speakerPoints', { defaultValue: 'Speaker Points' })}
-                  name="speakerPoints"
-                  type="number"
-                  value={resultForm.speakerPoints}
-                  onChange={handleFormChange}
-                  sx={{ mb: 2 }}
-                  InputProps={{ inputProps: { min: 0 } }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label={t('resultsTab.rank', { defaultValue: 'Rank (optional)' })}
-                  name="rank"
-                  type="number"
-                  value={resultForm.rank || ''}
-                  onChange={handleFormChange}
-                  sx={{ mb: 2 }}
-                  InputProps={{ inputProps: { min: 1 } }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label={t('resultsTab.room', { defaultValue: 'Room' })}
-                  name="room"
-                  value={resultForm.room}
-                  onChange={handleFormChange}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="side-select-label">
-                    {t('resultsTab.side', { defaultValue: 'Side' })}
-                  </InputLabel>
-                  <Select
-                    labelId="side-select-label"
-                    name="side"
-                    value={resultForm.side}
-                    label={t('resultsTab.side', { defaultValue: 'Side' })}
-                    onChange={handleFormChange}
-                  >
-                    <MenuItem value="">
-                      <em>{t('resultsTab.none', { defaultValue: 'None' })}</em>
+                  required
+                  disabled={isViewOnly || !!resultForm.teamId} // Disable if editing or view-only
+                >
+                  {rankings.map((team) => (
+                    <MenuItem key={team._id} value={team._id}>
+                      {team.name}
                     </MenuItem>
-                    <MenuItem value="proposition">
-                      {t('resultsTab.proposition', { defaultValue: 'Proposition' })}
-                    </MenuItem>
-                    <MenuItem value="opposition">
-                      {t('resultsTab.opposition', { defaultValue: 'Opposition' })}
-                    </MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label={t('resultsTab.notes', { defaultValue: 'Notes' })}
-                  name="notes"
-                  multiline
-                  rows={3}
-                  value={resultForm.notes}
-                  onChange={handleFormChange}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
-          </Box>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel id="round-number-label">{t('resultsTab.round', { defaultValue: 'Round' })}</InputLabel>
+                <Select
+                  labelId="round-number-label"
+                  name="roundNumber"
+                  value={resultForm.roundNumber}
+                  label={t('resultsTab.round', { defaultValue: 'Round' })}
+                  onChange={handleFormChange}
+                  required
+                  disabled={isViewOnly} // Disable form elements
+                >
+                  {Array.from({ length: maxRounds }, (_, i) => (
+                    <MenuItem key={i} value={i + 1}>
+                      {t('resultsTab.roundNumber', { number: i + 1, defaultValue: `Round ${i + 1}` })}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                margin="dense"
+                name="points"
+                label={t('resultsTab.points', { defaultValue: 'Points' })}
+                value={resultForm.points}
+                onChange={handleFormChange}
+                type="number"
+                required
+                disabled={isViewOnly} // Disable form elements
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                margin="dense"
+                name="rank"
+                label={t('resultsTab.rank', { defaultValue: 'Rank' })}
+                value={resultForm.rank || ''}
+                onChange={handleFormChange}
+                type="number"
+                disabled={isViewOnly} // Disable form elements
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                margin="dense"
+                name="speakerPoints"
+                label={t('resultsTab.speakerPoints', { defaultValue: 'Speaker Points' })}
+                value={resultForm.speakerPoints}
+                onChange={handleFormChange}
+                type="number"
+                disabled={isViewOnly} // Disable form elements
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                margin="dense"
+                name="room"
+                label={t('resultsTab.room', { defaultValue: 'Room' })}
+                value={resultForm.room}
+                onChange={handleFormChange}
+                disabled={isViewOnly} // Disable form elements
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth margin="dense">
+                <InputLabel id="side-select-label">{t('resultsTab.side', { defaultValue: 'Side' })}</InputLabel>
+                <Select
+                  labelId="side-select-label"
+                  name="side"
+                  value={resultForm.side}
+                  label={t('resultsTab.side', { defaultValue: 'Side' })}
+                  onChange={handleFormChange}
+                  disabled={isViewOnly} // Disable form elements
+                >
+                  <MenuItem value="Gov">{t('resultsTab.gov', { defaultValue: 'Gov' })}</MenuItem>
+                  <MenuItem value="Opp">{t('resultsTab.opp', { defaultValue: 'Opp' })}</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                margin="dense"
+                name="notes"
+                label={t('resultsTab.notes', { defaultValue: 'Notes' })}
+                value={resultForm.notes}
+                onChange={handleFormChange}
+                multiline
+                rows={3}
+                disabled={isViewOnly} // Disable form elements
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseResultDialog}>
-            {t('common.cancel', { defaultValue: 'Cancel' })}
-          </Button>
-          <Button
-            onClick={handleSubmitResult}
-            variant="contained"
-            disabled={!resultForm.teamId}
-          >
+          <Button onClick={handleCloseResultDialog} disabled={isViewOnly}>{t('common.cancel', { defaultValue: 'Cancel' })}</Button>
+          <Button onClick={handleSubmitResult} variant="contained" disabled={isViewOnly}>
             {t('common.save', { defaultValue: 'Save' })}
           </Button>
         </DialogActions>

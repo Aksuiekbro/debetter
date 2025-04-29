@@ -34,7 +34,7 @@ const TournamentCard = ({ tournament }) => {
       _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
       transition="all 0.2s"
       cursor="pointer"
-      onClick={() => navigate(`/tournaments/${tournament._id}`)}
+      onClick={() => navigate(`/tournaments/${tournament._id}/manage`, { state: { isViewOnly: true } })}
     >
       <Flex justify="space-between" align="flex-start">
         <Heading size="md" mb={2}>{tournament.name}</Heading>

@@ -28,6 +28,7 @@ const StandingsTab = ({
   error, // Optional: pass error state if standings refresh fails
   currentUser, // Added prop (for consistency, not used for hiding controls here)
   tournamentCreatorId, // Added prop (for consistency, not used for hiding controls here)
+  isViewOnly // Add isViewOnly prop
 }) => {
 
   const { t } = useTranslation();
@@ -67,7 +68,7 @@ const StandingsTab = ({
           variant="outlined"
           onClick={onRefreshStandings}
           startIcon={loading ? <CircularProgress size={20} /> : <RefreshIcon />}
-          disabled={loading} // Disable button while refreshing
+          disabled={loading || isViewOnly} // Disable button while refreshing or if view-only
         >
           {loading
             ? t('standingsTab.refreshingButton', 'Refreshing...')

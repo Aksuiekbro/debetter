@@ -28,6 +28,7 @@ const JudgesTab = ({
   onCheckOutJudge,
   currentUser, // Added prop
   tournamentCreatorId, // Added prop
+  isViewOnly // Add isViewOnly prop
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,7 +62,8 @@ const JudgesTab = ({
             onChange={handleSearchChange}
             sx={{ width: 250 }}
         />
-        {isOrganizerOrAdmin && (
+        {/* Hide Add button if view-only */}
+        {isOrganizerOrAdmin && !isViewOnly && (
           <Button
             variant="contained"
             color="primary"
@@ -84,7 +86,8 @@ const JudgesTab = ({
               <TableCell>{t('judgesTab.headerRank', { defaultValue: 'Rank' })}</TableCell>
               <TableCell>{t('judgesTab.headerStatus', { defaultValue: 'Status' })}</TableCell>
               <TableCell>{t('judgesTab.headerPresence', { defaultValue: 'Present' })}</TableCell>
-              {isOrganizerOrAdmin && <TableCell align="right">{t('judgesTab.headerActions', { defaultValue: 'Actions' })}</TableCell>}
+              {/* Hide Actions column if view-only */}
+              {isOrganizerOrAdmin && !isViewOnly && <TableCell align="right">{t('judgesTab.headerActions', { defaultValue: 'Actions' })}</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -125,7 +128,8 @@ const JudgesTab = ({
                     <CancelIcon color="error" />
                   )}
                 </TableCell>
-                {isOrganizerOrAdmin && (
+                {/* Hide Actions cell content if view-only */}
+                {isOrganizerOrAdmin && !isViewOnly && (
                   <TableCell align="right">
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                       {judge.isPresent ? (
@@ -166,7 +170,8 @@ const JudgesTab = ({
             ))}
             {filteredJudges.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isOrganizerOrAdmin ? 8 : 7} align="center"> {/* Adjust colspan for new column */}
+                {/* Adjust colspan based on whether Actions column is visible */}
+                <TableCell colSpan={isOrganizerOrAdmin && !isViewOnly ? 8 : 7} align="center">
                   {judges.length > 0 ? t('judgesTab.noMatch', { defaultValue: 'No judges match search' }) : t('judgesTab.noJudges', { defaultValue: 'No judges found' })}
                 </TableCell>
               </TableRow>

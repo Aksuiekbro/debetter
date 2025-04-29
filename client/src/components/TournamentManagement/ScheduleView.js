@@ -12,7 +12,7 @@ import { api } from '../../config/api';
 
 // Assuming currentUser and tournamentCreatorId are used for authorization checks
 // Assuming tournament prop contains tournament details including scheduleImageUrl
-const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => {
+const ScheduleView = ({ currentUser, tournamentCreatorId, tournament, isViewOnly }) => { // Add isViewOnly prop
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
 
@@ -126,7 +126,8 @@ const ScheduleView = ({ currentUser, tournamentCreatorId, tournament }) => {
           <Typography sx={{ mb: 2 }}>{t('scheduleView.noScheduleImage', 'No schedule image uploaded yet.')}</Typography>
         )}
 
-        {isOrganizerOrAdmin && (
+        {/* Hide upload section if view-only */}
+        {isOrganizerOrAdmin && !isViewOnly && (
           <Box>
             <Button
               variant="contained"

@@ -48,7 +48,7 @@ function TabPanel(props) {
   );
 }
 
-const CheckInTab = ({ tournamentId, currentUser }) => {
+const CheckInTab = ({ tournamentId, currentUser, isViewOnly }) => { // Add isViewOnly prop
   const { t } = useTranslation();
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -267,7 +267,8 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                     <TableCell>{t('checkInTab.institution', 'Institution')}</TableCell>
                     <TableCell>{t('checkInTab.status', 'Status')}</TableCell>
                     <TableCell>{t('checkInTab.checkedInAt', 'Checked In At')}</TableCell>
-                    <TableCell align="right">{t('checkInTab.actions', 'Actions')}</TableCell>
+                    {/* Hide Actions column if view-only */}
+                    {!isViewOnly && <TableCell align="right">{t('checkInTab.actions', 'Actions')}</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -306,9 +307,11 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                       <TableCell>
                         {team.checkedInAt ? new Date(team.checkedInAt).toLocaleString() : t('common.notApplicable', 'N/A')}
                       </TableCell>
-                      <TableCell align="right">
-                        {team.isPresent ? (
-                          <IconButton
+                      {/* Hide Actions cell content if view-only */}
+                      {!isViewOnly && (
+                        <TableCell align="right">
+                          {team.isPresent ? (
+                            <IconButton
                             color="error"
                             onClick={() => handleTeamCheckOut(team.id)}
                             title={t('checkInTab.markAbsent', 'Mark as Absent')}
@@ -322,14 +325,16 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                             title={t('checkInTab.markPresent', 'Mark as Present')}
                           >
                             <CheckCircleIcon />
-                          </IconButton>
-                        )}
-                      </TableCell>
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                   {filteredTeams.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} align="center">
+                      {/* Adjust colspan based on whether Actions column is visible */}
+                      <TableCell colSpan={!isViewOnly ? 8 : 7} align="center">
                         {checkInData.teams.length > 0
                           ? t('checkInTab.noTeamsMatch', 'No teams match search')
                           : t('checkInTab.noTeams', 'No teams found')}
@@ -358,7 +363,8 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                     <TableCell>{t('checkInTab.judgeStatus', 'Status')}</TableCell>
                     <TableCell>{t('checkInTab.presence', 'Presence')}</TableCell>
                     <TableCell>{t('checkInTab.checkedInAt', 'Checked In At')}</TableCell>
-                    <TableCell align="right">{t('checkInTab.actions', 'Actions')}</TableCell>
+                    {/* Hide Actions column if view-only */}
+                    {!isViewOnly && <TableCell align="right">{t('checkInTab.actions', 'Actions')}</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -387,9 +393,11 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                       <TableCell>
                         {judge.checkedInAt ? new Date(judge.checkedInAt).toLocaleString() : t('common.notApplicable', 'N/A')}
                       </TableCell>
-                      <TableCell align="right">
-                        {judge.isPresent ? (
-                          <IconButton
+                      {/* Hide Actions cell content if view-only */}
+                      {!isViewOnly && (
+                        <TableCell align="right">
+                          {judge.isPresent ? (
+                            <IconButton
                             color="error"
                             onClick={() => handleJudgeCheckOut(judge.id)}
                             title={t('checkInTab.markAbsent', 'Mark as Absent')}
@@ -403,14 +411,16 @@ const CheckInTab = ({ tournamentId, currentUser }) => {
                             title={t('checkInTab.markPresent', 'Mark as Present')}
                           >
                             <CheckCircleIcon />
-                          </IconButton>
-                        )}
-                      </TableCell>
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                   {filteredJudges.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} align="center">
+                      {/* Adjust colspan based on whether Actions column is visible */}
+                      <TableCell colSpan={!isViewOnly ? 6 : 5} align="center">
                         {checkInData.judges.length > 0
                           ? t('checkInTab.noJudgesMatch', 'No judges match search')
                           : t('checkInTab.noJudges', 'No judges found')}

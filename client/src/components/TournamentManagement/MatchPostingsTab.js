@@ -60,7 +60,7 @@ function TabPanel(props) {
   );
 }
 
-const MatchPostingsTab = ({ currentUser }) => {
+const MatchPostingsTab = ({ currentUser, isViewOnly }) => { // Add isViewOnly prop
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
   
@@ -367,7 +367,8 @@ const MatchPostingsTab = ({ currentUser }) => {
               </FormControl>
             </Box>
             
-            {isOrganizer && postings.length > 0 && (
+            {/* Hide Confirm/Publish buttons if view-only */}
+            {isOrganizer && !isViewOnly && postings.length > 0 && (
               <Box sx={{ display: 'flex', gap: 2 }}>
                 {!allPostingsConfirmed && (
                   <Button
@@ -489,9 +490,11 @@ const MatchPostingsTab = ({ currentUser }) => {
                 })}
               </Typography>
               
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="outlined"
+              {/* Hide controls on Generated tab if view-only */}
+              {!isViewOnly && (
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    variant="outlined"
                   color="error"
                   startIcon={<DeleteIcon />}
                   onClick={() => {
@@ -513,6 +516,7 @@ const MatchPostingsTab = ({ currentUser }) => {
                     : t('matchPostingsTab.save', { defaultValue: 'Save Postings' })}
                 </Button>
               </Box>
+              )}
             </Box>
             
             <TableContainer>
@@ -611,13 +615,11 @@ const MatchPostingsTab = ({ currentUser }) => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseGenerateDialog}>
-            {t('common.cancel', { defaultValue: 'Cancel' })}
-          </Button>
+          <Button onClick={handleCloseGenerateDialog} disabled={isViewOnly}>{t('common.cancel', { defaultValue: 'Cancel' })}</Button>
           <Button
             onClick={handleGeneratePostings}
             variant="contained"
-            disabled={generating}
+            disabled={generating || isViewOnly} // Disable if generating or view-only
           >
             {generating
               ? t('matchPostingsTab.generating', { defaultValue: 'Generating...' })

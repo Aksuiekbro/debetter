@@ -39,6 +39,7 @@ const PostingTab = ({
   loadingApf,      // General loading state for posting actions
   currentUser, // Added prop
   tournamentCreatorId, // Added prop
+  isViewOnly // Add isViewOnly prop
 }) => {
 
   const { t } = useTranslation();
@@ -54,7 +55,8 @@ const PostingTab = ({
           {t('postingTab.title', 'APF Game Management')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {isOrganizerOrAdmin && (
+          {/* Hide batch switch if view-only */}
+          {isOrganizerOrAdmin && !isViewOnly && (
             <FormControlLabel
               control={
                 <Switch
@@ -83,8 +85,8 @@ const PostingTab = ({
 
       {/* Enhanced ApfPostingCard for creating/editing (might be inside dialog later) */}
       {/* For now, assume it's used for direct creation/batch */}
-      {/* Enhanced ApfPostingCard only shown to organizers/admins */}
-      {isOrganizerOrAdmin && (
+      {/* Enhanced ApfPostingCard only shown to organizers/admins and not in view-only mode */}
+      {isOrganizerOrAdmin && !isViewOnly && (
         <Box sx={{ mb: 4 }}>
           <EnhancedApfPostingCard
             teams={teams}
@@ -109,11 +111,11 @@ const PostingTab = ({
       <ApfPostingList
         postings={apfPostings}
         isLoading={loadingPostings} // Use specific loading state for list
-        // Only pass action handlers if user is organizer/admin
-        onStatusChange={isOrganizerOrAdmin ? onStatusChange : undefined}
-        onSendReminder={isOrganizerOrAdmin ? onSendReminder : undefined}
-        onEdit={isOrganizerOrAdmin ? onEdit : undefined}
-        onDelete={isOrganizerOrAdmin ? onDelete : undefined}
+        // Only pass action handlers if user is organizer/admin AND not view-only
+        onStatusChange={isOrganizerOrAdmin && !isViewOnly ? onStatusChange : undefined}
+        onSendReminder={isOrganizerOrAdmin && !isViewOnly ? onSendReminder : undefined}
+        onEdit={isOrganizerOrAdmin && !isViewOnly ? onEdit : undefined}
+        onDelete={isOrganizerOrAdmin && !isViewOnly ? onDelete : undefined}
       />
 
       {/* Theme Management Section */}

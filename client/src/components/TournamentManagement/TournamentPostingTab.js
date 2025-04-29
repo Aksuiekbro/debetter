@@ -30,7 +30,8 @@ import {
   Tooltip,
   Grid,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Checkbox // Added for randomize options
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -40,7 +41,8 @@ import {
   Edit as EditIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
-  KeyboardTab as KeyboardTabIcon
+  KeyboardTab as KeyboardTabIcon,
+  Close as CloseIcon // Added for dialog close
 } from '@mui/icons-material';
 import { api } from '../../config/api';
 
@@ -65,7 +67,7 @@ function TabPanel(props) {
   );
 }
 
-const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
+const TournamentPostingTab = ({ currentUser, tournamentCreatorId, isViewOnly }) => { // isViewOnly prop added
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
 
@@ -223,13 +225,16 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
   // Initial data fetch
   useEffect(() => {
     fetchTournamentData();
-  }, [tournamentId]);
+  }, [tournamentId, t]); // Added t to dependency array
 
   // Handle round change
   const handleRoundChange = (event) => {
     const [type, number] = event.target.value.split('-');
     setActiveRoundType(type);
     setActiveRound(parseInt(number, 10));
+    // Reset randomized pairings when round changes
+    setRandomizedPairings([]);
+    setShowRandomizedPairings(false);
   };
 
   // Handle randomize options change
@@ -253,14 +258,21 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
 
   // Handle manual entry dialog open
   const handleOpenManualEntryDialog = () => {
-    // Initialize manual pairings with any existing randomized pairings
-    if (randomizedPairings.length > 0) {
-      setManualPairings(randomizedPairings);
+    // Initialize manual pairings with any existing randomized pairings if they exist and are for the current round
+    const currentRoundKey = `${activeRoundType}-${activeRound}`;
+    const existingPairingsForRound = pairings[currentRoundKey] || [];
+
+    if (randomizedPairings.length > 0 && randomizedPairings[0]?.round === activeRound && randomizedPairings[0]?.roundType === activeRoundType) {
+        setManualPairings(randomizedPairings);
+    } else if (existingPairingsForRound.length > 0) {
+        // If there are already submitted pairings for this round, load them for editing
+        setManualPairings(existingPairingsForRound);
     } else {
-      setManualPairings([]);
+        setManualPairings([]);
     }
     setOpenManualEntryDialog(true);
   };
+
 
   // Handle manual entry dialog close
   const handleCloseManualEntryDialog = () => {
@@ -270,10 +282,12 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
     setSelectedJudge('');
     setRoomLocation('');
     setEditingPairingIndex(-1);
+    setError(null); // Clear errors when closing dialog
   };
 
   // Handle randomize pairings
   const handleRandomizePairings = async () => {
+    if (isViewOnly) return; // Prevent action in view-only mode
     setRandomizing(true);
     setError(null);
     try {
@@ -297,14 +311,18 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
 
   // Handle submit pairings
   const handleSubmitPairings = async () => {
+    if (isViewOnly) return; // Prevent action in view-only mode
     setSubmitting(true);
     setError(null);
     try {
+      // Determine if pairings are manually created or randomized
+      const pairingsToSubmit = randomizedPairings.length > 0 ? randomizedPairings : manualPairings;
+
       // Call API to submit pairings
       await api.client.post(`/api/debates/${tournamentId}/pairings/submit`, {
         round: activeRound,
         roundType: activeRoundType,
-        pairings: randomizedPairings
+        pairings: pairingsToSubmit // Submit either randomized or manual pairings
       });
 
       // Add to submitted rounds
@@ -318,6 +336,7 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
       // Clear randomized pairings and hide the preview
       setRandomizedPairings([]);
       setShowRandomizedPairings(false);
+      setManualPairings([]); // Clear manual pairings as well after submission
 
       // If auto-progression is enabled, move to the next round
       if (autoProgressRounds) {
@@ -360,10 +379,12 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
     await fetchTournamentData();
     setRandomizedPairings([]);
     setShowRandomizedPairings(false);
+    setError(null); // Clear errors on refresh
   };
 
   // Handle cancel randomized pairings
   const handleCancelRandomizedPairings = () => {
+    if (isViewOnly) return; // Prevent action in view-only mode
     setRandomizedPairings([]);
     setManualPairings([]);
     setShowRandomizedPairings(false);
@@ -371,32 +392,38 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
 
   // Handle add manual pairing
   const handleAddManualPairing = () => {
+    if (isViewOnly) return; // Prevent action in view-only mode
     if (!selectedTeam1) {
       setError(t('tournamentPostingTab.error.selectTeam1', { defaultValue: 'Please select Team 1' }));
       return;
     }
 
-    // Create new pairing
+    // Create new pairing object structure expected by backend
     const newPairing = {
       tournament: tournamentId,
       round: activeRound,
       roundType: activeRoundType,
-      team1: teams.find(team => team._id === selectedTeam1),
-      team2: selectedTeam2 ? teams.find(team => team._id === selectedTeam2) : null,
-      judges: selectedJudge ? [judges.find(judge => judge._id === selectedJudge)] : [],
+      team1: selectedTeam1, // Send ID
+      team2: selectedTeam2 || null, // Send ID or null
+      judges: selectedJudge ? [selectedJudge] : [], // Send array of IDs
       location: roomLocation || `Room ${manualPairings.length + 1}`,
-      isBye: !selectedTeam2
+      isBye: !selectedTeam2,
+      // Include team objects for display purposes in the UI immediately
+      _team1Display: teams.find(team => team._id === selectedTeam1),
+      _team2Display: selectedTeam2 ? teams.find(team => team._id === selectedTeam2) : null,
+      _judgesDisplay: selectedJudge ? [judges.find(judge => judge._id === selectedJudge)] : [],
     };
 
-    // Check if teams are already paired
+
+    // Check if teams are already paired in the current manual list
     const team1AlreadyPaired = manualPairings.some((pairing, index) =>
       index !== editingPairingIndex &&
-      (pairing.team1?._id === selectedTeam1 || pairing.team2?._id === selectedTeam1)
+      (pairing.team1 === selectedTeam1 || pairing.team2 === selectedTeam1)
     );
 
     const team2AlreadyPaired = selectedTeam2 && manualPairings.some((pairing, index) =>
       index !== editingPairingIndex &&
-      (pairing.team1?._id === selectedTeam2 || pairing.team2?._id === selectedTeam2)
+      (pairing.team1 === selectedTeam2 || pairing.team2 === selectedTeam2)
     );
 
     if (team1AlreadyPaired) {
@@ -430,35 +457,38 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
 
   // Handle edit manual pairing
   const handleEditManualPairing = (index) => {
+    if (isViewOnly) return; // Prevent action in view-only mode
     const pairing = manualPairings[index];
-    setSelectedTeam1(pairing.team1?._id || '');
-    setSelectedTeam2(pairing.team2?._id || '');
-    setSelectedJudge(pairing.judges?.length > 0 ? pairing.judges[0]._id : '');
+    setSelectedTeam1(pairing.team1 || ''); // Use ID
+    setSelectedTeam2(pairing.team2 || ''); // Use ID
+    setSelectedJudge(pairing.judges?.length > 0 ? pairing.judges[0] : ''); // Use ID
     setRoomLocation(pairing.location || '');
     setEditingPairingIndex(index);
   };
 
   // Handle delete manual pairing
   const handleDeleteManualPairing = (index) => {
+    if (isViewOnly) return; // Prevent action in view-only mode
     const updatedPairings = [...manualPairings];
     updatedPairings.splice(index, 1);
     setManualPairings(updatedPairings);
   };
 
-  // Handle save manual pairings
+  // Handle save manual pairings (to preview area)
   const handleSaveManualPairings = () => {
-    // Mark pairings as manually created
+    if (isViewOnly) return; // Prevent action in view-only mode
+    // Mark pairings as manually created for potential differentiation later
     const markedPairings = manualPairings.map(pairing => ({
       ...pairing,
       _manuallyCreated: true
     }));
 
-    setRandomizedPairings(markedPairings);
+    setRandomizedPairings(markedPairings); // Use randomizedPairings state to show preview
     setShowRandomizedPairings(true);
     handleCloseManualEntryDialog();
   };
 
-  // Get active round pairings
+  // Get active round pairings (submitted/published)
   const getActiveRoundPairings = () => {
     const roundKey = `${activeRoundType}-${activeRound}`;
     return pairings[roundKey] || [];
@@ -495,603 +525,490 @@ const TournamentPostingTab = ({ currentUser, tournamentCreatorId }) => {
     return null;
   };
 
-  // Find randomized pairing for a team in the active round
+  // Find randomized pairing for a team in the active round preview
   const getRandomizedPairing = (teamId) => {
     return randomizedPairings.find(pairing =>
-      pairing.team1?._id === teamId || pairing.team2?._id === teamId
+      (pairing.team1?._id || pairing.team1) === teamId || (pairing.team2?._id || pairing.team2) === teamId
     );
   };
 
-  // Render team cell content
+
+  // Render cell for team pairing status
   const renderTeamCell = (team, roundType, roundNumber) => {
-    // If this is the active round and we have randomized pairings, show those instead
-    if (showRandomizedPairings && roundType === activeRoundType && roundNumber === activeRound) {
-      const randomizedPairing = getRandomizedPairing(team._id);
-
-      if (randomizedPairing) {
-        const isTeam1 = randomizedPairing.team1?._id === team._id;
-        const opponent = isTeam1 ? randomizedPairing.team2 : randomizedPairing.team1;
-
-        return (
-          <Box sx={{ p: 1, backgroundColor: 'rgba(25, 118, 210, 0.08)', borderRadius: 1 }}>
-            <Typography variant="body2" fontWeight="bold" color="primary">
-              {opponent?.name || t('tournamentPostingTab.bye', { defaultValue: 'BYE' })}
-            </Typography>
-            {randomizedPairing.location && (
-              <Typography variant="caption" color="text.secondary">
-                {t('tournamentPostingTab.room', { defaultValue: 'Room' })}: {randomizedPairing.location}
-              </Typography>
-            )}
-            {randomizedPairing.judges && randomizedPairing.judges.length > 0 && (
-              <Typography variant="caption" display="block" color="text.secondary">
-                {t('tournamentPostingTab.judge', { defaultValue: 'Judge' })}: {randomizedPairing.judges[0]?.username}
-              </Typography>
-            )}
-            <Typography variant="caption" display="block" color="primary.dark" sx={{ mt: 0.5, fontStyle: 'italic' }}>
-              {t('tournamentPostingTab.notSubmitted', { defaultValue: 'Not submitted' })}
-            </Typography>
-          </Box>
-        );
-      }
-
-      return (
-        <Box sx={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1 }}>
-          <Typography variant="body2" color="primary">
-            {t('tournamentPostingTab.pendingRandomization', { defaultValue: 'Pending randomization' })}
-          </Typography>
-        </Box>
-      );
-    }
-
-    // Otherwise, show the existing pairings
+    const roundKey = `${roundType}-${roundNumber}`;
+    const isSubmitted = submittedRounds.has(roundKey);
     const pairing = getTeamPairing(team._id, roundType, roundNumber);
 
-    if (!pairing) {
+    if (pairing) {
+      const opponent = pairing.team1?._id === team._id ? pairing.team2 : pairing.team1;
+      const judgeNames = pairing.judges?.map(j => j?.name || 'N/A').join(', ') || t('tournamentPostingTab.noJudgeAssigned', { defaultValue: 'No Judge' });
+      const location = pairing.location || t('tournamentPostingTab.noLocation', { defaultValue: 'N/A' });
+      const status = pairing.published ? t('tournamentPostingTab.published', { defaultValue: 'Published' }) : t('tournamentPostingTab.pending', { defaultValue: 'Pending' });
+
       return (
-        <Box sx={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            {t('tournamentPostingTab.pending', { defaultValue: 'Pending' })}
-          </Typography>
-        </Box>
+        <Tooltip title={
+          <>
+            <Typography variant="body2">{t('tournamentPostingTab.opponent', { defaultValue: 'Opponent' })}: {opponent?.name || t('tournamentPostingTab.bye', { defaultValue: 'BYE' })}</Typography>
+            <Typography variant="body2">{t('tournamentPostingTab.judge', { defaultValue: 'Judge' })}: {judgeNames}</Typography>
+            <Typography variant="body2">{t('tournamentPostingTab.location', { defaultValue: 'Location' })}: {location}</Typography>
+            <Typography variant="body2">{t('tournamentPostingTab.status', { defaultValue: 'Status' })}: {status}</Typography>
+          </>
+        }>
+          <Chip
+            label={opponent?.name ? opponent.name.substring(0, 10) + '...' : t('tournamentPostingTab.bye', { defaultValue: 'BYE' })}
+            size="small"
+            color={pairing.isBye ? "secondary" : "primary"}
+            variant={isSubmitted ? "filled" : "outlined"}
+          />
+        </Tooltip>
       );
+    } else if (showRandomizedPairings && roundType === activeRoundType && roundNumber === activeRound) {
+      // Check if the team is in the randomized preview for the active round
+      const randomPairing = getRandomizedPairing(team._id);
+      if (randomPairing) {
+        const opponent = (randomPairing.team1?._id || randomPairing.team1) === team._id ? (randomPairing._team2Display || randomPairing.team2) : (randomPairing._team1Display || randomPairing.team1);
+        const judgeNames = (randomPairing._judgesDisplay || randomPairing.judges)?.map(j => j?.name || 'N/A').join(', ') || t('tournamentPostingTab.noJudgeAssigned', { defaultValue: 'No Judge' });
+        const location = randomPairing.location || t('tournamentPostingTab.noLocation', { defaultValue: 'N/A' });
+
+        return (
+          <Tooltip title={
+            <>
+              <Typography variant="body2">{t('tournamentPostingTab.opponent', { defaultValue: 'Opponent' })}: {opponent?.name || t('tournamentPostingTab.bye', { defaultValue: 'BYE' })} ({t('tournamentPostingTab.preview', { defaultValue: 'Preview' })})</Typography>
+              <Typography variant="body2">{t('tournamentPostingTab.judge', { defaultValue: 'Judge' })}: {judgeNames}</Typography>
+              <Typography variant="body2">{t('tournamentPostingTab.location', { defaultValue: 'Location' })}: {location}</Typography>
+            </>
+          }>
+            <Chip
+              label={opponent?.name ? opponent.name.substring(0, 10) + '...' : t('tournamentPostingTab.bye', { defaultValue: 'BYE' })}
+              size="small"
+              color={randomPairing.isBye ? "secondary" : "warning"} // Warning color for preview
+              variant="outlined"
+            />
+          </Tooltip>
+        );
+      }
     }
 
-    const isTeam1 = pairing.team1?._id === team._id;
-    const opponent = isTeam1 ? pairing.team2 : pairing.team1;
-
-    return (
-      <Box sx={{ p: 1 }}>
-        <Typography variant="body2" fontWeight="bold">
-          {opponent?.name || t('tournamentPostingTab.bye', { defaultValue: 'BYE' })}
-        </Typography>
-        {pairing.location && (
-          <Typography variant="caption" color="text.secondary">
-            {t('tournamentPostingTab.room', { defaultValue: 'Room' })}: {pairing.location}
-          </Typography>
-        )}
-        {pairing.judges && pairing.judges.length > 0 && (
-          <Typography variant="caption" display="block" color="text.secondary">
-            {t('tournamentPostingTab.judge', { defaultValue: 'Judge' })}: {pairing.judges[0]?.username}
-          </Typography>
-        )}
-      </Box>
-    );
+    return '-'; // No pairing found
   };
 
+
+  // Get available teams for manual pairing dropdowns
+  const getAvailableTeams = (excludeTeamId = null) => {
+    const pairedTeamIds = new Set(
+      manualPairings
+        .flatMap(p => [p.team1, p.team2])
+        .filter(id => id && id !== excludeTeamId) // Filter out null/undefined and the excluded team
+    );
+    return teams.filter(team => !pairedTeamIds.has(team._id));
+  };
+
+  const availableJudges = judges; // Assuming all fetched judges are available
+
+  const currentRoundKey = `${activeRoundType}-${activeRound}`;
+  const isCurrentRoundSubmitted = submittedRounds.has(currentRoundKey);
+  const activeRoundPairings = getActiveRoundPairings(); // Submitted pairings for the active round
+
+  if (loading) {
+    return <CircularProgress />;
+  }
+
+  if (error && !teams.length) { // Show critical error only if loading fundamentally failed
+    return <Alert severity="error">{error}</Alert>;
+  }
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">
-          {t('tournamentPostingTab.title', { defaultValue: 'Tournament Postings' })}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            {loading ? t('tournamentPostingTab.refreshing', { defaultValue: 'Refreshing...' }) : t('tournamentPostingTab.refresh', { defaultValue: 'Refresh' })}
-          </Button>
-        </Box>
-      </Box>
+    <Box sx={{ width: '100%' }}>
+      <Typography variant="h5" gutterBottom>{t('tournamentPostingTab.title', { defaultValue: 'Pairings & Postings' })}</Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {/* General Error Display */}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+      {/* Auto Progress Notification */}
       {autoProgressNotification && (
-        <Alert severity="success" sx={{ mb: 2 }}>
+        <Alert severity="info" sx={{ mb: 2 }} key={autoProgressNotification.timestamp}>
           {autoProgressNotification.message}
         </Alert>
       )}
 
-      {showRandomizedPairings && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {randomizedPairings.length > 0 && randomizedPairings[0]._manuallyCreated ? (
-              <KeyboardTabIcon />
-            ) : (
-              <ShuffleIcon />
-            )}
-            <Typography variant="body1">
-              {randomizedPairings.length > 0 && randomizedPairings[0]._manuallyCreated ? (
-                t('tournamentPostingTab.previewModeManual', {
-                  round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
-                  defaultValue: `Previewing manually entered pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}. Click Submit to finalize or Cancel to discard.` // Keep existing t()
-                })
-              ) : (
-                t('tournamentPostingTab.previewMode', {
-                  round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
-                  defaultValue: `Previewing randomized pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}. Click Submit to finalize or Cancel to discard.` // Keep existing t()
-                })
-              )}
-            </Typography>
-          </Box>
-        </Alert>
-      )}
-
-      <Paper sx={{ mb: 4 }}>
-        <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FormControl sx={{ minWidth: 200 }}>
-                <InputLabel id="active-round-select-label">
-                  {t('tournamentPostingTab.activeRound', { defaultValue: 'Active Round' })}
-                </InputLabel>
-                <Select
-                  labelId="active-round-select-label"
-                  value={rounds.some(r => `${r.type}-${r.number}` === `${activeRoundType}-${activeRound}`) ? `${activeRoundType}-${activeRound}` : ''}
-                  label={t('tournamentPostingTab.activeRound', { defaultValue: 'Active Round' })}
-                  onChange={handleRoundChange}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={4} md={3}>
+            <FormControl fullWidth>
+              <InputLabel id="round-select-label">{t('tournamentPostingTab.selectRound', { defaultValue: 'Select Round' })}</InputLabel>
+              <Select
+                labelId="round-select-label"
+                value={`${activeRoundType}-${activeRound}`}
+                label={t('tournamentPostingTab.selectRound', { defaultValue: 'Select Round' })}
+                onChange={handleRoundChange}
+              >
+                {rounds.map((round) => (
+                  <MenuItem key={round.id} value={`${round.type}-${round.number}`}>
+                    {round.name} {submittedRounds.has(`${round.type}-${round.number}`) ? `(${t('tournamentPostingTab.submitted', { defaultValue: 'Submitted' })})` : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          {!isViewOnly && isOrganizerOrAdmin && ( // Conditionally render management buttons
+            <>
+              <Grid item xs={6} sm={2} md={2}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={randomizing ? <CircularProgress size={20} color="inherit" /> : <ShuffleIcon />}
+                  onClick={handleOpenRandomizeDialog}
+                  disabled={randomizing || submitting || isCurrentRoundSubmitted || showRandomizedPairings}
+                  fullWidth
                 >
-                  {rounds.map(round => (
-                    <MenuItem key={round.id} value={`${round.type}-${round.number}`}>
-                      {round.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  {t('tournamentPostingTab.randomize', { defaultValue: 'Randomize' })}
+                </Button>
+              </Grid>
+              <Grid item xs={6} sm={3} md={2}>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<KeyboardTabIcon />}
+                  onClick={handleOpenManualEntryDialog}
+                  disabled={randomizing || submitting || isCurrentRoundSubmitted}
+                  fullWidth
+                >
+                  {t('tournamentPostingTab.manualEntry', { defaultValue: 'Manual Entry' })}
+                </Button>
+              </Grid>
+            </>
+          )}
+          <Grid item xs={6} sm={2} md={1}>
+            <Tooltip title={t('tournamentPostingTab.refreshData', { defaultValue: 'Refresh Data' })}>
+              <IconButton onClick={handleRefresh} disabled={loading || randomizing || submitting}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Grid>
+          {!isViewOnly && isOrganizerOrAdmin && ( // Conditionally render auto-progress switch
+            <Grid item xs={12} sm={4} md={3}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={autoProgressRounds}
+                    onChange={(e) => setAutoProgressRounds(e.target.checked)}
+                    name="autoProgressRounds"
+                    color="primary"
+                  />
+                }
+                label={t('tournamentPostingTab.autoProgressRounds', { defaultValue: 'Auto-Progress Rounds' })}
+              />
+            </Grid>
+          )}
+        </Grid>
+      </Paper>
 
-              {isOrganizerOrAdmin && (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={autoProgressRounds}
-                      onChange={(e) => setAutoProgressRounds(e.target.checked)}
-                      color="primary"
-                    />
-                  }
-                  label={t('tournamentPostingTab.autoProgressRounds', { defaultValue: 'Auto-progress to next round' })}
-                />
-              )}
-            </Box>
-
-            {isOrganizerOrAdmin && (
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                {!showRandomizedPairings ? (
-                  <>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      startIcon={<ShuffleIcon />}
-                      onClick={handleOpenRandomizeDialog}
-                      disabled={randomizing || submittedRounds.has(`${activeRoundType}-${activeRound}`)}
-                      sx={{ mr: 1 }}
-                    >
-                      {t('tournamentPostingTab.randomize', { defaultValue: 'Randomize' })}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      startIcon={<KeyboardTabIcon />}
-                      onClick={handleOpenManualEntryDialog}
-                      disabled={randomizing || submittedRounds.has(`${activeRoundType}-${activeRound}`)}
-                    >
-                      {t('tournamentPostingTab.manualEntry', { defaultValue: 'Manual Entry' })}
-                    </Button>
-                    {submittedRounds.has(`${activeRoundType}-${activeRound}`) && (
-                      <Typography variant="caption" color="success.main" sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-                        <CheckIcon fontSize="small" sx={{ mr: 0.5 }} />
-                        {t('tournamentPostingTab.roundSubmitted', { defaultValue: 'Round submitted and published' })}
-                      </Typography>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={handleCancelRandomizedPairings}
-                      disabled={submitting}
-                    >
-                      {t('tournamentPostingTab.cancel', { defaultValue: 'Cancel' })}
-                    </Button>
-
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      startIcon={<SaveIcon />}
-                      onClick={handleSubmitPairings}
-                      disabled={submitting}
-                    >
-                      {submitting
-                        ? t('tournamentPostingTab.submitting', { defaultValue: 'Submitting...' })
-                        : t('tournamentPostingTab.submit', { defaultValue: 'Submit' })}
-                    </Button>
-                  </>
-                )}
-              </Box>
-            )}
-          </Box>
-        </Box>
-
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
+      {/* Randomized Pairings Preview */}
+      {showRandomizedPairings && (
+        <Paper sx={{ p: 2, mb: 3, border: '2px solid orange' }}>
+          <Typography variant="h6" gutterBottom color="warning.main">
+            {randomizedPairings[0]?._manuallyCreated
+              ? t('tournamentPostingTab.previewModeManual', { round: activeRound, defaultValue: `Previewing Manual Pairings for Round ${activeRound}` })
+              : t('tournamentPostingTab.previewMode', { round: activeRound, defaultValue: `Previewing Randomized Pairings for Round ${activeRound}` })
+            }
+          </Typography>
           <TableContainer>
-            <Table>
+            <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold' }}>
-                    {t('tournamentPostingTab.team', { defaultValue: 'Team' })}
-                  </TableCell>
-                  {rounds.map(round => (
-                    <TableCell
-                      key={round.id}
-                      align="center"
-                      sx={{
-                        fontWeight: 'bold',
-                        backgroundColor: round.type === activeRoundType && round.number === activeRound && showRandomizedPairings
-                          ? 'rgba(25, 118, 210, 0.08)'
-                          : submittedRounds.has(`${round.type}-${round.number}`)
-                            ? 'rgba(76, 175, 80, 0.08)'
-                            : 'inherit'
-                      }}
-                    >
-                      {round.name}
-                      {round.type === activeRoundType && round.number === activeRound && showRandomizedPairings && (
-                        <Typography variant="caption" display="block" color="primary.dark" sx={{ fontStyle: 'italic' }}>
-                          {t('tournamentPostingTab.preview', { defaultValue: 'Preview' })}
-                        </Typography>
-                      )}
-                      {submittedRounds.has(`${round.type}-${round.number}`) && !showRandomizedPairings && (
-                        <Typography variant="caption" display="block" color="success.dark" sx={{ fontStyle: 'italic' }}>
-                          {t('tournamentPostingTab.submitted', { defaultValue: 'Submitted' })}
-                        </Typography>
-                      )}
-                    </TableCell>
-                  ))}
+                  <TableCell>{t('tournamentPostingTab.table.team1', { defaultValue: 'Team 1' })}</TableCell>
+                  <TableCell>{t('tournamentPostingTab.table.team2', { defaultValue: 'Team 2' })}</TableCell>
+                  <TableCell>{t('tournamentPostingTab.table.judge', { defaultValue: 'Judge' })}</TableCell>
+                  <TableCell>{t('tournamentPostingTab.table.location', { defaultValue: 'Location' })}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {teams.map(team => (
-                  <TableRow key={team._id} sx={{ '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
-                    <TableCell>
-                      <Typography variant="body1">{team.name}</Typography>
-                      {team.club && (
-                        <Typography variant="caption" color="text.secondary">
-                          {team.club}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    {rounds.map(round => (
-                      <TableCell
-                        key={`${team._id}-${round.id}`}
-                        align="center"
-                        sx={{
-                          backgroundColor: round.type === activeRoundType && round.number === activeRound && showRandomizedPairings
-                            ? 'rgba(25, 118, 210, 0.04)'
-                            : submittedRounds.has(`${round.type}-${round.number}`)
-                              ? 'rgba(76, 175, 80, 0.04)'
-                              : 'inherit',
-                          transition: 'background-color 0.3s ease'
-                        }}
-                      >
-                        {renderTeamCell(team, round.type, round.number)}
-                      </TableCell>
-                    ))}
+                {randomizedPairings.map((pairing, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{pairing._team1Display?.name || pairing.team1?.name || 'N/A'}</TableCell>
+                    <TableCell>{pairing.isBye ? t('tournamentPostingTab.bye', { defaultValue: 'BYE' }) : (pairing._team2Display?.name || pairing.team2?.name || 'N/A')}</TableCell>
+                    <TableCell>{(pairing._judgesDisplay || pairing.judges)?.map(j => j?.name).join(', ') || t('tournamentPostingTab.noJudgeAssigned', { defaultValue: 'No Judge' })}</TableCell>
+                    <TableCell>{pairing.location || t('tournamentPostingTab.noLocation', { defaultValue: 'N/A' })}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
-        )}
-      </Paper>
+          {!isViewOnly && isOrganizerOrAdmin && ( // Conditionally render submit/cancel buttons
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
+                onClick={handleSubmitPairings}
+                disabled={submitting || randomizing}
+              >
+                {t('tournamentPostingTab.submitPairings', { defaultValue: 'Submit Pairings' })}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleCancelRandomizedPairings}
+                disabled={submitting || randomizing}
+              >
+                {t('tournamentPostingTab.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+            </Box>
+          )}
+        </Paper>
+      )}
 
-      {/* Randomize Dialog */}
-      <Dialog open={openRandomizeDialog} onClose={handleCloseRandomizeDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {t('tournamentPostingTab.randomizeTitle', { defaultValue: 'Randomize Pairings' })}
-        </DialogTitle>
+      {/* Main Pairings Table */}
+      <Typography variant="h6" gutterBottom>{t('tournamentPostingTab.pairingsGrid', { defaultValue: 'Pairings Grid' })}</Typography>
+      <TableContainer component={Paper}>
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold' }}>{t('tournamentPostingTab.table.team', { defaultValue: 'Team' })}</TableCell>
+              {rounds.map((round) => (
+                <TableCell key={round.id} align="center" sx={{ fontWeight: 'bold' }}>
+                  {round.name}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {teams.map((team) => (
+              <TableRow key={team._id} hover>
+                <TableCell component="th" scope="row">
+                  {team.name}
+                </TableCell>
+                {rounds.map((round) => (
+                  <TableCell key={`${team._id}-${round.id}`} align="center">
+                    {renderTeamCell(team, round.type, round.number)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Randomize Pairings Dialog */}
+      <Dialog open={openRandomizeDialog} onClose={handleCloseRandomizeDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>{t('tournamentPostingTab.randomizeOptionsTitle', { defaultValue: 'Randomize Pairings Options' })}</DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body1" gutterBottom>
-              {t('tournamentPostingTab.randomizeDescription', {
-                round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
-                defaultValue: `You are about to randomize pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}.` // Keep existing t()
-              })}
-            </Typography>
-
-            <FormControl fullWidth sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                {t('tournamentPostingTab.options', { defaultValue: 'Options' })}
-              </Typography>
-
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <FormControl>
-                  <label>
-                    <input
-                      type="checkbox"
-                      name="avoidRematches"
-                      checked={randomizeOptions.avoidRematches}
-                      onChange={handleRandomizeOptionsChange}
-                    />
-                    {' '}
-                    {t('tournamentPostingTab.avoidRematches', { defaultValue: 'Avoid rematches' })}
-                  </label>
-                </FormControl>
-
-                <FormControl>
-                  <label>
-                    <input
-                      type="checkbox"
-                      name="avoidSameClub"
-                      checked={randomizeOptions.avoidSameClub}
-                      onChange={handleRandomizeOptionsChange}
-                    />
-                    {' '}
-                    {t('tournamentPostingTab.avoidSameClub', { defaultValue: 'Avoid same-club matchups' })}
-                  </label>
-                </FormControl>
-              </Box>
-            </FormControl>
-          </Box>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            {t('tournamentPostingTab.randomizeDescription', {
+              round: activeRound,
+              defaultValue: `Configure options for randomizing Round ${activeRound}.`
+            })}
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={randomizeOptions.avoidRematches}
+                onChange={handleRandomizeOptionsChange}
+                name="avoidRematches"
+                disabled={isViewOnly} // Disable in view-only
+              />
+            }
+            label={t('tournamentPostingTab.avoidRematches', { defaultValue: 'Avoid Rematches' })}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={randomizeOptions.avoidSameClub}
+                onChange={handleRandomizeOptionsChange}
+                name="avoidSameClub"
+                disabled={isViewOnly} // Disable in view-only
+              />
+            }
+            label={t('tournamentPostingTab.avoidSameClub', { defaultValue: 'Avoid Same Club/Institution' })}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRandomizeDialog}>
-            {t('common.cancel', { defaultValue: 'Cancel' })}
-          </Button>
-          <Button
-            onClick={handleRandomizePairings}
-            variant="contained"
-            color="primary"
-            disabled={randomizing}
-          >
-            {randomizing
-              ? t('tournamentPostingTab.randomizing', { defaultValue: 'Randomizing...' }) // Keep existing t()
-              : t('tournamentPostingTab.randomize', { defaultValue: 'Randomize' })} // Keep existing t()
-          </Button>
+          <Button onClick={handleCloseRandomizeDialog}>{t('common.cancel', { defaultValue: 'Cancel' })}</Button>
+          {!isViewOnly && ( // Conditionally render Randomize button
+            <Button
+              onClick={handleRandomizePairings}
+              variant="contained"
+              color="primary"
+              disabled={randomizing}
+              startIcon={randomizing ? <CircularProgress size={20} color="inherit" /> : <ShuffleIcon />}
+            >
+              {t('tournamentPostingTab.randomize', { defaultValue: 'Randomize' })}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
       {/* Manual Entry Dialog */}
       <Dialog open={openManualEntryDialog} onClose={handleCloseManualEntryDialog} maxWidth="md" fullWidth>
         <DialogTitle>
-          {t('tournamentPostingTab.manualEntryTitle', { defaultValue: 'Manual Entry for Pairings' })}
+          {t('tournamentPostingTab.manualEntryTitle', { round: activeRound, defaultValue: `Manual Pairing Entry - Round ${activeRound}` })}
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseManualEntryDialog}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body1" gutterBottom>
-              {t('tournamentPostingTab.manualEntryDescription', {
-                round: rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `${t('tournamentPostingTab.round', { defaultValue: 'Round' })} ${activeRound}`,
-                defaultValue: `Manually create pairings for ${rounds.find(r => r.type === activeRoundType && r.number === activeRound)?.name || `Round ${activeRound}`}.` // Keep existing t()
-              })}
-            </Typography>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            {t('tournamentPostingTab.manualEntryDescription', {
+              defaultValue: 'Manually create or edit pairings for the selected round. Use the form below to add pairings one by one.'
+            })}
+          </Typography>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            {/* Pairing Form */}
-            <Box sx={{ mt: 3, mb: 3, p: 2, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: 1 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                {editingPairingIndex >= 0
-                  ? t('tournamentPostingTab.editPairing', { defaultValue: 'Edit Pairing' }) // Keep existing t()
-                  : t('tournamentPostingTab.addPairing', { defaultValue: 'Add New Pairing' })} // Keep existing t()
-              </Typography>
-
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="team1-select-label">
-                      {t('tournamentPostingTab.team1', { defaultValue: 'Team 1' })} *
-                    </InputLabel>
+          {!isViewOnly && ( // Conditionally render the form section
+            <Box component="form" noValidate autoComplete="off" sx={{ mb: 3 }}>
+              <Grid container spacing={2} alignItems="flex-end">
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel id="manual-team1-label">{t('tournamentPostingTab.table.team1', { defaultValue: 'Team 1' })}</InputLabel>
                     <Select
-                      labelId="team1-select-label"
+                      labelId="manual-team1-label"
                       value={selectedTeam1}
-                      label={t('tournamentPostingTab.team1', { defaultValue: 'Team 1' }) + ' *'}
+                      label={t('tournamentPostingTab.table.team1', { defaultValue: 'Team 1' })}
                       onChange={(e) => setSelectedTeam1(e.target.value)}
+                      disabled={isViewOnly} // Disable in view-only
                     >
-                      {teams
-                        .filter(team => !manualPairings.some((p, idx) =>
-                          idx !== editingPairingIndex &&
-                          (p.team1?._id === team._id || p.team2?._id === team._id)
-                        ))
-                        .map(team => (
-                          <MenuItem key={team._id} value={team._id}>
-                            {team.name} {team.club ? `(${team.club})` : ''}
-                          </MenuItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="team2-select-label">
-                      {t('tournamentPostingTab.team2ByeOption', { defaultValue: 'Team 2 (or leave empty for BYE)' })}
-                    </InputLabel>
-                    <Select
-                      labelId="team2-select-label"
-                      value={selectedTeam2}
-                      label={t('tournamentPostingTab.team2ByeOption', { defaultValue: 'Team 2 (or leave empty for BYE)' })}
-                      onChange={(e) => setSelectedTeam2(e.target.value)}
-                    >
-                      <MenuItem value="">
-                        <em>{t('tournamentPostingTab.bye', { defaultValue: 'BYE' })}</em>
-                      </MenuItem>
-                      {teams
-                        .filter(team =>
-                          team._id !== selectedTeam1 &&
-                          !manualPairings.some((p, idx) =>
-                            idx !== editingPairingIndex &&
-                            (p.team1?._id === team._id || p.team2?._id === team._id)
-                          )
-                        )
-                        .map(team => (
-                          <MenuItem key={team._id} value={team._id}>
-                            {team.name} {team.club ? `(${team.club})` : ''}
-                          </MenuItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="judge-select-label">
-                      {t('tournamentPostingTab.judge', { defaultValue: 'Judge' })}
-                    </InputLabel>
-                    <Select
-                      labelId="judge-select-label"
-                      value={selectedJudge}
-                      label={t('tournamentPostingTab.judge', { defaultValue: 'Judge' })}
-                      onChange={(e) => setSelectedJudge(e.target.value)}
-                    >
-                      <MenuItem value="">
-                        <em>{t('tournamentPostingTab.noJudge', { defaultValue: 'No Judge' })}</em>
-                      </MenuItem>
-                      {judges.map(judge => (
-                        <MenuItem key={judge._id} value={judge._id}>
-                          {judge.username || judge.name || 'Judge'}
-                        </MenuItem>
+                      <MenuItem value=""><em>{t('common.select', { defaultValue: 'Select...' })}</em></MenuItem>
+                      {getAvailableTeams(selectedTeam2).map((team) => (
+                        <MenuItem key={team._id} value={team._id}>{team.name}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Grid>
-
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel id="manual-team2-label">{t('tournamentPostingTab.table.team2', { defaultValue: 'Team 2 (Optional - Bye)' })}</InputLabel>
+                    <Select
+                      labelId="manual-team2-label"
+                      value={selectedTeam2}
+                      label={t('tournamentPostingTab.table.team2', { defaultValue: 'Team 2 (Optional - Bye)' })}
+                      onChange={(e) => setSelectedTeam2(e.target.value)}
+                      disabled={isViewOnly} // Disable in view-only
+                    >
+                      <MenuItem value=""><em>{t('common.selectOrBye', { defaultValue: 'Select or BYE...' })}</em></MenuItem>
+                      {getAvailableTeams(selectedTeam1).map((team) => (
+                        <MenuItem key={team._id} value={team._id}>{team.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel id="manual-judge-label">{t('tournamentPostingTab.table.judge', { defaultValue: 'Judge (Optional)' })}</InputLabel>
+                    <Select
+                      labelId="manual-judge-label"
+                      value={selectedJudge}
+                      label={t('tournamentPostingTab.table.judge', { defaultValue: 'Judge (Optional)' })}
+                      onChange={(e) => setSelectedJudge(e.target.value)}
+                      disabled={isViewOnly} // Disable in view-only
+                    >
+                      <MenuItem value=""><em>{t('common.select', { defaultValue: 'Select...' })}</em></MenuItem>
+                      {availableJudges.map((judge) => (
+                        <MenuItem key={judge._id} value={judge._id}>{judge.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={4} md={2}>
                   <TextField
-                    fullWidth
-                    label={t('tournamentPostingTab.room', { defaultValue: 'Room' })}
+                    label={t('tournamentPostingTab.table.location', { defaultValue: 'Location (Optional)' })}
                     value={roomLocation}
                     onChange={(e) => setRoomLocation(e.target.value)}
-                    placeholder={`${t('tournamentPostingTab.roomPlaceholder', { defaultValue: 'Room' })} ${manualPairings.length + 1}`}
+                    fullWidth
+                    margin="dense"
+                    disabled={isViewOnly} // Disable in view-only
                   />
                 </Grid>
-
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                    {editingPairingIndex >= 0 && (
-                      <Button
-                        variant="outlined"
-                        color="secondary"
-                        onClick={() => {
-                          setSelectedTeam1('');
-                          setSelectedTeam2('');
-                          setSelectedJudge('');
-                          setRoomLocation('');
-                          setEditingPairingIndex(-1);
-                        }}
-                        sx={{ mr: 1 }}
-                      >
-                        {t('common.cancel', { defaultValue: 'Cancel' })}
-                      </Button>
-                    )}
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleAddManualPairing}
-                      startIcon={editingPairingIndex >= 0 ? <EditIcon /> : <AddIcon />}
-                    >
-                      {editingPairingIndex >= 0
-                        ? t('tournamentPostingTab.updatePairing', { defaultValue: 'Update Pairing' }) // Keep existing t()
-                        : t('tournamentPostingTab.addPairing', { defaultValue: 'Add Pairing' })} // Keep existing t()
-                    </Button>
-                  </Box>
+                <Grid item xs={12} sm={2} md={1}>
+                  <Button
+                    onClick={handleAddManualPairing}
+                    variant="contained"
+                    color={editingPairingIndex >= 0 ? "secondary" : "primary"}
+                    startIcon={editingPairingIndex >= 0 ? <EditIcon /> : <AddIcon />}
+                    disabled={!selectedTeam1 || isViewOnly} // Disable if no team1 or view-only
+                    fullWidth
+                    sx={{ height: '56px' }} // Align height with text fields/selects
+                  >
+                    {editingPairingIndex >= 0 ? t('common.update', { defaultValue: 'Update' }) : t('common.add', { defaultValue: 'Add' })}
+                  </Button>
                 </Grid>
               </Grid>
             </Box>
+          )}
 
-            {/* Current Pairings List */}
-            <Typography variant="subtitle1" gutterBottom>
-              {t('tournamentPostingTab.currentPairings', { defaultValue: 'Current Pairings' })}
-            </Typography>
-
-            {manualPairings.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
-                {t('tournamentPostingTab.noPairingsYet', { defaultValue: 'No pairings created yet' })}
-              </Typography>
-            ) : (
-              <TableContainer component={Paper} sx={{ mt: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{t('tournamentPostingTab.team1', { defaultValue: 'Team 1' })}</TableCell>
-                      <TableCell>{t('tournamentPostingTab.team2', { defaultValue: 'Team 2' })}</TableCell>
-                      <TableCell>{t('tournamentPostingTab.judge', { defaultValue: 'Judge' })}</TableCell>
-                      <TableCell>{t('tournamentPostingTab.room', { defaultValue: 'Room' })}</TableCell>
-                      <TableCell align="right">{t('tournamentPostingTab.actions', { defaultValue: 'Actions' })}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {manualPairings.map((pairing, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{pairing.team1?.name || 'Unknown'}</TableCell>
-                        <TableCell>
-                          {pairing.team2?.name || (
-                            <Chip
-                              label={t('tournamentPostingTab.bye', { defaultValue: 'BYE' })} // Keep existing t()
-                              size="small"
-                              color="secondary"
-                              variant="outlined"
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {pairing.judges?.length > 0 ? pairing.judges[0]?.username : '-'}
-                        </TableCell>
-                        <TableCell>{pairing.location || '-'}</TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleEditManualPairing(index)}
-                            color="primary"
-                          >
+          {/* Table of Manually Added/Edited Pairings */}
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: isViewOnly ? 0 : 2 }}>
+            {t('tournamentPostingTab.currentManualPairings', { defaultValue: 'Current Manual Pairings' })}
+          </Typography>
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('tournamentPostingTab.table.team1', { defaultValue: 'Team 1' })}</TableCell>
+                  <TableCell>{t('tournamentPostingTab.table.team2', { defaultValue: 'Team 2' })}</TableCell>
+                  <TableCell>{t('tournamentPostingTab.table.judge', { defaultValue: 'Judge' })}</TableCell>
+                  <TableCell>{t('tournamentPostingTab.table.location', { defaultValue: 'Location' })}</TableCell>
+                  {!isViewOnly && <TableCell align="right">{t('common.actions', { defaultValue: 'Actions' })}</TableCell>}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {manualPairings.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={isViewOnly ? 4 : 5} align="center">
+                      {t('tournamentPostingTab.noManualPairings', { defaultValue: 'No manual pairings added yet for this round.' })}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {manualPairings.map((pairing, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{pairing._team1Display?.name || teams.find(t => t._id === pairing.team1)?.name || 'N/A'}</TableCell>
+                    <TableCell>{pairing.isBye ? t('tournamentPostingTab.bye', { defaultValue: 'BYE' }) : (pairing._team2Display?.name || teams.find(t => t._id === pairing.team2)?.name || 'N/A')}</TableCell>
+                    <TableCell>{(pairing._judgesDisplay || pairing.judges)?.map(j => (typeof j === 'string' ? judges.find(jd => jd._id === j)?.name : j?.name)).join(', ') || t('tournamentPostingTab.noJudgeAssigned', { defaultValue: 'No Judge' })}</TableCell>
+                    <TableCell>{pairing.location || t('tournamentPostingTab.noLocation', { defaultValue: 'N/A' })}</TableCell>
+                    {!isViewOnly && ( // Conditionally render action buttons
+                      <TableCell align="right">
+                        <Tooltip title={t('common.edit', { defaultValue: 'Edit' })}>
+                          <IconButton size="small" onClick={() => handleEditManualPairing(index)} disabled={isViewOnly}>
                             <EditIcon fontSize="small" />
                           </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteManualPairing(index)}
-                            color="error"
-                          >
+                        </Tooltip>
+                        <Tooltip title={t('common.delete', { defaultValue: 'Delete' })}>
+                          <IconButton size="small" onClick={() => handleDeleteManualPairing(index)} color="error" disabled={isViewOnly}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Box>
+                        </Tooltip>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseManualEntryDialog}>
-            {t('common.cancel', { defaultValue: 'Cancel' })}
-          </Button>
-          <Button
-            onClick={handleSaveManualPairings}
-            variant="contained"
-            color="primary"
-            disabled={manualPairings.length === 0}
-            startIcon={<SaveIcon />}
-          >
-            {t('tournamentPostingTab.savePairings', { defaultValue: 'Save Pairings' })}
-          </Button>
+          <Button onClick={handleCloseManualEntryDialog}>{t('common.cancel', { defaultValue: 'Cancel' })}</Button>
+          {!isViewOnly && ( // Conditionally render Save button
+            <Button
+              onClick={handleSaveManualPairings}
+              variant="contained"
+              color="primary"
+              disabled={manualPairings.length === 0 || isViewOnly}
+              startIcon={<SaveIcon />}
+            >
+              {t('tournamentPostingTab.saveManualPairings', { defaultValue: 'Save & Preview' })}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
+
     </Box>
   );
 };

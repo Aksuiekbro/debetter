@@ -36,7 +36,7 @@ function a11yProps(index) {
   };
 }
 
-const AnnouncementsTab = ({ currentUser, tournamentCreatorId, tournament }) => {
+const AnnouncementsTab = ({ currentUser, tournamentCreatorId, tournament, isViewOnly }) => { // Add isViewOnly prop
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(0); // 0: Feed, 1: Schedule, 2: Map
 
@@ -64,14 +64,29 @@ const AnnouncementsTab = ({ currentUser, tournamentCreatorId, tournament }) => {
           </Tabs>
         </Box>
         <TabPanel value={activeTab} index={0}>
-          <AnnouncementsFeedView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={tournament} />
+          <AnnouncementsFeedView
+            currentUser={currentUser}
+            tournamentCreatorId={tournamentCreatorId}
+            tournament={tournament}
+            isViewOnly={isViewOnly} // Pass prop
+          />
         </TabPanel>
         <TabPanel value={activeTab} index={1}>
           {/* ScheduleView might also need the tournament object if it has similar permission checks */}
-          <ScheduleView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={tournament} />
+          <ScheduleView
+            currentUser={currentUser}
+            tournamentCreatorId={tournamentCreatorId}
+            tournament={tournament}
+            isViewOnly={isViewOnly} // Pass prop
+          />
         </TabPanel>
         <TabPanel value={activeTab} index={2}>
-          <MapView currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={tournament} />
+          <MapView
+            currentUser={currentUser}
+            tournamentCreatorId={tournamentCreatorId}
+            tournament={tournament}
+            isViewOnly={isViewOnly} // Pass prop
+          />
         </TabPanel>
       </Paper>
     </Box>

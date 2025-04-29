@@ -18,12 +18,12 @@ import {
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { api } from '../../config/api';
 
-const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed authLoading prop
+const CustomRegistrationFields = ({ tournament, currentUser, isViewOnly }) => { // Add isViewOnly prop
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
 
   // Log received props for debugging
-  console.log('[CustomRegFields] Props received - currentUser exists:', !!currentUser);
+  console.log('[CustomRegFields] Props received - currentUser exists:', !!currentUser, 'isViewOnly:', isViewOnly);
 
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true); // Start loading initially
@@ -179,7 +179,7 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
   
   // Handle field save
   const handleSaveField = async () => {
-    if (!isTournamentOrganizer) return; // Prevent non-organizers from saving
+    if (!isTournamentOrganizer || isViewOnly) return; // Prevent non-organizers or view-only from saving
     if (!fieldName.trim()) {
       setDialogError(t('customFieldsTab.errors.nameRequired', 'Field name is required'));
       return;
@@ -225,7 +225,7 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
   // Handle field delete
   const handleDeleteField = async (fieldId) => {
   console.log(`Delete field ${fieldId} clicked`);
-  if (!isTournamentOrganizer) return; // Prevent non-organizers from deleting
+  if (!isTournamentOrganizer || isViewOnly) return; // Prevent non-organizers or view-only from deleting
   if (!window.confirm(t('customFieldsTab.confirmDelete', 'Are you sure you want to delete this field?'))) {
     return;
   }
@@ -243,7 +243,7 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
   
   // Handle field reordering
   const handleDragEnd = async (result) => {
-    if (!isTournamentOrganizer) return; // Prevent non-organizers from reordering
+    if (!isTournamentOrganizer || isViewOnly) return; // Prevent non-organizers or view-only from reordering
     if (!result.destination) return;
 
     const reorderedFields = Array.from(fields);
@@ -287,7 +287,7 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
   
   // Row component for react-window
   const Row = useCallback(({ index, style, data }) => {
-    const { fields, isTournamentOrganizer, handleEditField, handleDeleteField, getFieldTypeLabel, t } = data;
+    const { fields, isTournamentOrganizer, handleEditField, handleDeleteField, getFieldTypeLabel, t, isViewOnly } = data; // Add isViewOnly
     const field = fields[index];
 
     if (!field) {
@@ -300,7 +300,7 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
         key={field._id}
         draggableId={field._id}
         index={index}
-        isDragDisabled={!isTournamentOrganizer} // Use isTournamentOrganizer here
+        isDragDisabled={!isTournamentOrganizer || isViewOnly} // Disable drag if view-only
       >
         {(providedDraggable) => (
           <ListItem
@@ -312,7 +312,8 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
             // Make ListItem a flex container
             sx={{ display: 'flex', alignItems: 'center', width: '100%' }}
           >
-            {isTournamentOrganizer && (
+            {/* Show drag handle only if organizer and not view-only */}
+            {isTournamentOrganizer && !isViewOnly && (
               <Box {...providedDraggable.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center', cursor: 'grab', flexShrink: 0 }}>
                 <DragIcon />
               </Box>
@@ -346,8 +347,8 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
                 </>
               }
             />
-            {/* Remove ListItemSecondaryAction, place Box directly */}
-            {isTournamentOrganizer && (
+            {/* Hide action buttons if view-only */}
+            {isTournamentOrganizer && !isViewOnly && (
               // Use ml: 'auto' to push this Box to the right
               <Box sx={{ display: 'flex', gap: 1, ml: 'auto', flexShrink: 0 }}>
                 <IconButton edge="end" onClick={() => handleEditField(field)} aria-label={t('common.edit', 'Edit')}>
@@ -389,7 +390,8 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
         <Typography variant="h6">
           {t('customFieldsTab.title', 'Custom Registration Fields')}
         </Typography>
-        {isTournamentOrganizer && (
+        {/* Hide Add Field button if view-only */}
+        {isTournamentOrganizer && !isViewOnly && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -442,7 +444,8 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
                                 width: '100%' // Ensure it takes full width
                               }}
                             >
-                              {isTournamentOrganizer && (
+                              {/* Show drag handle only if organizer and not view-only */}
+                              {isTournamentOrganizer && !isViewOnly && (
                                 <Box sx={{ mr: 1, display: 'flex', alignItems: 'center', cursor: 'grab', flexShrink: 0 }}>
                                   <DragIcon />
                                 </Box>
@@ -476,8 +479,8 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
                                   </>
                                 }
                               />
-                              {/* Remove ListItemSecondaryAction, place Box directly */}
-                              {isTournamentOrganizer && (
+                              {/* Hide action buttons if view-only */}
+                              {isTournamentOrganizer && !isViewOnly && (
                                 // Use ml: 'auto' to push this Box to the right
                                 <Box sx={{ display: 'flex', gap: 1, ml: 'auto', flexShrink: 0 }}>
                                   <IconButton edge="end" onClick={() => handleEditField(field)} aria-label={t('common.edit', 'Edit')}>
@@ -500,100 +503,94 @@ const CustomRegistrationFields = ({ tournament, currentUser }) => { // Removed a
                               width="100%"
                               outerRef={provided.innerRef}
                               itemData={{ // Pass necessary data/handlers
-                                  fields,
-                                  isTournamentOrganizer,
-                                  handleEditField, // Ensure these are stable (useCallback)
-                                  handleDeleteField, // Ensure these are stable (useCallback)
-                                  getFieldTypeLabel,
-                                  t
+                                fields,
+                                isTournamentOrganizer,
+                                handleEditField,
+                                handleDeleteField,
+                                getFieldTypeLabel,
+                                t,
+                                isViewOnly // Pass isViewOnly
                               }}
-                              {...provided.droppableProps}
-                          >
+                            >
                               {Row}
-                          </FixedSizeList>
+                            </FixedSizeList>
                       )}
                   </Droppable>
               </DragDropContext>
           )
       )}
 
-      {/* Field Dialog - Conditionally render based on organizer status */}
-      {isTournamentOrganizer && (
-          <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-              <DialogTitle>
-                  {editingField
-                      ? t('customFieldsTab.editField', 'Edit Field')
-                      : t('customFieldsTab.addField', 'Add Field')}
-              </DialogTitle>
-              <DialogContent>
-                  <Box sx={{ pt: 1 }}>
-                    <TextField
-                      label={t('customFieldsTab.fieldName', 'Field Name')}
-                      fullWidth
-                      margin="normal"
-                      value={fieldName}
-                      onChange={(e) => setFieldName(e.target.value)}
-                      required
-                    />
-      
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel id="field-type-label">
-                        {t('customFieldsTab.fieldTypeLabel', 'Field Type')}
-                      </InputLabel>
-                      <Select
-                        labelId="field-type-label"
-                        value={fieldType}
-                        onChange={(e) => setFieldType(e.target.value)}
-                        label={t('customFieldsTab.fieldTypeLabel', 'Field Type')}
-                      >
-                        <MenuItem value="text">{t('customFieldsTab.fieldType.text', 'Text')}</MenuItem>
-                        <MenuItem value="number">{t('customFieldsTab.fieldType.number', 'Number')}</MenuItem>
-                        <MenuItem value="select">{t('customFieldsTab.fieldType.select', 'Dropdown')}</MenuItem>
-                        <MenuItem value="checkbox">{t('customFieldsTab.fieldType.checkbox', 'Checkbox')}</MenuItem>
-                        <MenuItem value="date">{t('customFieldsTab.fieldType.date', 'Date')}</MenuItem>
-                      </Select>
-                    </FormControl>
-      
-                    {fieldType === 'select' && (
-                      <TextField
-                        label={t('customFieldsTab.optionsLabel', 'Options (comma-separated)')}
-                        fullWidth
-                        margin="normal"
-                        value={options}
-                        onChange={(e) => setOptions(e.target.value)}
-                        helperText={t('customFieldsTab.optionsHelp', 'Enter options separated by commas')}
-                      />
-                    )}
-      
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={isRequired}
-                          onChange={(e) => setIsRequired(e.target.checked)}
-                        />
-                      }
-                      label={t('customFieldsTab.required', 'Required')}
-                      sx={{ mt: 1 }}
-                    />
-      
-                    {dialogError && <Alert severity="error" sx={{ mt: 2 }}>{dialogError}</Alert>}
-                  </Box>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleCloseDialog} disabled={isSubmitting}>
-                  {t('common.cancel', 'Cancel')}
-                </Button>
-                <Button
-                  onClick={handleSaveField}
-                  variant="contained"
-                  startIcon={isSubmitting ? <CircularProgress size={24} /> : <SaveIcon />}
-                  disabled={isSubmitting || !fieldName.trim()}
-                >
-                  {t('common.save', 'Save')}
-                </Button>
-              </DialogActions>
-          </Dialog>
-      )}
+      {/* Add/Edit Field Dialog - Disable controls if view-only */}
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>{editingField ? t('customFieldsTab.editFieldTitle', 'Edit Field') : t('customFieldsTab.addFieldTitle', 'Add New Field')}</DialogTitle>
+        <DialogContent>
+          {dialogError && <Alert severity="error" sx={{ mb: 2 }}>{dialogError}</Alert>}
+          <TextField
+            autoFocus
+            margin="dense"
+            name="fieldName"
+            label={t('customFieldsTab.fieldNameLabel', 'Field Name')}
+            value={fieldName}
+            onChange={(e) => setFieldName(e.target.value)}
+            required
+            error={!!dialogError && !fieldName.trim()}
+            helperText={!!dialogError && !fieldName.trim() ? dialogError : ''}
+            fullWidth
+            variant="outlined"
+            disabled={isViewOnly} // Disable form elements
+          />
+          <FormControl fullWidth margin="dense" variant="outlined">
+            <InputLabel id="field-type-label">{t('customFieldsTab.fieldTypeLabel', 'Field Type')}</InputLabel>
+            <Select
+              labelId="field-type-label"
+              name="fieldType"
+              value={fieldType}
+              label={t('customFieldsTab.fieldTypeLabel', 'Field Type')}
+              onChange={(e) => setFieldType(e.target.value)}
+              disabled={isViewOnly} // Disable form elements
+            >
+              <MenuItem value="text">{t('customFieldsTab.fieldType.text', 'Text')}</MenuItem>
+              <MenuItem value="number">{t('customFieldsTab.fieldType.number', 'Number')}</MenuItem>
+              <MenuItem value="select">{t('customFieldsTab.fieldType.select', 'Dropdown')}</MenuItem>
+              <MenuItem value="checkbox">{t('customFieldsTab.fieldType.checkbox', 'Checkbox')}</MenuItem>
+              <MenuItem value="date">{t('customFieldsTab.fieldType.date', 'Date')}</MenuItem>
+            </Select>
+          </FormControl>
+          {fieldType === 'select' && (
+            <TextField
+              margin="dense"
+              name="options"
+              label={t('customFieldsTab.optionsLabel', 'Options (comma-separated)')}
+              value={options}
+              onChange={(e) => setOptions(e.target.value)}
+              multiline
+              rows={3}
+              helperText={t('customFieldsTab.optionsHelper', 'Enter options separated by commas (e.g., Option 1, Option 2)')}
+              fullWidth
+              variant="outlined"
+              disabled={isViewOnly} // Disable form elements
+            />
+          )}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={isRequired}
+                onChange={(e) => setIsRequired(e.target.checked)}
+                color="primary"
+                disabled={isViewOnly} // Disable form elements
+              />
+            }
+            label={t('customFieldsTab.requiredLabel', 'Required Field')}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} disabled={isViewOnly}>{t('common.cancel', 'Cancel')}</Button>
+          <Button onClick={handleSaveField} variant="contained" disabled={isSubmitting || isViewOnly}>
+            {isSubmitting ? <CircularProgress size={24} /> : (editingField ? t('common.saveChanges', 'Save Changes') : t('common.add', 'Add'))}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

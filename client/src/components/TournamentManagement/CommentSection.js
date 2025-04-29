@@ -39,7 +39,8 @@ const CommentSection = ({
   announcement,
   currentUser,
   onCommentAdded,
-  onCommentDeleted
+  onCommentDeleted,
+  isViewOnly // Add isViewOnly prop
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -50,8 +51,8 @@ const CommentSection = ({
   const [commentMenuAnchorEl, setCommentMenuAnchorEl] = useState(null);
   const [selectedComment, setSelectedComment] = useState(null);
 
-  // Force enable commenting for testing
-  const canComment = true;
+  // Disable commenting if in view-only mode
+  const canComment = !isViewOnly;
 
   // Get comment count
   const commentCount = announcement.comments?.length || 0;
@@ -137,9 +138,11 @@ const CommentSection = ({
     }
   };
 
-  // Force enable comment deletion for testing
+  // Disable comment deletion if in view-only mode
   const canDeleteComment = (comment) => {
-    return true;
+    // Original logic might check currentUser._id === comment.createdBy._id etc.
+    // For now, just disable if view-only
+    return !isViewOnly;
   };
 
   // Render a single comment
@@ -244,7 +247,8 @@ const CommentSection = ({
         }}
       />
 
-      {showMenu && canDeleteComment(comment) && (
+      {/* Hide menu button if view-only or cannot delete */}
+      {showMenu && !isViewOnly && canDeleteComment(comment) && (
         <IconButton
           size="small"
           sx={{
@@ -347,7 +351,7 @@ const CommentSection = ({
                 placeholder={t('commentSection.addComment', 'Add a comment...')}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                disabled={submitting}
+                disabled={submitting || isViewOnly} // Disable if submitting or view-only
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 8,
@@ -377,7 +381,7 @@ const CommentSection = ({
                       <IconButton
                         edge="end"
                         onClick={handleAddComment}
-                        disabled={!commentText.trim() || submitting}
+                        disabled={!commentText.trim() || submitting || isViewOnly} // Disable if submitting or view-only
                         color="primary"
                         sx={{
                           color: '#2481cc',
@@ -404,7 +408,10 @@ const CommentSection = ({
                 color: '#6a7d8a'
               }}
             >
-              {t('commentSection.loginToComment', 'Please log in to leave a comment')}
+              {isViewOnly
+                ? t('commentSection.viewOnlyMode', 'Commenting is disabled in view-only mode.')
+                : t('commentSection.loginToComment', 'Please log in to leave a comment')
+              }
             </Typography>
           )}
 
@@ -477,10 +484,12 @@ const CommentSection = ({
           }
         }}
       >
-        <MenuItem
-          onClick={handleDeleteComment}
-          sx={{
-            py: 1,
+        {/* Only show delete option if not view-only */}
+        {!isViewOnly && (
+          <MenuItem
+            onClick={handleDeleteComment}
+            sx={{
+              py: 1,
             '&:hover': {
               backgroundColor: 'rgba(0, 0, 0, 0.04)'
             }
@@ -492,8 +501,9 @@ const CommentSection = ({
               sx: { fontSize: '0.85rem', fontWeight: 500 }
             }}
           />
-          <DeleteIcon fontSize="small" sx={{ ml: 1, color: '#f44336', fontSize: '1.1rem' }} />
-        </MenuItem>
+            <DeleteIcon fontSize="small" sx={{ ml: 1, color: '#f44336', fontSize: '1.1rem' }} />
+          </MenuItem>
+        )}
       </Menu>
     </>
   );

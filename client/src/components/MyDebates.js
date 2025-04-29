@@ -45,7 +45,7 @@ function TabPanel(props) {
 }
 
 // Define DebateCard outside MyDebates
-const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, loadingAssignments, t }) => { // Added t to props
+const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, loadingAssignments, t, isCreatorView }) => { // Added t and isCreatorView to props
   const isTournament = debate.format === 'tournament';
   
   const getStatusColor = (status) => {
@@ -622,8 +622,11 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
           color="primary"
           onClick={() => {
             if (debate.format === 'tournament') {
-              navigate(`/tournaments/${debate._id}`);
+              // Pass isViewOnly state for tournaments
+              // Navigate to manage page, view-only determined by isCreatorView
+              navigate(`/tournaments/${debate._id}/manage`, { state: { isViewOnly: !isCreatorView } });
             } else {
+              // Regular debates don't have view-only mode in this context
               navigate(`/debates/${debate._id}`);
             }
           }}
@@ -634,7 +637,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
           <Button
             size="small"
             color="primary"
-            onClick={() => navigate(`/tournaments/${debate._id}`)}
+            onClick={() => navigate(`/tournaments/${debate._id}`, { state: { isViewOnly: !isCreatorView } })}
           >
             Tournament Dashboard
           </Button>
@@ -775,7 +778,7 @@ const MyDebates = () => {
           </Alert>
         ) : (
           debates.participated.map(debate => (
-            <DebateCard t={t}
+            <DebateCard t={t} isCreatorView={false}
               key={debate._id}
               debate={debate}
               navigate={navigate}
@@ -795,7 +798,7 @@ const MyDebates = () => {
           </Alert>
         ) : (
           debates.created.map(debate => (
-            <DebateCard t={t}
+            <DebateCard t={t} isCreatorView={true}
               key={debate._id}
               debate={debate}
               navigate={navigate}

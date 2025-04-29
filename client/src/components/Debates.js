@@ -113,7 +113,13 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
         <Button 
           size="small" 
           color="primary"
-          onClick={() => navigate(debate.format === 'tournament' ? `/tournaments/${debate._id}` : `/debates/${debate._id}`)}
+          onClick={() => {
+            if (debate.format === 'tournament') {
+              navigate(`/tournaments/${debate._id}/manage`, { state: { isViewOnly: true } });
+            } else {
+              navigate(`/debates/${debate._id}`);
+            }
+          }}
         >
           {t('debatesList.card.viewButton', 'View Details')}
         </Button>

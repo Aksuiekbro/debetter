@@ -1,6 +1,6 @@
 import React, { useState } from 'react'; // Import useState
-import { useTranslation } from 'react-i18next'; // Import useTranslation
-// import { useNavigate } from 'react-router-dom'; // Commented out as it's not currently used
+import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom'; // Import useLocation
 import {
   Container,
   Typography,
@@ -61,7 +61,8 @@ function TabPanel(props) {
 
 const TournamentManagement = () => {
   // const navigate = useNavigate(); // Commented out as it's not currently used
-  const { t } = useTranslation(); // Initialize useTranslation
+  const { t } = useTranslation();
+  const location = useLocation(); // Get location object
 
   // --- Initialize Hooks ---
   const { user: currentUser, loading: authLoading } = useAuth(); // Get current user AND loading state
@@ -74,6 +75,11 @@ const TournamentManagement = () => {
 
   const uiManager = useTournamentUIManager();
   const dataManager = useTournamentData(); // Fetches core data
+
+  // Determine view-only mode from navigation state
+  const isViewOnly = location.state?.isViewOnly ?? false;
+  console.log('[TournamentManagement] isViewOnly:', isViewOnly); // Log view-only status
+
   const [selectedOrganizers, setSelectedOrganizers] = useState([]); // State for the organizer management UI (will be populated later)
 
   // Pass necessary state/setters/handlers from dataManager and uiManager to management hooks
@@ -181,7 +187,12 @@ const TournamentManagement = () => {
 
       {/* Tab Panels */}
       <TabPanel value={uiManager.tabValue} index={0}> {/* Announcements Panel */}
-        <AnnouncementsTab currentUser={currentUser} tournamentCreatorId={tournamentCreatorId} tournament={dataManager.tournament} />
+        <AnnouncementsTab
+          currentUser={currentUser}
+          tournamentCreatorId={tournamentCreatorId}
+          tournament={dataManager.tournament}
+          isViewOnly={isViewOnly} // Pass prop
+        />
       </TabPanel>
       {/* Removed EntrantsTab Panel */}
       <TabPanel value={uiManager.tabValue} index={1}> {/* Teams Panel - Index updated */}
@@ -197,6 +208,7 @@ const TournamentManagement = () => {
           loadingTeams={teamManager.loadingTeams}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={2}> {/* Judges Panel - Index updated */}
@@ -210,6 +222,7 @@ const TournamentManagement = () => {
           onCheckOutJudge={judgeManager.checkOutJudge} // Assuming checkOutJudge exists in judgeManager
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={3}> {/* Posting Panel - Index updated */}
@@ -232,17 +245,20 @@ const TournamentManagement = () => {
           loadingApf={apfManager.loadingApf}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={4}> {/* Tournament Posting Panel - Index updated */}
         <TournamentPostingTab
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={5}> {/* Match Postings Panel - Index updated */}
         <MatchPostingsTab
           currentUser={currentUser}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={6}> {/* Standings Panel - Index updated */}
@@ -256,12 +272,14 @@ const TournamentManagement = () => {
           error={dataManager.standingsError} // Pass the specific error state for standings
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={7}> {/* Results Panel - Index updated */}
         <ResultsTab
           currentUser={currentUser}
           tournamentId={dataManager.tournamentId}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       {/* <TabPanel value={uiManager.tabValue} index={8}> */}{/* Bracket Panel - Commented out */}
@@ -280,12 +298,14 @@ const TournamentManagement = () => {
           initializing={dataManager.initializingBracket}
           currentUser={currentUser}
           tournamentCreatorId={tournamentCreatorId}
+          isViewOnly={isViewOnly} // Pass prop
         /> */}
       {/* </TabPanel> */}
       <TabPanel value={uiManager.tabValue} index={8}> {/* Check-In Panel - Index updated */}
         <CheckInTab
           tournamentId={dataManager.tournamentId}
           currentUser={currentUser}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={9}> {/* Organizer Management Panel - Index updated */}
@@ -297,6 +317,7 @@ const TournamentManagement = () => {
           tournamentCreatorId={tournamentCreatorId}
           onUpdateOrganizers={dataManager.refreshData} // Assuming refreshData updates organizers
           showNotification={uiManager.showNotification}
+          isViewOnly={isViewOnly} // Pass prop
         />
       </TabPanel>
       <TabPanel value={uiManager.tabValue} index={10}> {/* Custom Fields Panel - Index updated */}
@@ -311,6 +332,7 @@ const TournamentManagement = () => {
           <CustomRegistrationFields
              tournament={dataManager.tournament} // Pass the complete tournament object
              currentUser={currentUser} // Pass the confirmed currentUser
+             isViewOnly={isViewOnly} // Pass prop
              // No need to pass isOrganizer or tournamentId, component handles them internally
            />
         )}

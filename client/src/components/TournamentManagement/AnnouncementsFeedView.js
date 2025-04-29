@@ -19,8 +19,8 @@ import {
 import { api } from '../../config/api';
 import { useSocket } from '../../contexts/SocketContext'; // Import useSocket
 
-const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament }) => {
-  console.log('AnnouncementsFeedView props:', { currentUser, tournamentCreatorId, tournament });
+const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament, isViewOnly }) => { // Add isViewOnly prop
+  console.log('AnnouncementsFeedView props:', { currentUser, tournamentCreatorId, tournament, isViewOnly }); // Log prop
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
   const { socket } = useSocket(); // Get socket from context
@@ -154,8 +154,8 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
       mx: 'auto',
       px: { xs: 1, sm: 2 }
     }}>
-      {/* Post Creation Dialog - Render as FAB */}
-      {(
+      {/* Post Creation Dialog - Render as FAB, hide if view-only */}
+      {!isViewOnly && (
         <PostCreationDialog
           tournamentId={tournamentId}
           onPostCreated={fetchAnnouncements}
@@ -206,8 +206,8 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
                     {(announcement.createdBy?.username || 'U')[0].toUpperCase()}
                   </Avatar>
                 }
-                action={
-                  (
+                action={ // Hide action menu if view-only
+                  !isViewOnly && (
                     <IconButton
                       onClick={(e) => handleMenuOpen(e, announcement)}
                       size="small"
@@ -352,6 +352,7 @@ const AnnouncementsFeedView = ({ currentUser, tournamentCreatorId, tournament })
                 currentUser={currentUser}
                 onCommentAdded={fetchAnnouncements}
                 onCommentDeleted={fetchAnnouncements}
+                isViewOnly={isViewOnly} // Pass prop
               />
             </Card>
           ))}

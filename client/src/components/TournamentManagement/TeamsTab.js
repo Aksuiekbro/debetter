@@ -29,6 +29,7 @@ const TeamsTab = ({
   loadingTeams = false,
   currentUser,
   tournamentCreatorId,
+  isViewOnly // Add isViewOnly prop
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,7 +64,8 @@ const TeamsTab = ({
             onChange={handleSearchChange}
             sx={{ width: 250 }}
           />
-          {isOrganizerOrAdmin && (
+          {/* Hide buttons if view-only */}
+          {isOrganizerOrAdmin && !isViewOnly && (
             <>
               <Button
                 variant="contained"
@@ -96,7 +98,8 @@ const TeamsTab = ({
               <TableCell>{t('teamsTab.headerCity', { defaultValue: 'City' })}</TableCell>
               <TableCell>{t('teamsTab.headerInstitution', { defaultValue: 'Institution' })}</TableCell>
               <TableCell>{t('teamsTab.headerPresence', { defaultValue: 'Present' })}</TableCell>
-              {isOrganizerOrAdmin && <TableCell align="right">{t('teamsTab.headerActions', { defaultValue: 'Actions' })}</TableCell>}
+              {/* Hide Actions column if view-only */}
+              {isOrganizerOrAdmin && !isViewOnly && <TableCell align="right">{t('teamsTab.headerActions', { defaultValue: 'Actions' })}</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -122,7 +125,8 @@ const TeamsTab = ({
                     <CancelIcon color="error" />
                   )}
                 </TableCell>
-                {isOrganizerOrAdmin && (
+                {/* Hide Actions cell content if view-only */}
+                {isOrganizerOrAdmin && !isViewOnly && (
                   <TableCell align="right">
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                       {team.isPresent ? (
@@ -167,7 +171,8 @@ const TeamsTab = ({
             ))}
             {filteredTeams.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isOrganizerOrAdmin ? 7 : 6} align="center"> {/* Adjust colspan based on number of columns */}
+                {/* Adjust colspan based on whether Actions column is visible */}
+                <TableCell colSpan={isOrganizerOrAdmin && !isViewOnly ? 7 : 6} align="center">
                   {teams.length > 0
                     ? t('teamsTab.noMatch', { defaultValue: 'No teams match search' })
                     : t('teamsTab.noTeams', { defaultValue: 'No teams found' })}

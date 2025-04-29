@@ -9,7 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { api } from '../../config/api'; // Removed getAuthHeaders
 // import { useAuth } from '../../contexts/AuthContext'; // Passed as prop
 
-const MapView = ({ currentUser, tournamentCreatorId, tournament }) => {
+const MapView = ({ currentUser, tournamentCreatorId, tournament, isViewOnly }) => { // Add isViewOnly prop
   const { id: tournamentId } = useParams();
   const { t } = useTranslation();
   // const { user } = useAuth(); // Passed as prop
@@ -116,7 +116,8 @@ const MapView = ({ currentUser, tournamentCreatorId, tournament }) => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>{t('mapView.title')}</Typography>
 
-      {isOrganizerOrAdmin && (
+      {/* Hide controls if view-only */}
+      {isOrganizerOrAdmin && !isViewOnly && (
         <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
           <input
             type="file"

@@ -25,7 +25,8 @@ const OrganizerManagementTab = ({
   allParticipants = [], // Array of potential organizers (combined entrants/judges)
   showNotification,
   refreshData, // To refresh tournament data after update
-  currentUser // Needed to ensure creator doesn't remove themselves (optional check)
+  currentUser, // Needed to ensure creator doesn't remove themselves (optional check)
+  isViewOnly // Add isViewOnly prop
 }) => {
   const { t } = useTranslation();
   const [organizerIds, setOrganizerIds] = useState(currentOrganizers);
@@ -112,9 +113,12 @@ const OrganizerManagementTab = ({
               <ListItem
                 key={userId}
                 secondaryAction={
-                  <IconButton edge="end" aria-label={t('common.aria.delete', 'delete')} onClick={() => handleRemoveOrganizer(userId)} color="error">
-                    <DeleteIcon />
-                  </IconButton>
+                  // Disable remove button if view-only
+                  !isViewOnly && (
+                    <IconButton edge="end" aria-label={t('common.aria.delete', 'delete')} onClick={() => handleRemoveOrganizer(userId)} color="error" disabled={isViewOnly}>
+                      <DeleteIcon />
+                    </IconButton>
+                  )
                 }
               >
                 <ListItemText primary={getOrganizerName(userId)} />
@@ -143,11 +147,12 @@ const OrganizerManagementTab = ({
           )}
           sx={{ flexGrow: 1 }}
           noOptionsText={t('organizersTab.noUsersAvailable', 'No available users')}
+          disabled={isViewOnly} // Disable Autocomplete
         />
         <Button
           variant="contained"
           onClick={handleAddOrganizer}
-          disabled={!selectedUser}
+          disabled={!selectedUser || isViewOnly} // Disable Add button
           startIcon={<AddIcon />}
         >
           {t('common.button.add', 'Add')}
@@ -158,7 +163,7 @@ const OrganizerManagementTab = ({
         variant="contained"
         color="primary"
         onClick={handleSaveChanges}
-        disabled={loading || JSON.stringify(currentOrganizers) === JSON.stringify(organizerIds)} // Disable if no changes
+        disabled={loading || JSON.stringify(currentOrganizers) === JSON.stringify(organizerIds) || isViewOnly} // Disable Save button
         sx={{ mt: 2 }}
       >
         {loading ? <CircularProgress size={24} /> : t('common.button.saveChanges', 'Save Changes')}
