@@ -167,9 +167,7 @@ const postingSchema = new Schema({
 const debateSchema = new Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, required: true },
-  category: { type: String, lowercase: true, enum: ['politics', 'technology', 'science', 'society', 'economics'] }, // Removed required: true
   status: { type: String, required: true, enum: ['upcoming', 'team-assignment', 'in-progress', 'completed'], default: 'upcoming' },
-  difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'] }, // Removed required: true
   startDate: { type: Date, required: true },
   registrationDeadline: { type: Date },
   participants: [{

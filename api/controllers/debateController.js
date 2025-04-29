@@ -286,33 +286,19 @@ exports.getUserDebates = async (req, res) => {
   try {
     const userId = req.user._id; // Get user ID from the authenticated request
 
-    // Find debates where the user is a participant
-    // Adjust the query based on how participants are stored (e.g., an array of user IDs or participant objects)
-    const debates = await Debate.find({ 'participants.userId': userId })
-                                .populate('creator', 'username')
-                                .populate({
-                                    path: 'participants.userId',
-                                    select: 'username role _id' // Populate participant details
-                                });
-
-    if (!debates || debates.length === 0) {
-      // It's better to return an empty array than a 404 if the user simply hasn't joined any debates
-      return res.json([]);
-    }
-
-    // Transform the debates similar to getDebates if needed for consistency
-    const transformedDebates = debates.map(debate => {
+    // Helper function to populate and transform debates
+    const populateAndTransform = (debate) => {
       const debateObj = debate.toObject();
       if (debate.format === 'tournament') {
         const [debaters, judges] = [
-          debate.participants.filter(p => p.role !== 'judge'),
-          debate.participants.filter(p => p.role === 'judge')
+          debate.participants.filter(p => p.userId && p.role !== 'judge'), // Ensure userId exists
+          debate.participants.filter(p => p.userId && p.role === 'judge') // Ensure userId exists
         ];
         debateObj.counts = {
           debaters: debaters.length,
           judges: judges.length,
-          maxDebaters: debate.maxParticipants || 32, // Use debate's max or default
-          maxJudges: debate.maxJudges || 8 // Use debate's max or default
+          maxDebaters: debate.maxParticipants || 32,
+          maxJudges: debate.maxJudges || 8
         };
       } else {
         debateObj.counts = {
@@ -320,11 +306,45 @@ exports.getUserDebates = async (req, res) => {
           max: debate.maxParticipants
         };
       }
+      // Add teams count if populated
+      debateObj.teamCount = debate.teams ? debate.teams.length : 0;
+      // Explicitly add leagueType
+      debateObj.leagueType = debate.leagueType;
       return debateObj;
-    });
+    };
 
+    // Find debates created by the user
+    const createdDebatesRaw = await Debate.find({ creator: userId })
+                                        .populate('creator', 'username')
+                                        .populate({
+                                            path: 'participants.userId',
+                                            select: 'username role _id'
+                                        })
+                                        .populate('teams'); // Populate teams
 
-    res.json(transformedDebates); // Send the found and transformed debates
+    // Find debates where the user is a participant (excluding those they created to avoid duplicates in lists)
+    const participatedDebatesRaw = await Debate.find({
+                                          'participants.userId': userId,
+                                          creator: { $ne: userId } // Exclude debates created by the user
+                                        })
+                                        .populate('creator', 'username')
+                                        .populate({
+                                            path: 'participants.userId',
+                                            select: 'username role _id'
+                                        })
+                                        .populate('teams'); // Populate teams
+
+    // Transform both lists
+    const createdDebates = createdDebatesRaw.map(populateAndTransform);
+    const participatedDebates = participatedDebatesRaw.map(populateAndTransform);
+
+    // Structure the response as expected by the frontend
+    const responseData = {
+      created: createdDebates,
+      participated: participatedDebates
+    };
+
+    res.json(responseData); // Send the structured data
 
   } catch (error) {
     console.error('Error in getUserDebates:', error);

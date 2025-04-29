@@ -68,7 +68,7 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
         {/* Status Information Block */}
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
-            {t('debatesList.card.statusLabel', 'Status: {{status}}', { status: t(`debatesList.filters.status.${debate.status}`, debate.status) })}
+            {`${t('debatesList.card.statusLabel', 'Status:')} ${t(`debatesList.filters.status.${debate.status}`, debate.status)}`}
           </Typography>
 
           {debate.format === 'tournament' ? (

@@ -107,6 +107,15 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
                 sx={{ ml: 1 }}
               />
             )}
+            {/* Display League Type */}
+            {debate.leagueType && (
+              <Chip
+                size="small"
+                label={t(`leagueTypes.${debate.leagueType}`, debate.leagueType)} // Translate league type
+                color="info" // Use a different color, e.g., info
+                sx={{ ml: 1 }}
+              />
+            )}
           </Typography>
           
           {userRole === 'judge' && tournamentAssignments.length > 0 && (
@@ -127,27 +136,7 @@ const DebateCard = ({ debate, navigate, userRole, userId, judgeAssignments, load
           )}
         </Box>
         
-        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Chip
-            size="small"
-            label={`${t('myDebates.card.statusLabel', 'Status:')} ${t(`myDebates.status.${debate.status?.replace('-', '') || 'default'}`, debate.status || 'Unknown')}`}
-            color={getStatusColor(debate.status)}
-            variant="outlined"
-          />
-          <Chip
-            size="small"
-            label={`${t('myDebates.card.categoryLabel', 'Category:')} ${debate.category}`}
-            color="primary"
-            variant="outlined"
-          />
-          <Chip
-            size="small"
-            label={`${t('myDebates.card.difficultyLabel', 'Difficulty:')} ${debate.difficulty}`}
-            color="primary"
-            variant="outlined"
-          />
-        </Box>
-
+        {/* Removed Status, Category, Difficulty Chips - Fields removed from backend */}
         <Typography variant="body2" color="text.secondary">
           {debate.description}
         </Typography>

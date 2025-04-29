@@ -294,13 +294,6 @@ const Home = () => {
                 >
                   {t('home.welcome.myDebatesButton', 'My Debates')}
                 </Button>
-                <Button 
-                  variant="contained"
-                  startIcon={<EmojiEventsIcon />}
-                  onClick={() => navigate('/tournaments')}
-                >
-                  {t('home.welcome.tournamentsButton', 'Tournaments')}
-                </Button>
               </Box>
             </Grid>
           </Grid>

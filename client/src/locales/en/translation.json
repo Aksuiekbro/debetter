@@ -93,6 +93,89 @@
     "joinError": "Failed to join debate.",
     "joinErrorNetwork": "Network error while joining debate."
   },
+"myDebates": {
+    "tabs": {
+      "participated": "Participated",
+      "created": "Created"
+    },
+    "card": {
+      "tournamentChip": "Tournament",
+      "statusLabel": "Status:",
+      "categoryLabel": "Category:",
+      "difficultyLabel": "Difficulty:",
+      "startDateLabel": "Start Date:",
+      "judgeAssignmentsChip": "Judge Assignments",
+      "yourJudgeAssignmentsTitle": "Your Judge Assignments",
+      "judgeAssignmentTitle": "Judge Assignment #{{index}}",
+      "team1GovLabel": "Team 1 (Gov):",
+      "leaderRolePrefix": "• Leader:",
+      "speakerRolePrefix": "• Speaker:",
+      "team2OppLabel": "Team 2 (Opp):",
+      "themeLabel": "Theme:",
+      "locationLabel": "Location:",
+      "coJudgesLabel": "Co-Judges:",
+      "evaluatedStatus": "Evaluated",
+      "pendingEvaluationStatus": "Pending Evaluation",
+      "viewEvaluationButton": "View Evaluation",
+      "evaluateButton": "Evaluate",
+      "feedbackTitle": "Your Debate Feedback & Evaluations",
+      "gameLabel": "Game:",
+      "winnerChip": "Winner",
+      "completedChip": "Completed",
+      "yourTeamLabel": "Your Team:",
+      "teamPlaceholder": "Team",
+      "roleLabel": "Role:",
+      "leaderRole": "Leader",
+      "speakerRole": "Speaker",
+      "opponentLabel": "Opponent:",
+      "teamScoreTitle": "Team Score",
+      "pointsSuffix": " points",
+      "noTeamFeedback": "No specific team feedback provided.",
+      "individualPerformanceTitle": "Individual Performance",
+      "matterLabel": "Matter:",
+      "methodLabel": "Method:",
+      "mannerLabel": "Manner:",
+      "totalLabel": "Total:",
+      "judgesOverallCommentsTitle": "Judge's Overall Comments",
+      "noOverallComments": "No overall comments provided.",
+      "viewFullEvaluationButton": "View Full Evaluation",
+      "viewFeedbackButton": "View Feedback",
+      "tournamentGamesTitle": "Tournament Games",
+      "gameTitle": "Game #{{index}}",
+      "teamsLabel": "Teams:",
+      "vsSeparator": " vs ",
+      "team1Label": "Team 1:",
+      "team2Label": "Team 2:",
+      "scheduledStatus": "Scheduled",
+      "winnerLabel": "Winner:",
+      "viewDetailsButton": "View Details"
+    },
+    "status": {
+      "upcoming": "Upcoming",
+      "inprogress": "In Progress",
+      "completed": "Completed",
+      "unknown": "Unknown"
+    },
+    "category": {
+      "politics": "Politics",
+      "technology": "Technology",
+      "science": "Science",
+      "society": "Society",
+      "economics": "Economics",
+      "unknown": "Unknown"
+    },
+    "difficulty": {
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced",
+      "unknown": "Unknown"
+    },
+    "noParticipatedDebates": "You haven't joined any debates yet. Browse available debates to participate.",
+    "noCreatedDebates": "You haven't created any debates yet. Click the button below to host a new debate.",
+    "hostNewDebateButton": "Host a New Debate",
+    "judgePanelButtonPending": "Judge Panel ({{count}} pending)",
+    "judgePanelButton": "Judge Panel"
+  },
   "profile": {
     "role": {
       "debater": "Debater",
@@ -306,6 +389,12 @@
       "saveFailed": "Failed to save field",
       "deleteFailed": "Failed to delete field",
       "orderUpdateFailed": "Failed to update field order"
-    }
-  }
-}
+     }
+   },
+   "leagueTypes": {
+     "school": "School",
+     "university": "University",
+     "open": "Open",
+     "other": "Other"
+   }
+ }
