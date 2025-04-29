@@ -149,24 +149,26 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
                   ? t('debatesList.card.cannotLeaveOwnTournamentButton', 'Cannot Leave Own Tournament')
                   : t('debatesList.card.leaveButton', 'Leave Debate')}
               </Button>
-            ) : (
-              <Button 
-                size="small" 
-                color="primary" 
-                variant="contained"
-                onClick={() => onJoin(debate)}
-                disabled={!canJoinDebate()}
-              >
-                {!canJoinDebate()
-                  ? (debate.format === 'tournament'
+            ) : ( // If user is NOT a participant, check role before showing Join button
+              user.role !== 'organizer' ? (
+                <Button
+                  size="small"
+                  color="primary"
+                  variant="contained"
+                  onClick={() => onJoin(debate)}
+                  disabled={!canJoinDebate()}
+                >
+                  {!canJoinDebate()
+                    ? (debate.format === 'tournament'
+                         // Use user prop
+                        ? (user.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
+                        : t('debatesList.card.fullButton', 'Full'))
+                    : debate.format === 'tournament'
                        // Use user prop
-                      ? (user.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
-                      : t('debatesList.card.fullButton', 'Full'))
-                  : debate.format === 'tournament'
-                     // Use user prop
-                    ? (user.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
-                    : t('debatesList.card.joinButton', 'Join Debate')}
-              </Button>
+                      ? (user.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
+                      : t('debatesList.card.joinButton', 'Join Debate')}
+                </Button>
+              ) : null // If user is organizer, render nothing in this branch
             )}
           </>
         )}
