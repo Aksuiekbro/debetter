@@ -268,7 +268,7 @@ exports.leaveDebate = async (req, res) => {
       debate.rounds = initializeTournamentRounds(debate.participants);
 
       // Optionally, you might want to reset the status or other fields
-      debate.status = 'pending'; // or any other appropriate status
+      // debate.status = 'pending'; // Removed: 'pending' is not a valid Debate status. Re-evaluate required status change logic if needed.
     }
 
     // Save the updated debate

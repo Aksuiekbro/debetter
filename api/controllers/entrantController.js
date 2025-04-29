@@ -91,3 +91,34 @@ exports.checkOutEntrant = async (req, res) => {
     });
   }
 };
+
+/**
+ * Register a team for a specific tournament
+ */
+exports.registerTeamForTournament = async (req, res) => {
+  console.log('registerTeamForTournament controller called'); // Log entry
+  try {
+    const { tournamentId } = req.params;
+    const teamData = req.body; // Contains team name, members, custom field answers, etc.
+
+    console.log(`Registering team for tournament: ${tournamentId}`);
+    console.log('Team Data:', teamData);
+
+    // TODO: Call the registration service function
+    // const result = await entrantService.registerTeam(tournamentId, teamData);
+
+    // Placeholder response for now
+    res.status(201).json({
+      success: true,
+      message: 'Team registration endpoint hit successfully (logic pending).',
+      data: { tournamentId, receivedData: teamData }
+    });
+
+  } catch (error) {
+    console.error('Error registering team:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to register team'
+    });
+  }
+};

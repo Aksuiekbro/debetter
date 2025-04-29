@@ -206,7 +206,6 @@ const debateSchema = new Schema({
 league: { type: String, trim: true }, // Added league field
   customRegistrationFields: { type: Boolean, default: false }, // Flag to indicate if tournament has custom registration fields
   eligibilityCriteria: { type: String }, // Added for tournament eligibility rules
-  mode: { type: String, enum: ['solo', 'duo'] },
   tournamentRounds: [{ roundNumber: Number, matches: [matchSchema] }],
   registrationDeadline: Date,
   teamRegistrations: [{

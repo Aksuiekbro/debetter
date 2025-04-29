@@ -18,6 +18,9 @@ import {
   ListItemText,
   Divider,
   Stack,
+  Dialog, // Add Dialog import
+  DialogTitle, // Add DialogTitle import
+  DialogContent, // Add DialogContent import
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -28,6 +31,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import JudgePanel from './JudgePanel';
 import TournamentGrid from './TournamentGrid';
+import TeamRegistrationForm from './TeamRegistrationForm'; // Import the new form
 
 const DebateDetails = () => {
   const { id } = useParams();
@@ -40,6 +44,7 @@ const DebateDetails = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const userId = localStorage.getItem('userId');
   const userRole = localStorage.getItem('userRole');
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false); // State for team registration modal
 
   useEffect(() => {
     const fetchDebateDetails = async () => {
@@ -180,7 +185,7 @@ const DebateDetails = () => {
   };
 
   const handleRegisterTeam = () => {
-    navigate(`/debates/${id}/register-team`);
+    setIsTeamModalOpen(true); // Open the modal instead of navigating
   };
 
   const getParticipantDisplay = () => {
@@ -497,26 +502,34 @@ const DebateDetails = () => {
                       <Typography variant="body2">
                         {t('debateDetails.deadlineLabel', 'Deadline:')} {new Date(debate.registrationDeadline).toLocaleString()}
                       </Typography>
-                      <Button 
-                        variant="outlined"
-                        color="secondary"
-                        size="small"
-                        startIcon={<GroupAddIcon />}
-                        onClick={handleRegisterTeam}
-                        sx={{ mt: 1 }}
-                      >
-                        {t('debateDetails.registerTeamButton', 'Register Team')}
-                      </Button>
+                      {/* Removed the small redundant button here */}
                     </Box>
                   )}
                 </Stack>
               </Paper>
             )}
-            
+
             {renderParticipantInfo()}
           </Stack>
         </Grid>
       </Grid>
+       {/* Team Registration Modal */}
+       <Dialog open={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} maxWidth="sm" fullWidth>
+         <DialogTitle>{t('teamRegistrationForm.modalTitle', 'Team Registration')}</DialogTitle>
+         <DialogContent>
+           {/* Render the form, passing necessary props */}
+           <TeamRegistrationForm
+             tournamentId={id}
+             onClose={() => setIsTeamModalOpen(false)}
+             onSuccess={() => {
+               setIsTeamModalOpen(false);
+               // Optionally: show success message or refresh data
+               alert(t('teamRegistrationForm.successMessage', 'Team registered successfully!')); // Placeholder alert
+             }}
+           />
+         </DialogContent>
+         {/* Actions can be added here if needed, but the form has its own submit */}
+       </Dialog>
     </Container>
   );
 };

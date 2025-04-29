@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react'; // Add useContext
+import React, { useState, useEffect, useCallback, useContext } from 'react'; // Add useState
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -23,9 +23,11 @@ import {
   InputAdornment,
   Chip,
   Stack,
+  Dialog, // Import Dialog for modal
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { TournamentRegistrationModal } from './TournamentRegistrationModal'; // Named import for custom field registration modal
+import TeamRegistrationForm from './TeamRegistrationForm'; // Import TeamRegistrationForm
 import { api } from '../config/api';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth hook
 
@@ -33,6 +35,7 @@ import { useAuth } from '../contexts/AuthContext'; // Import useAuth hook
 const DebateCard = ({ debate, user, onJoin, onLeave }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [isTeamRegModalOpen, setIsTeamRegModalOpen] = useState(false); // State for team registration modal
   const canJoinDebate = () => {
     if (!debate) return false;
     if (debate.format === 'tournament') {
@@ -67,9 +70,7 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
 
         {/* Status Information Block */}
         <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
-            {`${t('debatesList.card.statusLabel', 'Status:')} ${t(`debatesList.filters.status.${debate.status}`, debate.status)}`}
-          </Typography>
+          {/* Status Typography removed */}
 
           {debate.format === 'tournament' ? (
             <>
@@ -78,9 +79,6 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
               </Typography>
               <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
                 {t('debatesList.card.judgesCount', 'Judges: {{count}}/{{max}}', { count: debate.counts?.judges || 0, max: 8 })}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" component="span" sx={{ mr: 2 }}>
-                {t('debatesList.card.modeLabel', 'Mode: {{mode}}', { mode: debate.mode || t('debatesList.card.defaultMode', 'Solo') })}
               </Typography>
             </>
           ) : (
@@ -126,6 +124,8 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
         {/* Use user prop */}
         {user && (
           <>
+            {/* --- Debug Log: Inputs --- */}
+            {/* --- Debug Log: Inputs --- */}
             {/* Use user prop */}
             {debate.creator?._id === user._id ? (
               <Button
@@ -155,30 +155,61 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
                   ? t('debatesList.card.cannotLeaveOwnTournamentButton', 'Cannot Leave Own Tournament')
                   : t('debatesList.card.leaveButton', 'Leave Debate')}
               </Button>
-            ) : ( // If user is NOT a participant, check role before showing Join button
-              user.role !== 'organizer' ? (
-                <Button
-                  size="small"
-                  color="primary"
-                  variant="contained"
-                  onClick={() => onJoin(debate)}
-                  disabled={!canJoinDebate()}
-                >
-                  {!canJoinDebate()
-                    ? (debate.format === 'tournament'
-                         // Use user prop
-                        ? (user.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
-                        : t('debatesList.card.fullButton', 'Full'))
-                    : debate.format === 'tournament'
-                       // Use user prop
-                      ? (user.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
-                      : t('debatesList.card.joinButton', 'Join Debate')}
-                </Button>
-              ) : null // If user is organizer, render nothing in this branch
+            ) : ( // If user is NOT a participant, check role before showing Join/Register button
+              <>
+                {/* --- Debug Log: Register Team Condition --- */}
+                {/* Check for Debater/Tournament first */}
+                {user && user.role === 'debater' && debate.format === 'tournament' ? (
+                  <Button
+                    size="small"
+                    color="secondary"
+                    variant="contained"
+                    onClick={() => {
+                      setIsTeamRegModalOpen(true);
+                    }}
+                    // Add logic to check if already registered later if needed
+                  >
+                    {t('debatesList.card.registerTeamButton', 'Register Your Team')}
+                  </Button>
+                ) : (
+                  <>
+                    {/* --- Debug Log: General Join Condition --- */}
+                    {/* Else, check for General Join (excluding organizer and debater/tournament) */}
+                    {user.role !== 'organizer' && !(user.role === 'debater' && debate.format === 'tournament') ? (
+                      <Button
+                        size="small"
+                        color="primary"
+                        variant="contained"
+                        onClick={() => onJoin(debate)}
+                        disabled={!canJoinDebate()}
+                      >
+                        {!canJoinDebate()
+                          ? (debate.format === 'tournament'
+                              // Use user prop
+                              ? (user.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
+                              : t('debatesList.card.fullButton', 'Full'))
+                          : debate.format === 'tournament'
+                            // Use user prop
+                            ? (user.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
+                            : t('debatesList.card.joinButton', 'Join Debate')}
+                      </Button>
+                    ) : null} {/* If user is organizer or debater/tournament (already handled), render nothing here */}
+                  </>
+                )}
+              </>
             )}
           </>
         )}
       </CardActions>
+
+      {/* Team Registration Modal */}
+      <Dialog open={isTeamRegModalOpen} onClose={() => setIsTeamRegModalOpen(false)} maxWidth="sm" fullWidth>
+        <TeamRegistrationForm
+          tournamentId={debate._id}
+          onClose={() => setIsTeamRegModalOpen(false)}
+          // Add onSuccess handler if needed to refresh data or show message
+        />
+      </Dialog>
     </Card>
   );
 };
@@ -191,7 +222,6 @@ const Debates = () => {
   const [debates, setDebates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    categories: new Set(),
     status: new Set(),
     difficulty: new Set(),
   });
@@ -216,9 +246,6 @@ const Debates = () => {
       }
 
       // Handle filters
-      if (filters.categories.size > 0) {
-        queryParams.append('categories', Array.from(filters.categories).join(','));
-      }
       if (filters.status.size > 0) {
         queryParams.append('status', Array.from(filters.status).join(','));
       }
@@ -283,14 +310,7 @@ const Debates = () => {
     }
     // --- End Check ---
 
-    // --- New Logic: Check if user is a debater joining a tournament ---
-    if (debate.format === 'tournament' && user.role === 'debater') {
-      // Trigger the debater-specific registration form/modal
-      setSelectedDebateForReg(debate); // Store the whole debate object if needed, or just id
-      setShowDebaterRegForm(true);
-      console.log(`Debater ${user.username} attempting to join tournament ${debate.title}. Showing debater registration form.`);
-      // --- End New Logic ---
-    } else if (debate.format === 'tournament' && debate.customRegistrationFields) {
+    if (debate.format === 'tournament' && debate.customRegistrationFields) {
       // Existing logic: If tournament has custom fields (and user is not a debater or role check failed), open standard modal
       setSelectedTournamentId(debate._id);
       setIsRegModalOpen(true);
@@ -343,7 +363,6 @@ const Debates = () => {
   };
 
   const filterOptions = {
-    categories: ['politics', 'technology', 'science', 'society', 'economics'],
     status: ['upcoming', 'ongoing', 'completed'],
     difficulty: ['beginner', 'intermediate', 'advanced']
   };
@@ -380,12 +399,6 @@ const Debates = () => {
             <Typography variant="h5" sx={{ mb: 3, color: 'primary.main' }}>
               {t('debatesList.filters.mainTitle', 'Filters')}
             </Typography>
-            <FilterSection
-              title="debatesList.filters.categoriesTitle" // Pass key instead of text
-              items={filterOptions.categories}
-              section="categories"
-            />
-            <Divider sx={{ my: 2 }} />
             <FilterSection
               title="debatesList.filters.statusTitle" // Pass key instead of text
               items={filterOptions.status}

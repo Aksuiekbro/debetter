@@ -31,6 +31,18 @@ const teamSchema = new Schema({
     type: Number,
     default: 0
   }
+, // Add comma to separate from previous field
+  customFieldAnswers: [{
+    fieldId: {
+      type: Schema.Types.ObjectId,
+      ref: 'RegistrationField', // Assuming RegistrationField model exists
+      required: true
+    },
+    answer: {
+      type: String,
+      required: true
+    }
+  }]
 }, {
   timestamps: true // Add timestamps for createdAt and updatedAt
 });
