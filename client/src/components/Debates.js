@@ -141,63 +141,44 @@ const DebateCard = ({ debate, user, onJoin, onLeave }) => {
                   const participantUserId = (typeof p.userId === 'object' && p.userId !== null) ? p.userId._id : p.userId;
                   // Use user prop
                   return user && participantUserId && user._id && participantUserId.toString() === user._id.toString();
-                }) ? ( // Flexible check
-              <Button
-                size="small"
-                color="secondary"
-                variant="contained"
-                onClick={() => onLeave(debate._id)}
-                 // Use user prop
-                disabled={debate.format === 'tournament' && user.role === 'judge' && debate.creator._id === user._id}
-              >
-                 {/* Use user prop */}
-                {debate.format === 'tournament' && user.role === 'judge' && debate.creator._id === user._id
-                  ? t('debatesList.card.cannotLeaveOwnTournamentButton', 'Cannot Leave Own Tournament')
-                  : t('debatesList.card.leaveButton', 'Leave Debate')}
-              </Button>
-            ) : ( // If user is NOT a participant, check role before showing Join/Register button
-              <>
-                {/* --- Debug Log: Register Team Condition --- */}
-                {/* Check for Debater/Tournament first */}
-                {user && user.role === 'debater' && debate.format === 'tournament' ? (
+                }) ? (
+                  // Already a participant: leave button
                   <Button
                     size="small"
                     color="secondary"
                     variant="contained"
-                    onClick={() => {
-                      setIsTeamRegModalOpen(true);
-                    }}
-                    // Add logic to check if already registered later if needed
+                    onClick={() => onLeave(debate._id)}
+                    disabled={debate.format === 'tournament' && user.role === 'judge' && debate.creator._id === user._id}
                   >
-                    {t('debatesList.card.registerTeamButton', 'Register Your Team')}
+                    {debate.format === 'tournament' && user.role === 'judge' && debate.creator._id === user._id
+                      ? t('debatesList.card.cannotLeaveOwnTournamentButton', 'Cannot Leave Own Tournament')
+                      : t('debatesList.card.leaveButton', 'Leave Debate')}
                   </Button>
                 ) : (
-                  <>
-                    {/* --- Debug Log: General Join Condition --- */}
-                    {/* Else, check for General Join (excluding organizer and debater/tournament) */}
-                    {user.role !== 'organizer' && !(user.role === 'debater' && debate.format === 'tournament') ? (
-                      <Button
-                        size="small"
-                        color="primary"
-                        variant="contained"
-                        onClick={() => onJoin(debate)}
-                        disabled={!canJoinDebate()}
-                      >
-                        {!canJoinDebate()
-                          ? (debate.format === 'tournament'
-                              // Use user prop
-                              ? (user.role === 'judge' ? t('debatesList.card.judgesFullButton', 'Judges Full') : t('debatesList.card.debatersFullButton', 'Debaters Full'))
-                              : t('debatesList.card.fullButton', 'Full'))
-                          : debate.format === 'tournament'
-                            // Use user prop
-                            ? (user.role === 'judge' ? t('debatesList.card.joinAsJudgeButton', 'Join as Judge') : t('debatesList.card.joinAsDebaterButton', 'Join as Debater'))
-                            : t('debatesList.card.joinButton', 'Join Debate')}
-                      </Button>
-                    ) : null} {/* If user is organizer or debater/tournament (already handled), render nothing here */}
-                  </>
+                  // Not a participant nor creator: show appropriate action for tournament vs general debate
+                  debate.format === 'tournament' ? (
+                    <Button
+                      size="small"
+                      color="secondary"
+                      variant="contained"
+                      onClick={() => setIsTeamRegModalOpen(true)}
+                    >
+                      {t('debatesList.card.registerTeamButton', 'Register Your Team')}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="small"
+                      color="primary"
+                      variant="contained"
+                      onClick={() => onJoin(debate)}
+                      disabled={!canJoinDebate()}
+                    >
+                      {!canJoinDebate()
+                        ? t('debatesList.card.fullButton', 'Full')
+                        : t('debatesList.card.joinButton', 'Join Debate')}
+                    </Button>
+                  )
                 )}
-              </>
-            )}
           </>
         )}
       </CardActions>
