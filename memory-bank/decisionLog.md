@@ -45,3 +45,7 @@ This file records architectural and implementation decisions...
 ## Schema Modifications
 
 [2025-04-29 16:45:11] - Added `customFieldAnswers` field to `api/models/Team.js` schema to store answers to custom registration questions. This field is an array of objects, each containing `fieldId` (referencing `RegistrationField`) and the `answer` string.
+
+[2025-05-08 13:01:01] - Test entry: Successfully interacted with the roo-code-memory-bank-mcp by reading and appending an entry.
+
+[2025-05-08 16:13:23] - The `shadcn-ui` npm package is deprecated. The correct package to use is `shadcn`. For example, instead of `npx shadcn-ui@latest add button`, use `npx shadcn@latest add button`. More information can be found at https://ui.shadcn.com/docs/cli

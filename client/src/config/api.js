@@ -14,7 +14,7 @@ import axios from 'axios';
 // API configuration for the application
 // Use the environment variable provided by Vercel/React build process.
 // Fallback to localhost:5001 for local development if REACT_APP_API_URL is not set.
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:5001';
 
 // Add a token refresh and validation function
 const validateToken = () => {

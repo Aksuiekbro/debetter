@@ -26,3 +26,7 @@ This file tracks the project's progress...
 [2025-04-29 16:49:13] - Implemented the `handleSubmit` function in `client/src/components/TeamRegistrationForm.js` to handle team registration form submission. This includes preparing the payload with standard and custom fields, sending a POST request to `/api/tournaments/:tournamentId/register/team`, and basic success/error handling.
 
 [2025-04-29 18:16:40] - Fixed a bug in `client/src/components/Debates.js` where the join debate form/modal wasn't opening for debaters. The button state was also updating incorrectly. Removed an erroneous conditional block in `handleJoinDebate` that was preventing the correct join logic from executing.
+
+## Shadcn/ui Migration Initiative
+
+[2025-05-08 15:34:21] - Commencing migration of the frontend to shadcn/ui.

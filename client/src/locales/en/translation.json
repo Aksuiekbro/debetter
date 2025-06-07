@@ -3,15 +3,17 @@
   "greeting": "Hello",
   "navbar": {
     "home": "Home",
-    "host_debate": "Host a Debate",
     "join_debate": "Join a Debate",
     "tournaments": "Tournaments",
-    "my_debates": "My Debates",
-    "profile": "Profile",
-    "logout": "Logout",
+    "create_tournament": "Create Tournament",
+    "judge_panel": "Judge Panel",
+    "search_placeholder": "Search debates...",
     "login": "Login",
     "register": "Register",
-    "search_placeholder": "Search debates..."
+    "profile": "Profile",
+    "my_debates": "My Debates",
+    "notification_settings": "Notification Settings",
+    "logout": "Logout"
   },
   "common": {
     "notAvailable": "N/A",
@@ -30,7 +32,7 @@
       "addNewDebate": "Add new debate"
     }
   },
-"debatesList": {
+  "debatesList": {
     "card": {
       "tournamentChip": "Tournament",
       "statusLabel": "Status: {{status}}",
@@ -93,7 +95,7 @@
     "joinError": "Failed to join debate.",
     "joinErrorNetwork": "Network error while joining debate."
   },
-"myDebates": {
+  "myDebates": {
     "tabs": {
       "participated": "Participated",
       "created": "Created"
@@ -231,6 +233,27 @@
     "awardsLabel": "Awards:",
     "otherInfoLabel": "Other Info:",
     "judgeInfoTitle": "Judge Information",
+    "emailLabel": "Email:",
+    "participantInfoTitle": "Participant Information",
+    "noAwards": "No awards listed",
+    "feedbackReceivedTitle": "Feedback Received",
+    "feedbackReceivedPlaceholder": "Feedback from judges will appear here.",
+    "feedbackReceivedPlaceholderJudge": "Feedback from participants will appear here.",
+    "teamLabel": "Team:",
+    "judgingStyleLabel": "Judging Style:",
+    "editDialog": {
+      "title": "Edit Profile",
+      "usernameLabel": "Username",
+      "emailLabel": "Email",
+      "phoneLabel": "Phone Number",
+      "bioLabel": "Bio",
+      "judgingStyleLabel": "Judging Style Preference",
+      "interestsLabel": "Interests",
+      "addInterestLabel": "Add new interest",
+      "addButton": "Add",
+      "cancelButton": "Cancel",
+      "saveButton": "Save"
+    },
     "awards": {
       "placeholder": "No awards listed"
     }
@@ -389,12 +412,160 @@
       "saveFailed": "Failed to save field",
       "deleteFailed": "Failed to delete field",
       "orderUpdateFailed": "Failed to update field order"
-     }
-   },
-   "leagueTypes": {
-     "school": "School",
-     "university": "University",
-     "open": "Open",
-     "other": "Other"
-   }
- }
+    }
+  },
+  "leagueTypes": {
+    "school": "School",
+    "university": "University",
+    "open": "Open",
+    "other": "Other"
+  },
+  "home": {
+    "hero": {
+      "title": "Welcome to DeBetter",
+      "subtitle": "A platform for meaningful discussions, structured debates, and intellectual growth",
+      "joinButton": "Join Debates",
+      "hostButton": "Host a Debate"
+    },
+    "featured": {
+      "title": "Featured Debate Topics",
+      "subtitle": "Explore these thought-provoking topics and join the conversation",
+      "exploreButton": "Explore Debates"
+    },
+    "upcoming": {
+      "title": "Upcoming Debates",
+      "noDebatesMessage": "No upcoming debates scheduled.",
+      "hostNewButton": "Host a New Debate"
+    },
+    "community": {
+      "title": "Community Stats",
+      "activeUsers": "Active Users",
+      "debatesHosted": "Debates Hosted",
+      "activeTournaments": "Active Tournaments",
+      "teamsFormed": "Teams Formed"
+    },
+    "about": {
+      "title": "About DeBetter",
+      "description1": "DeBetter is a platform designed to facilitate structured debates and thoughtful discussions on a wide range of topics.",
+      "description2": "Our mission is to foster critical thinking, effective communication, and respectful exchange of ideas in a structured environment.",
+      "description3": "Whether you're looking to sharpen your debating skills, explore diverse perspectives, or organize tournaments, DeBetter provides the tools and community to help you succeed.",
+      "learnMoreButton": "Learn More"
+    },
+    "viewAllButton": "View All"
+  },
+  "tournamentRegistrationModal": {
+    "joinButton": "Join Tournament"
+  },
+  "announcementsTab": {
+    "mainTitle": "Announcements",
+    "tabsLabel": "Announcements Tabs",
+    "feedTabLabel": "Feed",
+    "scheduleTabLabel": "Schedule", 
+    "mapTabLabel": "Map"
+  },
+  "feedback": {
+    "fetchError": "Failed to fetch feedback",
+    "missingIdsError": "Missing tournament or debate ID",
+    "noFeedbackFound": "No feedback found for this debate",
+    "title": "Feedback from Judges",
+    "judgeFeedback": "Feedback from {{judge}}",
+    "textualFeedbackLabel": "Comments",
+    "noTextualFeedback": "No comments provided",
+    "scoresLabel": "Scores",
+    "criteriaHeader": "Criteria",
+    "scoreHeader": "Score",
+    "noScoresProvided": "No scores provided",
+    "provideJudgeFeedbackButton": "Provide Judge Feedback",
+    "provideJudgeFeedbackTitle": "Provide Judge Feedback"
+  },
+  "apfPostingList": {
+    "statusNotScheduled": "Not scheduled",
+    "statusUnknown": "Unknown",
+    "statusScheduled": "Scheduled",
+    "statusInProgress": "In Progress",
+    "statusCompleted": "Completed",
+    "statusCancelled": "Cancelled",
+    "batchUngrouped": "Ungrouped Games",
+    "searchPlaceholder": "Search games, teams, locations...",
+    "filterLabelStatus": "Status",
+    "filterStatusAll": "All Statuses",
+    "gamesCountSuffix": "Games",
+    "defaultTeam1": "Team 1",
+    "defaultTeam2": "Team 2",
+    "teamSeparator": "vs",
+    "locationVirtual": "Virtual Meeting",
+    "locationNotSet": "No location set",
+    "judgesCountSuffix": "Judges",
+    "themeCustomModel": "Custom Model",
+    "themeNotSet": "No theme set",
+    "notificationSentPrefix": "Notifications sent",
+    "notificationSentDatePrefix": "on",
+    "tooltipChangeStatus": "Change Status",
+    "tooltipActions": "Actions",
+    "alertNoGamesFound": "No games found matching your filters. Try adjusting your search or filter criteria.",
+    "menuMarkScheduled": "Mark as Scheduled",
+    "menuMarkInProgress": "Mark as In Progress",
+    "menuMarkCompleted": "Mark as Completed",
+    "menuMarkCancelled": "Mark as Cancelled",
+    "menuEditGame": "Edit Game",
+    "menuSendReminder": "Send Reminder",
+    "menuDeleteGame": "Delete Game",
+    "dialogTitleConfirmDelete": "Confirm Deletion",
+    "dialogTitleConfirmAction": "Confirm Action",
+    "dialogContentConfirmDelete": "Are you sure you want to delete this game? This action cannot be undone.",
+    "dialogContentSendReminder": "Send a reminder notification to all judges and team members about this game?",
+    "buttonCancel": "Cancel",
+    "buttonDelete": "Delete",
+    "buttonConfirm": "Confirm"
+  },
+  "debateDetails": {
+    "loadFailedAlert": "Failed to load debate details. Please try again.",
+    "maxJudgesReachedAlert": "Maximum judges reached",
+    "debateFullAlert": "This debate is full",
+    "joinFailedAlert": "Failed to join debate",
+    "leaveFailedAlert": "Failed to leave debate",
+    "debatersCountChip": "Debaters: {{count}}/32",
+    "judgesCountChip": "Judges: {{count}}/8",
+    "participantsCountChip": "Participants: {{current}}/{{max}}",
+    "tournamentParticipantsTitle": "Tournament Participants",
+    "participantsTitle": "Participants",
+    "debatersLabel": "Debaters:",
+    "judgesLabel": "Judges:",
+    "totalParticipantsLabel": "Total Participants:",
+    "judgesSectionTitle": "Judges",
+    "judgeRole": "Judge",
+    "debatersSectionTitle": "Debaters",
+    "debaterRole": "Debater",
+    "loadingMessage": "Loading debate details...",
+    "notFoundMessage": "Debate not found",
+    "statusLabel": "Status:",
+    "difficultyLabel": "Difficulty:",
+    "detailsTitle": "Details",
+    "categoryLabel": "Category:",
+    "startDateLabel": "Start Date:",
+    "tournamentBracketTitle": "Tournament Bracket",
+    "bracketGenerationMessage": "Tournament bracket will be generated once all participants have joined.",
+    "registerTeamButton": "Register Your Team",
+    "processingButton": "Processing...",
+    "judgeCannotLeaveOwnDebateButton": "Tournament Judges Cannot Leave Their Own Debates",
+    "leaveDebateButton": "Leave This Debate",
+    "joinAsJudgeButton": "Join as Judge",
+    "joinAsDebaterButton": "Join as Debater",
+    "joinDebateButton": "Join This Debate",
+    "maxJudgesReachedMessage": "Maximum number of judges reached",
+    "maxDebatersReachedMessage": "Maximum number of debaters reached",
+    "tournamentStatusTitle": "Tournament Status",
+    "requiredParticipantsTitle": "Required Participants",
+    "requiredDebatersCount": "• Debaters: {{count}}/32"
+  },
+  "notificationSettings": {
+    "title": "Notification Settings",
+    "friend_request_sent": "Friend Request Sent",
+    "friend_request_accepted": "Friend Request Accepted",
+    "game_assignment": "Game Assignment",
+    "evaluation_submitted": "Evaluation Submitted",
+    "system_alert": "System Alert",
+    "new_message": "New Message",
+    "saveButton": "Save Settings"
+  }
+}
