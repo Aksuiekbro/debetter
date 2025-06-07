@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios'; // Assuming axios might be used later
+import { api } from '../config/api'; // Import configured API client
 
 const AuthContext = createContext(null);
 
@@ -22,7 +23,7 @@ export const AuthProvider = ({ children }) => {
             }
           };
           // Fetch user profile using the token
-          const response = await axios.get('/api/users/profile', config);
+          const response = await api.client.get('/api/users/profile', config);
           setUser(response.data);
           console.log('[AuthContext] User state updated (useEffect/token valid):', response.data);
           setIsAuthenticated(true);
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       // Actual API call to backend login endpoint
-      const response = await axios.post('/api/users/login', { email, password });
+      const response = await api.client.post('/api/users/login', { email, password });
 
       // Store token and set authenticated state using backend response
       localStorage.setItem('token', response.data.token);
@@ -84,7 +85,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (username, email, password, role)  => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/users/register', {
+      const response = await api.client.post('/api/users/register', {
         username,
         email,
         password,
