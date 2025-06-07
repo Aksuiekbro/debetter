@@ -8,7 +8,7 @@
     {
       "src": "client/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "build" }
+      "config": { "distDir": "dist" }
     }
   ],
   "routes": [
@@ -17,12 +17,18 @@
       "dest": "/api/server.js"
     },
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|json))",
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|json|svg|woff|woff2|ttf|eot))",
       "dest": "/client/$1"
     },
     {
       "src": "/(.*)",
       "dest": "/client/index.html"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api).*)",
+      "destination": "/client/index.html"
     }
   ]
 }
