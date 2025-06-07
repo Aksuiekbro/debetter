@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Heading, Text, Button, SimpleGrid, Flex, Spinner,
   Badge, Divider, useToast, useColorModeValue, Modal,
@@ -14,6 +14,13 @@ import { useAuth } from '../contexts/AuthContext';
 
 const TournamentDetail = () => {
   const { id } = useParams();
+  const location = useLocation(); // Get location object
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+
+  // Determine view-only mode from navigation state
+  const isViewOnly = location.state?.isViewOnly ?? false;
+
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState(null);
@@ -22,8 +29,7 @@ const TournamentDetail = () => {
   const [team2Score, setTeam2Score] = useState(0);
   const [notes, setNotes] = useState('');
   const toast = useToast();
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  // navigate and user/isAuthenticated moved up
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -52,9 +58,21 @@ const TournamentDetail = () => {
   };
 
   const handleScoreUpdate = (roundIndex, matchIndex) => {
+    // Disable scoring if in view-only mode
+    if (isViewOnly) {
+      toast({
+        title: 'View Only',
+        description: 'Scoring is disabled in view-only mode.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     const match = tournament.rounds[roundIndex].matches[matchIndex];
     setSelectedMatch({ roundIndex, matchIndex, match });
-    
+
     // If this judge has already scored, prefill the form
     if (match.judgeScores) {
       const judgeScore = match.judgeScores.find(
@@ -181,8 +199,10 @@ const TournamentDetail = () => {
       <Box mb={6}>
         <Heading size="lg" mb={4}>Tournament Bracket</Heading>
         <TournamentBracket 
-          rounds={tournament.rounds} 
-          isJudge={isJudge || (isAuthenticated && user?.role === 'admin')}
+          rounds={tournament.rounds}
+          // Pass isViewOnly and adjust isJudge logic accordingly
+          isJudge={!isViewOnly && (isJudge || (isAuthenticated && user?.role === 'admin'))}
+          isViewOnly={isViewOnly} // Pass down the prop
           onScoreUpdate={handleScoreUpdate}
         />
       </Box>

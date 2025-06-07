@@ -305,6 +305,12 @@
       "saveFailed": "Failed to save field",
       "deleteFailed": "Failed to delete field",
       "orderUpdateFailed": "Failed to update field order"
-    }
-  }
-}
+     }
+   },
+   "leagueTypes": {
+     "school": "Мектеп",
+     "university": "Университет",
+     "open": "Ашық",
+     "other": "Басқа"
+   }
+ }

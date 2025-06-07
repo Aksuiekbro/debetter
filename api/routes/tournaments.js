@@ -5,6 +5,7 @@ const Debate = require('../models/Debate'); // Import Debate model
 const { protect: auth } = require('../middleware/authMiddleware'); // Import the 'protect' function specifically and rename it to 'auth'
 const { check, validationResult } = require('express-validator');
 const registrationFieldRoutes = require('./registrationFieldRoutes'); // Import registration field routes
+const { registerTeamForTournament } = require('../controllers/entrantController'); // Import the new controller function
 
 // @route   GET api/tournaments
 // @desc    Get all tournaments (which are debates with format: 'tournament')
@@ -289,6 +290,10 @@ router.put('/:id/scores/:roundIndex/:matchIndex', auth, async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
+// @route   POST api/tournaments/:tournamentId/register/team
+// @desc    Register a team for a specific tournament
+// @access  Public (or Private, depending on auth requirements later)
+router.post('/:tournamentId/register/team', registerTeamForTournament);
 // Mount registration field routes
 router.use('/:id/registration-fields', registrationFieldRoutes);
 

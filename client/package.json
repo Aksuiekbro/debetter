@@ -10,31 +10,36 @@
     "@mui/icons-material": "^5.16.14",
     "@mui/material": "^5.16.14",
     "@mui/x-date-pickers": "^5.0.20",
+    "@radix-ui/react-slot": "^1.2.2",
     "@testing-library/jest-dom": "^5.17.0",
     "axios": "^1.7.9",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "date-fns": "^2.30.0",
     "framer-motion": "^6.5.1",
     "i18next": "^24.2.3",
     "i18next-browser-languagedetector": "^8.0.4",
     "i18next-http-backend": "^3.0.2",
+    "lucide-react": "^0.508.0",
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.4.1",
     "react-icons": "^5.5.0",
     "react-router-dom": "^6.29.0",
-    "react-scripts": "latest",
     "react-svg-pan-zoom": "^3.13.1",
     "react-window": "^1.8.11",
     "socket.io-client": "^4.8.1",
     "styled-components": "^6.1.17",
+    "tailwind-merge": "^3.2.0",
+    "tw-animate-css": "^1.2.9",
     "web-vitals": "^4.2.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "CI=false react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "react-scripts test"
   },
   "eslintConfig": {
     "extends": [
@@ -56,9 +61,16 @@
   },
   "proxy": "http://localhost:5001",
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.5",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^4.4.1",
     "ajv": "^8.17.1",
-    "puppeteer": "^24.6.0"
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "postcss-import": "^16.1.0",
+    "puppeteer": "^24.8.2",
+    "tailwindcss": "^4.1.5",
+    "vite": "^6.3.5"
   }
 }
