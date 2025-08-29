@@ -24,7 +24,11 @@ const httpServer = http.createServer(app); // <-- Create HTTP server
 // Initialize Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000", // Allow requests from your frontend
+    origin: [
+      process.env.CLIENT_URL || "http://localhost:3000",
+      "https://debetter.kz",
+      "https://debetter-dauren190307-gmailcoms-projects.vercel.app"
+    ],
     methods: ["GET", "POST"]
   }
 });
@@ -81,7 +85,16 @@ io.on('connection', (socket) => {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    process.env.CLIENT_URL || "http://localhost:3000",
+    "https://debetter.kz",
+    "https://debetter-dauren190307-gmailcoms-projects.vercel.app"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 
 // Logger middleware for debugging
